@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "voice-tools"
+version = "0.1.0"
+description = "本地运行、CPU 优先的语音工具集"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["numpy>=1.24,<3"]
+
+[project.optional-dependencies]
+vad = ["webrtcvad-wheels>=2.0.14,<3"]
+
+[project.scripts]
+voice-tools = "voice_tools.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
