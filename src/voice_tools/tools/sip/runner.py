@@ -66,6 +66,15 @@ def execute(plan, output, backend_factory, clock=time.monotonic):
         if backend.disconnected:
             raise CallFailure("REMOTE_HANGUP", "对端在策略完成前结束通话")
 
+    def finalization_error(code, exc):
+        error = {"code": code, "message": str(exc)}
+        if "error" in result:
+            result.setdefault("secondary_errors", []).append(error)
+        else:
+            result["error"] = error
+        if result["status"] != "interrupted":
+            result["status"] = "failed"
+
     def until(deadline, condition=None, call_deadline=None):
         while True:
             alive()
@@ -137,13 +146,15 @@ def execute(plan, output, backend_factory, clock=time.monotonic):
             active_span["end"] = ended
             spans.append(active_span)
         if backend:
-            result["call"] = backend.details()
             recording_start = backend.record_started
+            try:
+                result["call"] = backend.details()
+            except Exception as exc:
+                finalization_error("CALL_DETAILS_ERROR", exc)
             try:
                 backend.close()
             except Exception as exc:
-                result["status"] = "failed"
-                result["error"] = {"code": "CLEANUP_ERROR", "message": str(exc)}
+                finalization_error("CLEANUP_ERROR", exc)
             # Close native resources before any post-processing that can fail.
             if recording_start is not None:
                 try:
@@ -152,10 +163,16 @@ def execute(plan, output, backend_factory, clock=time.monotonic):
                                            "tx_role": "local_scheduled_source", "alignment": "scheduler_estimate_not_sample_exact",
                                            "starts_at_run_s": round(recording_start - journal.start, 6)}
                 except Exception as exc:
-                    result["status"] = "failed"
-                    result["error"] = {"code": "RECORDING_ERROR", "message": str(exc)}
+                    finalization_error("RECORDING_ERROR", exc)
         result["duration_s"] = round(ended - journal.start, 6)
-        journal.emit("run_end", status=result["status"])
-        journal.close()
+        try:
+            journal.emit("run_end", status=result["status"])
+        except Exception as exc:
+            finalization_error("JOURNAL_ERROR", exc)
+        finally:
+            try:
+                journal.close()
+            except Exception as exc:
+                finalization_error("JOURNAL_ERROR", exc)
         write_json(output / "result.json", result)
     return result

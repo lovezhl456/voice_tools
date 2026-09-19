@@ -24,7 +24,7 @@ class LoopbackTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
 
-    def call(self, mode="answer", early=False, steps=None, interrupt=False):
+    def call(self, mode="answer", early=False, steps=None, interrupt=False, interrupt_signal=signal.SIGINT, audio_seconds=.4):
         peer_dir = self.root / "peer"
         log = (self.root / "peer.log").open("w"); self.addCleanup(log.close)
         peer = subprocess.Popen([sys.executable, "-m", "tests.sip.loopback_peer", "--out", str(peer_dir), "--mode", mode, "--duration", "8"], stdout=log, stderr=log)
@@ -52,12 +52,12 @@ class LoopbackTests(unittest.TestCase):
         spec["steps"] = steps or [{"action": "play", "file": "audio.wav"}, {"action": "dtmf", "digits": "1#"},
                                   {"action": "dtmf", "digits": "2", "method": "sip_info"}, {"action": "wait", "seconds": .2}, {"action": "hangup"}]
         env = dict(os.environ)
-        if mode == "auth":
+        if mode in ("auth", "register_auth"):
             spec["account"]["auth"] = {"username": "tester", "realm": "local-test", "password_env": "VOICE_TOOLS_TEST_SECRET"}
             env["VOICE_TOOLS_TEST_SECRET"] = "fixture-secret"
-        if mode == "register":
+        if mode in ("register", "register_auth"):
             spec["account"]["registrar_uri"] = f"sip:127.0.0.1:{info['sip_port']}"
-        tone(self.root / "audio.wav"); write_json(self.root / "scenario.json", spec)
+        tone(self.root / "audio.wav", audio_seconds); write_json(self.root / "scenario.json", spec)
         command = [sys.executable, "-m", "voice_tools", "--json", "sip", "run", str(self.root / "scenario.json"), "--out", str(self.root / "run")]
         if interrupt:
             child = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
@@ -67,7 +67,7 @@ class LoopbackTests(unittest.TestCase):
                 while child.poll() is None and time.monotonic() < deadline:
                     if events.exists() and '"strategy_start"' in events.read_text(): break
                     time.sleep(.02)
-                child.send_signal(signal.SIGINT)
+                child.send_signal(interrupt_signal)
                 stdout, stderr = child.communicate(timeout=15)
                 proc = subprocess.CompletedProcess(command, child.returncode, stdout, stderr)
             finally:
@@ -105,11 +105,38 @@ class LoopbackTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, result)
         self.assertGreaterEqual(peer["registers"], 1)
 
+    def test_registration_digest_challenge_before_call(self):
+        proc, result, peer = self.call("register_auth")
+        self.assertEqual(proc.returncode, 0, result)
+        self.assertGreaterEqual(peer["registers"], 2)
+        self.assertTrue(peer["auth_verified"])
+
     def test_operator_interrupt_hangs_up_and_preserves_result(self):
         proc, result, peer = self.call(steps=[{"action": "wait", "seconds": 4}, {"action": "hangup"}], interrupt=True)
         self.assertEqual(proc.returncode, 3)
         self.assertEqual(result["status"], "interrupted")
         self.assertTrue(peer["bye_received"])
+
+    def test_sigterm_hangs_up_and_preserves_result(self):
+        proc, result, peer = self.call(steps=[{"action": "wait", "seconds": 4}, {"action": "hangup"}],
+                                       interrupt=True, interrupt_signal=signal.SIGTERM)
+        self.assertEqual(proc.returncode, 3)
+        self.assertEqual(result["status"], "interrupted")
+        self.assertTrue(peer["bye_received"])
+
+    def test_reinvite_media_port_switch_keeps_both_directions(self):
+        proc, result, peer = self.call("reinvite", audio_seconds=2,
+                                       steps=[{"action": "play", "file": "audio.wav"}, {"action": "wait", "seconds": .2}, {"action": "hangup"}])
+        self.assertEqual(proc.returncode, 0, result)
+        self.assertEqual(peer["reinvite_code"], 200)
+        self.assertGreater(peer["post_switch_non_silent_packets"], 20)
+        with wave.open(str(self.root / "run/rx.wav")) as wav:
+            import numpy as np
+            pcm = np.frombuffer(wav.readframes(wav.getnframes()), dtype='<i2')
+        self.assertGreater(len(pcm), 16000)
+        self.assertGreater(float(np.sqrt(np.mean(pcm[-4000:].astype(float) ** 2))), 100)
+        events = [json.loads(line) for line in (self.root / "run/events.jsonl").read_text().splitlines()]
+        self.assertEqual(sum(e['event'] == 'recording_start' for e in events), 1)
 
     def test_early_media_is_recorded_before_strategy(self):
         proc, result, peer = self.call("early", early=True)

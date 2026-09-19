@@ -92,6 +92,9 @@ Use `pcap-inspect` before selecting `--stream`. IDs identify src IP/port, dst IP
 - Call-ID, final observed SIP status/reason and negotiated codec are separate from action count. Preserve failures and logs.
 - Credentials only resolve in the execution worker from `password_env`. Plans store the variable name. Native SIP message logging is off; do not enable verbose logs on credentialed traffic without considering their contents.
 - Before a real call, playback WAVs are copied into output/sources with checked SHA256. Resolved plan audio.file points to the snapshot; audio.source_file preserves the original path. Both native playback and TX-source reconstruction use these same bytes. Dry-run does not copy audio.
+- Active SDP media changes reconnect both the existing recorder and player; they do not restart the recording file. Inactive media clears readiness. Call deadlines continue to run during media changes.
+- CLI SIGINT/SIGTERM closes the worker and preserves an interrupted receipt; SIGKILL cannot be handled. Signal handlers are scoped and restored, and only installed on the main Python thread. A worker execution timeout is `failed / WORKER_TIMEOUT`, not operator interruption.
+- Malformed worker receipts are preserved as `worker-result.invalid.json` and reported as `WORKER_RESULT_INVALID`. RX success requires complete mono 8 kHz PCM16 data, not just a nonempty WAV header. `secondary_errors` retains cleanup failures without replacing the first call error.
 
 Exit 0 = operation/plan completed, not audio/IVR correctness. Exit 2 = invalid input/config/missing runtime dependency. Exit 3 = incomplete/failed call, replay, recording or unusable PJSUA2 in doctor. Existing envelope marks exit 3 `partial_error`; inspect `summary.status`, `summary.error` and result.json for the specific outcome. Never retry automatically merely because a call returned nonzero.
 
@@ -106,6 +109,8 @@ No automatic received WAV. `--capture-interface` starts tshark first and writes 
 ## Maintainer map and verification
 
 `tools/sip/cli.py` defines discoverable arguments; `scenario.py` validates offline; `pcap.py` extracts/decodes; `runner.py` owns the bounded call state machine; `pjsua.py` adapts native APIs; `worker.py` isolates native output/crashes; `service.py` orchestrates workers; `sipp.py` prepares/runs independent replay packages.
+
+`processes.py` provides scoped termination handling. Post-merge audit and added failure cases: [sip-deep-review.md](sip-deep-review.md). PCAP export and media loading share the same DTMF limits: at most 256 ordered nonoverlapping events, 40–8000 ms each, optional `end_observed` must be boolean.
 
 No tool-to-tool imports. Shared helpers come from `core`. Keep optional imports out of registration/help/schema. Python 3.9+; no audioop dependency, GPU, model or service framework. State changes should keep receive recording active and release native objects before destroying the endpoint. Callback EOF only signals state; do not destroy players from media callbacks.
 

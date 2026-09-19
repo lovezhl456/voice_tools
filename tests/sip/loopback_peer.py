@@ -21,10 +21,13 @@ def serve(directory, mode="answer", duration=12):
     directory.mkdir(parents=True, exist_ok=True)
     sip = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); sip.bind(("127.0.0.1", 0))
     media = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); media.bind(("127.0.0.1", 0))
+    alternate = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); alternate.bind(("127.0.0.1", 0))
+    current_media = media
     port, media_port = sip.getsockname()[1], media.getsockname()[1]
     capture = CaptureWriter(directory / "peer.pcap")
     report = {"sip_port": port, "rtp_port": media_port, "mode": mode, "audio_packets": 0, "non_silent_packets": 0,
-              "dtmf": [], "sip_info": [], "answered": False, "bye_received": False, "auth_verified": False, "registers": 0}
+              "dtmf": [], "sip_info": [], "answered": False, "bye_received": False, "auth_verified": False, "registers": 0,
+              "reinvite_code": None, "post_switch_non_silent_packets": 0}
     (directory / "ready.json").write_text(json.dumps(report))
     remote_rtp = None
     media_start = None
@@ -36,6 +39,13 @@ def serve(directory, mode="answer", duration=12):
     deferred_answer = None
     finish = time.monotonic() + duration
     peer_bye_sent = False
+    reinvite_sent = False
+
+    def digest_verified(headers, method):
+        auth = dict(re.findall(r'(\w+)="([^"]*)"', headers.get("authorization", "")))
+        md5 = lambda s: hashlib.md5(s.encode()).hexdigest()
+        expected = md5(md5("tester:local-test:fixture-secret") + ":fixed-nonce:" + md5(method + ":" + auth.get("uri", "")))
+        return auth.get("response") == expected
 
     def transmit(data, address, sock):
         sock.sendto(data, address)
@@ -59,19 +69,28 @@ def serve(directory, mode="answer", duration=12):
                 report["answered"] = True; deferred_answer = None
             if remote_rtp and next_audio is not None and now >= next_audio:
                 # Known non-zero PCMA waveform, independent of production decoder.
-                transmit(rtp(seq, stamp, b"\xaa" * 80 + b"\x2a" * 80, 8, 4321), remote_rtp, media)
+                transmit(rtp(seq, stamp, b"\xaa" * 80 + b"\x2a" * 80, 8, 4321), remote_rtp, current_media)
                 seq, stamp, next_audio = seq + 1, stamp + 160, next_audio + .02
+            if mode == "reinvite" and media_start and now - media_start >= .35 and not reinvite_sent:
+                h = invite_headers
+                changed = body.replace("o=peer 1 1", "o=peer 1 2").replace(f"m=audio {media_port}", f"m=audio {alternate.getsockname()[1]}")
+                target = h["contact"].split("<", 1)[1].split(">", 1)[0]
+                message = (f"INVITE {target} SIP/2.0\r\nVia: SIP/2.0/UDP 127.0.0.1:{port};branch=z9hG4bKswitch\r\n"
+                           f"From: {h['to'].split(';tag=')[0]};tag=local-test\r\nTo: {h['from']}\r\nCall-ID: {h['call-id']}\r\n"
+                           f"CSeq: 21 INVITE\r\nContact: <sip:peer@127.0.0.1:{port}>\r\nMax-Forwards: 70\r\n"
+                           f"Content-Type: application/sdp\r\nContent-Length: {len(changed.encode())}\r\n\r\n{changed}")
+                transmit(message.encode(), source_addr, sip); reinvite_sent = True
             if mode == "hangup" and report["answered"] and media_start and now - media_start >= .25 and not peer_bye_sent:
                 h = invite_headers
                 message = (f"BYE sip:tester@127.0.0.1 SIP/2.0\r\nVia: SIP/2.0/UDP 127.0.0.1:{port};branch=z9hG4bKpeerbye\r\n"
                            f"From: {h['to'].split(';tag=')[0]};tag=local-test\r\nTo: {h['from']}\r\nCall-ID: {h['call-id']}\r\nCSeq: 20 BYE\r\nContent-Length: 0\r\n\r\n")
                 transmit(message.encode(), source_addr, sip)
                 peer_bye_sent = True; finish = now + 1
-            ready, _, _ = select.select([sip, media], [], [], .005)
+            ready, _, _ = select.select([sip, media, alternate], [], [], .005)
             for sock in ready:
                 data, address = sock.recvfrom(65535)
                 capture.write(time.time(), address[0], address[1], "127.0.0.1", sock.getsockname()[1], data)
-                if sock is media:
+                if sock is media or sock is alternate:
                     if len(data) < 12 or data[0] >> 6 != 2: continue
                     pt = data[1] & 127
                     stamp_rx, ssrc = struct.unpack("!II", data[4:12])
@@ -83,6 +102,8 @@ def serve(directory, mode="answer", duration=12):
                     elif pt in (0, 8):
                         report["audio_packets"] += 1
                         report["non_silent_packets"] += int(any(b not in (0xd5, 0x55, 0xff, 0x7f) for b in payload))
+                        if sock is alternate:
+                            report["post_switch_non_silent_packets"] += int(any(b not in (0xd5, 0x55, 0xff, 0x7f) for b in payload))
                     continue
                 text = data.decode("utf-8", "replace")
                 start, *lines = text.split("\r\n")
@@ -91,18 +112,32 @@ def serve(directory, mode="answer", duration=12):
                     if not line: break
                     if ":" in line:
                         key, value = line.split(":", 1); headers[key.lower()] = value.strip()
-                if start.startswith("REGISTER "):
+                if start.startswith("SIP/2.0") and headers.get("cseq") == "21 INVITE":
+                    report["reinvite_code"] = int(start.split()[1])
+                    if report["reinvite_code"] == 200:
+                        h = invite_headers
+                        target = h["contact"].split("<", 1)[1].split(">", 1)[0]
+                        ack = (f"ACK {target} SIP/2.0\r\nVia: SIP/2.0/UDP 127.0.0.1:{port};branch=z9hG4bKswitchack\r\n"
+                               f"From: {h['to'].split(';tag=')[0]};tag=local-test\r\nTo: {h['from']}\r\nCall-ID: {h['call-id']}\r\n"
+                               "CSeq: 21 ACK\r\nMax-Forwards: 70\r\nContent-Length: 0\r\n\r\n")
+                        transmit(ack.encode(), source_addr, sip)
+                        match = re.search(r"m=audio (\d+)", text)
+                        if match: remote_rtp = ("127.0.0.1", int(match[1]))
+                        current_media = alternate
+                elif start.startswith("REGISTER "):
                     report["registers"] += 1
+                    if mode == "register_auth":
+                        if not digest_verified(headers, "REGISTER"):
+                            response(headers, address, 401, "Unauthorized", extra='WWW-Authenticate: Digest realm="local-test", nonce="fixed-nonce", algorithm=MD5\r\n')
+                            continue
+                        report["auth_verified"] = True
                     response(headers, address, 200, "OK", extra=f"Contact: {headers.get('contact', '*')};expires=60\r\nExpires: 60\r\n")
                 elif start.startswith("INVITE "):
                     if mode == "drop": continue
                     if mode == "reject":
                         response(headers, address, 486, "Busy Here"); finish = now + .4; continue
                     if mode == "auth" and not report["auth_verified"]:
-                        auth = dict(re.findall(r'(\w+)="([^"]*)"', headers.get("authorization", "")))
-                        md5 = lambda s: hashlib.md5(s.encode()).hexdigest()
-                        expected = md5(md5("tester:local-test:fixture-secret") + ":fixed-nonce:" + md5("INVITE:" + auth.get("uri", "")))
-                        if auth.get("response") != expected:
+                        if not digest_verified(headers, "INVITE"):
                             response(headers, address, 401, "Unauthorized", extra='WWW-Authenticate: Digest realm="local-test", nonce="fixed-nonce", algorithm=MD5\r\n')
                             continue
                         report["auth_verified"] = True
@@ -129,14 +164,14 @@ def serve(directory, mode="answer", duration=12):
                     if invite_headers: response(invite_headers, address, 487, "Request Terminated")
                     finish = now + .1
     finally:
-        capture.close(); sip.close(); media.close()
+        capture.close(); sip.close(); media.close(); alternate.close()
         (directory / "report.json").write_text(json.dumps(report, indent=2) + "\n")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
-    parser.add_argument("--mode", default="answer", choices=("answer", "auth", "early", "reject", "drop", "hangup", "register"))
+    parser.add_argument("--mode", default="answer", choices=("answer", "auth", "early", "reject", "drop", "hangup", "register", "register_auth", "reinvite"))
     parser.add_argument("--duration", type=float, default=12)
     args = parser.parse_args()
     serve(args.out, args.mode, args.duration)

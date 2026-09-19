@@ -1,0 +1,475 @@
+{
+  "schema_version": "1.0",
+  "date": "2026-09-19",
+  "base_commit": "e6418369a225317704ff8d39156cee70582ad611",
+  "full_suite": {
+    "executed": 223,
+    "passed": 223,
+    "skipped": 0,
+    "localhost_integration": 11,
+    "new_boundary_tests": 11,
+    "log_sha256": "d9f96a76bf529627770bbe8c92dc32cbb56703d839541aea62854ab4d6d0ae15"
+  },
+  "reinvite_before": {
+    "status": "failed",
+    "code": "CALL_TIMEOUT",
+    "rx_duration_s": 0.36
+  },
+  "reinvite_sigterm_register_digest_after": {
+    "executed": 3,
+    "passed": 3,
+    "log_sha256": "dca089aaeb6d4c2eeffde05994b283f28c92f0bfad1316c8fbd9a5cf14516df1"
+  },
+  "baseline_pjsua_source_sha256": "ed2919bf7bcbd8175f53d5d280857f6a089489a9462476d1678e227032af7169",
+  "interpretation": "Baresip failures are retained; old SIP implementation also failed B01/B02 under the same current environment. A 2.3s warmup probe passed B01 but failed B05. Audio buffer underruns are observations, not a proven root cause. Thresholds are unchanged. No public calls were repeated.",
+  "cases": [
+    {
+      "group": "pjsua",
+      "case": "P01",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:12:33.703650+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.62,
+          "rms": 3682.950726505108,
+          "samples": 20960,
+          "sha256": "6d23870318e13707a0547c9efd2994ac596d47779accd8c2090aa99dc5d24b87",
+          "correlation": 0.9999119747029825,
+          "offset_spread_s": 0.0,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 2.62,
+          "rms": 3677.2261355413534,
+          "samples": 20960,
+          "sha256": "97bd3f5ac59075ea80726c030775fa714718645ce4146f54d5762c5ad4f2242c",
+          "correlation": 0.9999119747029824,
+          "offset_spread_s": 0.0,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "93c0c8bb3e478aac71762d4d3b9561ff8af379df80450d12fd6534f972f76f4d"
+    },
+    {
+      "group": "pjsua",
+      "case": "P02",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:12:38.857318+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.52,
+          "rms": 3675.8890505771224,
+          "samples": 20160,
+          "sha256": "94548b3dd6276256080c13cd4f7c7754c7f11e76fbee53221cd5b928cb199a8f",
+          "correlation": 0.999898922963484,
+          "offset_spread_s": 0.05637500000000001,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 2.52,
+          "rms": 3723.516583542588,
+          "samples": 20160,
+          "sha256": "e6b8a0be98fe48c30de43641cb46120b8a5e12200b0853ad09dfdf2ce05800d4",
+          "correlation": 0.9999042057222387,
+          "offset_spread_s": 0.036375000000000046,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "1a9d416106eec2b43c4cfff209ba20d5bb999912569f78e8e91dbfc7e2925082"
+    },
+    {
+      "group": "pjsua",
+      "case": "P03",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:12:44.117402+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.56,
+          "rms": 4724.290836528322,
+          "samples": 20480,
+          "sha256": "ad6b517c8ecb54d1b398de5d28cab475e6075d812eeafee564a25a1da959024c",
+          "correlation": 0.9999099521561083,
+          "offset_spread_s": 0.010000000000000002,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 2.56,
+          "rms": 3688.5891957931917,
+          "samples": 20480,
+          "sha256": "ddbc50d9808909f778ca0d39fc5cf324c5bd6ac9205d76e52c2bfb681616e836",
+          "correlation": 0.9999119747029825,
+          "offset_spread_s": 0.010000000000000009,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "faa5ac5e8810a835e2ab32fe9f822be95799da3a71f3c2c16a30cf66785f1bb1"
+    },
+    {
+      "group": "pjsua",
+      "case": "P04",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:12:49.190568+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [],
+      "metrics": {
+        "rx": {
+          "duration_s": 5.26,
+          "rms": 2595.2496702213875,
+          "samples": 42080,
+          "sha256": "2d8fc456f1d9f49ba808a65936d663515adef0f816e9b35ae3f7b1bfd3217138",
+          "correlation": 0.9999119747029823,
+          "offset_spread_s": 0.0,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 5.26,
+          "rms": 2595.2440021744087,
+          "samples": 42080,
+          "sha256": "fb86bdd5a1ff6badd5285a693a721952b221b07772c6d53d3fd473b4fa4bf2fe",
+          "correlation": 0.9999119747029823,
+          "offset_spread_s": 0.0,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "a6417e8c30add16b28eb1f7d97be4769887d43c41988c8d3e4769848625aff75"
+    },
+    {
+      "group": "pjsua",
+      "case": "P05",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:12:57.066874+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [],
+      "metrics": {
+        "rx": {
+          "duration_s": 4.14,
+          "rms": 2912.9284149985215,
+          "samples": 33120,
+          "sha256": "e86da55a48cc4e7e449eddef0f65d3bf48c7321a2050f8c59161fa1f3868c09b",
+          "correlation": 0.9999063246573745,
+          "offset_spread_s": 0.019999999999999962,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 4.16,
+          "rms": 2913.255075487859,
+          "samples": 33280,
+          "sha256": "2f9a39f43094b74cff0d4cb7e6ee1686b3b19d28079d329af79b454b1793dca1",
+          "correlation": 0.9999097256045434,
+          "offset_spread_s": 0.010000000000000009,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "37e5b0c6988480124eb4e49d92b1f869d2da2c7f9c16f603934575f0f7e151f1"
+    },
+    {
+      "group": "pjsua",
+      "case": "P06",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:13:03.946634+00:00",
+      "cli_exit_code": 3,
+      "failed_assertions": [],
+      "metrics": {},
+      "acceptance_sha256": "df38919bb0358ac10d391e2429a82a680efc4d5a3dfb4c2d09ee27e3c8787610"
+    },
+    {
+      "group": "pjsua",
+      "case": "P07",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:13:06.665965+00:00",
+      "cli_exit_code": 3,
+      "failed_assertions": [],
+      "metrics": {},
+      "acceptance_sha256": "71e089fb739a46594ad8257a1ddb59005f5b3f4c144e1f3f5c2fd0e3be36f1cc"
+    },
+    {
+      "group": "pjsua",
+      "case": "P08",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:13:12.518474+00:00",
+      "cli_exit_code": 3,
+      "failed_assertions": [],
+      "metrics": {},
+      "acceptance_sha256": "f26452c1b72a372f82505c0670bc989e4ae4e82f640df7431adfd48a8e195827"
+    },
+    {
+      "group": "pjsua",
+      "case": "P09",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:13:16.281646+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.62,
+          "rms": 3390.4084704526645,
+          "samples": 20960,
+          "sha256": "c3d8624a077c5104f02d15c31c6cec23474d4040c6e5c6b9c181de51178baf95",
+          "correlation": 0.9362635695914737,
+          "offset_spread_s": 0.06412499999999999,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 2.62,
+          "rms": 3409.7387780156173,
+          "samples": 20960,
+          "sha256": "6e1df8e0531155ff9a93c1ccc8a88a70afd928144399ba3c1577e5771e93ef5e",
+          "correlation": 0.9999061825860631,
+          "offset_spread_s": 0.05537499999999995,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "1ff3c3407f7b69acc8f865c4c80ce48f43b4a2e8e6eff6da4b08e676a5c11476"
+    },
+    {
+      "group": "baresip",
+      "case": "B01",
+      "status": "FAIL",
+      "started_at": "2026-09-19T11:13:21.856757+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [
+        "十段信号匹配且时间偏移一致"
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.56,
+          "rms": 3464.7198637942306,
+          "samples": 20480,
+          "sha256": "755eb939bf41718fa86fa067a8c5d9ec72d7480fe6bb8770169e3c6a18cf04e4",
+          "correlation": 0.8052089801671973,
+          "offset_spread_s": 0.04300000000000004,
+          "matched": false
+        }
+      },
+      "acceptance_sha256": "4623f2322163545795a6b3ee9ef2251318432c9f7edf2261dcad92b4c2c14f2d"
+    },
+    {
+      "group": "baresip",
+      "case": "B02",
+      "status": "FAIL",
+      "started_at": "2026-09-19T11:13:29.777438+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [
+        "十段信号匹配且时间偏移一致"
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.62,
+          "rms": 3596.0698650980116,
+          "samples": 20960,
+          "sha256": "6add39997c894918e49a4d723ca1b735b38ccb6a48bb1ad3d7b1a5110a052b3d",
+          "correlation": 0.8098978281898259,
+          "offset_spread_s": 0.10187500000000005,
+          "matched": false
+        }
+      },
+      "acceptance_sha256": "ddf9e6a30e0261e5771ae0eef4e25271ceecbbce721f43401ab2282e97ad3041"
+    },
+    {
+      "group": "baresip",
+      "case": "B03",
+      "status": "FAIL",
+      "started_at": "2026-09-19T11:13:33.902648+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [
+        "十段信号匹配且时间偏移一致"
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 5.44,
+          "rms": 2377.7234656183646,
+          "samples": 43520,
+          "sha256": "c3ec77fed21a671c79792a77bb3ea3b7707d77c2d1de6207ed1f81cfb74eb0f0",
+          "correlation": 0.7668197522691764,
+          "offset_spread_s": 0.08824999999999994,
+          "matched": false
+        }
+      },
+      "acceptance_sha256": "1ca661cf3b4f701ef43ffe3b2e928c3b3f66ebbcb46933d58b9986e7671b3b4f"
+    },
+    {
+      "group": "baresip",
+      "case": "B04",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:13:40.868862+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [],
+      "metrics": {
+        "rx": {
+          "duration_s": 4.08,
+          "rms": 2800.0637076359267,
+          "samples": 32640,
+          "sha256": "78b787f6bbd789c7e51811542a88b10d52052b589c543b8dd6734c5c532ebef5",
+          "correlation": 0.8803037616263389,
+          "offset_spread_s": 0.085125,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "8266f8bd783e9db866c898644b4368e14c4072fc12973da1feb990bec56bde28"
+    },
+    {
+      "group": "baresip",
+      "case": "B05",
+      "status": "FAIL",
+      "started_at": "2026-09-19T11:13:46.326553+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [
+        "十段信号匹配且时间偏移一致"
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.58,
+          "rms": 4111.704787387347,
+          "samples": 20640,
+          "sha256": "bcea6acb77b38e011f3eee5f4c625dc2971039bf50ca4519d84551c550adc3ed",
+          "correlation": 0.5811425346937655,
+          "offset_spread_s": 0.15975,
+          "matched": false
+        },
+        "peer_rx": {
+          "duration_s": 2.44,
+          "rms": 3762.9123130110056,
+          "samples": 19520,
+          "sha256": "0999ee5ea58d22487e37f41b68ca059ba394a07fb3fe3d1d959c90f92a010297",
+          "correlation": 0.9999119747029825,
+          "offset_spread_s": 0.0,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "cafb6cbd996fde5a84ffc37ab7f75e06fa06d8d0f0b49befe62e47f99748db0e"
+    },
+    {
+      "group": "baresip",
+      "case": "B06",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:13:50.914448+00:00",
+      "cli_exit_code": 3,
+      "failed_assertions": [],
+      "metrics": {},
+      "acceptance_sha256": "df7b7cebaed4d8f68727e5a1f4cc93b6d016500de068a9437a8b9a356d612193"
+    },
+    {
+      "group": "baresip",
+      "case": "B07",
+      "status": "FAIL",
+      "started_at": "2026-09-19T11:13:52.326089+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [
+        "十段信号匹配且时间偏移一致"
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.56,
+          "rms": 3405.6747813263246,
+          "samples": 20480,
+          "sha256": "53fe7f20dd54866bc9ff084a0edb95f5b2dc76f2598caf22169c1f5612e382c0",
+          "correlation": 0.7677577344509605,
+          "offset_spread_s": 0.13237500000000002,
+          "matched": false
+        }
+      },
+      "acceptance_sha256": "a099c6482186c19482b7b80c69bb3e8c70f84a1124bb7c90744931a91556da6f"
+    },
+    {
+      "group": "old_sip_baseline",
+      "case": "B01",
+      "status": "FAIL",
+      "started_at": "2026-09-19T11:14:46.101676+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [
+        "十段信号匹配且时间偏移一致"
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.58,
+          "rms": 3612.3711775064667,
+          "samples": 20640,
+          "sha256": "b600e9fc2f6ba55e7b0e229c73ca33fc355306cea6ed6749b65dc574060a6893",
+          "correlation": 0.8159651594795683,
+          "offset_spread_s": 0.15500000000000003,
+          "matched": false
+        }
+      },
+      "acceptance_sha256": "841f4ecd56bccb1bd1814c4ea2ec0ceb4d4e3f430a9733156fe8a6b01797915f"
+    },
+    {
+      "group": "old_sip_baseline",
+      "case": "B02",
+      "status": "FAIL",
+      "started_at": "2026-09-19T11:14:50.169376+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [
+        "十段信号匹配且时间偏移一致"
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.6,
+          "rms": 3445.20413676612,
+          "samples": 20800,
+          "sha256": "65b6b42808d0fdff9b29d133407b156caa6b3855f0658e70fa947f3ae673d0df",
+          "correlation": 0.778867475379805,
+          "offset_spread_s": 0.10000000000000009,
+          "matched": false
+        }
+      },
+      "acceptance_sha256": "e2ad302c6c609b9289ad86e649c1ad5c932da89001b84dd10f0edc2718a50566"
+    },
+    {
+      "group": "warmup_probe",
+      "case": "B01",
+      "status": "PASS",
+      "started_at": "2026-09-19T11:17:11.737067+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [],
+      "metrics": {
+        "rx": {
+          "duration_s": 4.54,
+          "rms": 2716.6917201364067,
+          "samples": 36320,
+          "sha256": "432dfc62bc55899c683e5912e7fbf3dfe970030c920809fd275f90b39aa25f0d",
+          "correlation": 0.9208529148260488,
+          "offset_spread_s": 0.06174999999999997,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "2055cf64ee0037a273466128659a99b527f65a41fa32a5c92b5caf5a67606550"
+    },
+    {
+      "group": "warmup_probe",
+      "case": "B05",
+      "status": "FAIL",
+      "started_at": "2026-09-19T11:17:17.857274+00:00",
+      "cli_exit_code": 0,
+      "failed_assertions": [
+        "十段信号匹配且时间偏移一致"
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 4.68,
+          "rms": 3005.6337220416126,
+          "samples": 37440,
+          "sha256": "84563dd89c89a07146d4e66ab7e687d976a4a3b5fb5da16e16fa6a64d0982ec1",
+          "correlation": 0.3795314335040341,
+          "offset_spread_s": 0.1555,
+          "matched": false
+        },
+        "peer_rx": {
+          "duration_s": 4.7,
+          "rms": 2745.504096487526,
+          "samples": 37600,
+          "sha256": "c9be65d0a1cc1b2ba54a2bf1f40cc99f1500b8f4be0da18c8f305592ce07f7ca",
+          "correlation": 0.9999119747029823,
+          "offset_spread_s": 0.020000000000000018,
+          "matched": true
+        }
+      },
+      "acceptance_sha256": "5066a205da905e2e9e275d2c0de660766adce43e303a5445e4e418c193bf7a94"
+    }
+  ]
+}
