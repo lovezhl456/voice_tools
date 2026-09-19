@@ -1,5 +1,7 @@
 # 采集与排障 2.0
 
+按主叫/被叫在服务器采集、按会话拆分并打包下载，使用新增的 [capture by-number](capture-by-number.md)。
+
 2.0.0 采用 **HOMER 查信令＋远端环形 PCAP 留媒体＋voice_tools 编排与出报告**。HOMER 沿用已有 `homerctl` / `voice-tools homer` 配置；原始媒体由远端 dumpcap 留存；本机完成冻结、校验、会话检索和报告。
 
 ```mermaid

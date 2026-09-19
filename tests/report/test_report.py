@@ -110,7 +110,7 @@ class ReportTests(unittest.TestCase):
             self.assertEqual(raised.exception.code, 2)
 
     def test_new_tools_machine_envelope_and_schema(self):
-        for tool, actions in (('capture', {'start', 'fetch', 'batch', 'fetch-batch', 'ring-start', 'ring-status', 'ring-stop', 'ring-fetch', 'ring-release'}), ('report', {'build'})):
+        for tool, actions in (('capture', {'start', 'fetch', 'batch', 'fetch-batch', 'ring-start', 'ring-status', 'ring-stop', 'ring-fetch', 'ring-release', 'by-number', 'fetch-number'}), ('report', {'build'})):
             stdout = io.StringIO()
             with contextlib.redirect_stdout(stdout):
                 self.assertEqual(main(['schema', '--tool', tool]), 0)

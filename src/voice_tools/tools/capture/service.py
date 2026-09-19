@@ -1,9 +1,11 @@
 """仅从验证过的端点生成 BPF；SSH 与远端 shell 分别引用参数。"""
 from datetime import datetime, timezone
 import ipaddress
+import os
 from pathlib import Path
 import re
 import shlex
+import signal
 import subprocess
 import time
 from urllib.parse import unquote
@@ -81,15 +83,55 @@ class SSH:
             raise ValueError(f"远端命令失败 ({result.returncode})：{result.stderr[-2000:].strip()}")
         return result.stdout.strip()
 
-    def copy(self, remote, local):
+    def copy(self, remote, local, stop=None):
+        command = ['scp', *self.options, '-P', str(self.port), f'{self.host}:{remote}', str(local)]
+        if stop is not None:
+            self.copy_cancellable(command, stop)
+            return
         try:
-            result = subprocess.run(["scp", *self.options, "-P", str(self.port),
-                                     f"{self.host}:{remote}", str(local)],
+            result = subprocess.run(command,
                                     capture_output=True, text=True, timeout=300)
         except subprocess.TimeoutExpired as error:
             raise ValueError("SCP 超时，远端文件保留，可用 capture fetch 重试") from error
         if result.returncode:
             raise ValueError(f"SCP 失败：{result.stderr[-2000:].strip()}")
+
+    @staticmethod
+    def copy_cancellable(command, stop):
+        process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   text=True, start_new_session=True)
+        deadline = time.monotonic() + 300
+        finished = False
+        try:
+            while True:
+                if stop.is_set():
+                    raise ValueError('SCP 已取消，远端包保留，可用 fetch-number 重试')
+                if time.monotonic() >= deadline:
+                    raise ValueError('SCP 超时，远端包保留，可用 fetch-number 重试')
+                try:
+                    _, error = process.communicate(timeout=.2)
+                    finished = True
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+            if process.returncode:
+                raise ValueError('SCP 失败：' + error[-2000:].strip())
+        finally:
+            if not finished:
+                try:
+                    os.killpg(process.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+            process.communicate()
+
+    def upload(self, local, remote):
+        try:
+            result = subprocess.run(['scp', *self.options, '-P', str(self.port), str(local),
+                                     f'{self.host}:{remote}'], capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired as error:
+            raise ValueError('SCP 部署超时；任务路径保留在 job.json') from error
+        if result.returncode:
+            raise ValueError('SCP 部署失败：' + result.stderr[-2000:].strip())
 
 
 def dump_vars(ssh, fs_cli, uuid):
