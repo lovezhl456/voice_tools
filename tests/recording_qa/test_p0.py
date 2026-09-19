@@ -54,6 +54,8 @@ class P0WorkflowTests(unittest.TestCase):
         self.assertNotIn("__REVIEW_DATA__", page)
         self.assertIn("beforeunload", page)
         self.assertNotIn("__WAVEFORM_", page)
+        self.assertNotIn("__PLAYBACK_SCRIPT__", page)
+        self.assertIn("createReviewPlayback", page)
         self.assertIn("WaveSurfer.js 7.12.12", page)
         self.assertIn("Redistribution and use", page)
         from html.parser import HTMLParser

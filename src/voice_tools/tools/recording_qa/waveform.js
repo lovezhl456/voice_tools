@@ -1,6 +1,6 @@
 "use strict";
 // One media element owns playback; the component only renders the original channels.
-window.createReviewWaveform = (player, onRangeChange, onError) => {
+window.createReviewWaveform = (player, onRangeChange, onError, {focusSelection = false} = {}) => {
   const $ = id => document.getElementById(id);
   const colors = [
     {waveColor: "#5aaca5", progressColor: "#0d716d"},
@@ -13,11 +13,12 @@ window.createReviewWaveform = (player, onRangeChange, onError) => {
     barWidth: 2, barGap: 1, barRadius: 1,
     cursorWidth: 2, cursorColor: "#253f53", autoCenter: false,
     autoScroll: true, dragToSeek: true, hideScrollbar: false,
-    plugins: [regions, WaveSurfer.Timeline.create({height: 28, style: {fontSize: "11px"},
+    plugins: [regions, WaveSurfer.Timeline.create({height: 28, secondaryLabelOpacity: 1, style: {fontSize: "11px"},
       formatTimeCallback: value => value < 60 ? `${Number(value.toFixed(1))}s` : `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, "0")}`})],
   });
   let entry = null, audition = null, ready = false, generation = 0, zoom = 1;
   const duration = () => entry?.record.result.duration_s || 0;
+  const minRange = () => Math.min(.05, duration());
   function enable(value) {
     for (const id of ["zoomIn", "zoomOut", "fitWave", "focusWave", "waveGain"]) $(id).disabled = !value;
   }
@@ -27,16 +28,16 @@ window.createReviewWaveform = (player, onRangeChange, onError) => {
       const handle = audition.element.querySelector(`[part~="region-handle-${side}"]`);
       handle.tabIndex = 0; handle.setAttribute("role", "slider");
       handle.setAttribute("aria-label", side === "left" ? "拖动试听起点" : "拖动试听终点");
-      handle.setAttribute("aria-valuemin", String(side === "left" ? 0 : audition.start + .05));
-      handle.setAttribute("aria-valuemax", String(side === "left" ? audition.end - .05 : duration()));
+      handle.setAttribute("aria-valuemin", String(side === "left" ? 0 : audition.start + minRange()));
+      handle.setAttribute("aria-valuemax", String(side === "left" ? audition.end - minRange() : duration()));
       handle.setAttribute("aria-valuenow", String(value));
       handle.setAttribute("aria-valuetext", `${value.toFixed(2)} 秒`);
       handle.onkeydown = event => {
         if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
         event.preventDefault(); event.stopPropagation();
         const delta = (event.key === "ArrowLeft" ? -1 : 1) * (event.shiftKey ? 1 : .1);
-        const start = side === "left" ? Math.max(0, Math.min(audition.end - .05, audition.start + delta)) : audition.start;
-        const end = side === "right" ? Math.min(duration(), Math.max(audition.start + .05, audition.end + delta)) : audition.end;
+        const start = side === "left" ? Math.max(0, Math.min(audition.end - minRange(), audition.start + delta)) : audition.start;
+        const end = side === "right" ? Math.min(duration(), Math.max(audition.start + minRange(), audition.end + delta)) : audition.end;
         audition.setOptions({start, end}); updateHandles(); onRangeChange(start, end);
       };
     }
@@ -64,7 +65,8 @@ window.createReviewWaveform = (player, onRangeChange, onError) => {
   $("fitWave").onclick = () => setZoom(1, 0);
   $("focusWave").onclick = () => {
     if (!entry) return;
-    const start = Math.max(0, entry.op.at_s - 2), end = Math.min(duration(), entry.op.observed_until_s + 1);
+    const start = focusSelection ? audition.start : Math.max(0, entry.op.at_s - 2);
+    const end = focusSelection ? audition.end : Math.min(duration(), entry.op.observed_until_s + 1);
     setZoom(duration() / Math.max(.1, end - start), start);
     wave.setScrollTime(start);
   };
@@ -79,10 +81,13 @@ window.createReviewWaveform = (player, onRangeChange, onError) => {
       entry = value; ready = false; audition = null; enable(false);
       const ticket = ++generation, peaks = entry.record.waveform?.channels;
       regions.clearRegions(); $("waveform").hidden = !peaks?.length; $("waveEmpty").hidden = !!peaks?.length;
-      if (!peaks?.length) return;
+      $("waveStage").querySelector(".track-labels").hidden = !peaks?.length;
+      $("waveStage").style.gridTemplateColumns = peaks?.length ? "" : "1fr";
+      if (!peaks?.length) { $("waveHeading").textContent = "录音波形"; $("waveResolution").textContent = "无波形摘要"; return; }
       $("waveStage").style.setProperty("--track-count", peaks.length);
       $("rightTitle").hidden = peaks.length < 2;
       $("waveHeading").textContent = peaks.length === 1 ? "单轨波形" : "双轨波形";
+      $("waveform").setAttribute("aria-label", peaks.length === 1 ? "单轨录音波形" : "同步双轨录音波形");
       $("waveResolution").textContent = `波形摘要 · 每格约 ${Math.max(1, Math.round(entry.record.waveform.bin_s * 1000))} ms`;
       wave.setOptions({minPxPerSec: 0, splitChannels: colors.slice(0, peaks.length)});
       try {
@@ -94,7 +99,7 @@ window.createReviewWaveform = (player, onRangeChange, onError) => {
         fixed.element.style.pointerEvents = "none";
         fixed.element.style.borderInline = "1px dashed #bd8617";
         audition = regions.addRegion({id: "audition-range", start: Number($("start").value), end: Number($("end").value),
-          drag: false, resize: true, minLength: .05, color: "rgba(24, 156, 151, .07)"});
+          drag: false, resize: true, minLength: minRange(), color: "rgba(24, 156, 151, .07)"});
         audition.element.style.pointerEvents = "none";
         audition.element.style.borderInline = "1px solid #098a8a";
         ready = true; enable(true); updateHandles(); setZoom(1, 0);
@@ -102,7 +107,7 @@ window.createReviewWaveform = (player, onRangeChange, onError) => {
       } catch (error) { if (ticket === generation) onError(`波形无法加载：${error.message}`); }
     },
     syncRange,
-    setTime(value) { if (ready && Number.isFinite(value)) wave.setTime(value); },
+    setTime(value) { if (!Number.isFinite(value)) return; if (ready) wave.setTime(value); else if (player.getAttribute("src")) player.currentTime = value; },
     syncChannel(channel) {
       $("leftTitle").classList.toggle("is-muted", channel === "right");
       $("rightTitle").classList.toggle("is-muted", channel === "left");
