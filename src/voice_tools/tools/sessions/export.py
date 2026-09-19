@@ -116,17 +116,17 @@ def export(index, call_id, output, include_media=False, padding=2, tshark='tshar
     # Signaling uses the indexed packet prefix, never unseen packets beyond a partial index.
     signal = 'sip.Call-ID == ' + json.dumps(call_id, ensure_ascii=False)
     for source in sources:
-        if source['end'] is None or source['end'] < first - padding:
+        stages = [stage for stage in call.get('media_timeline', []) if stage['host'] == source['host']]
+        if source['end'] is None or (not stages and source['end'] < first - padding):
             continue
-        if terminal and source['start'] > last + padding:
+        if terminal and not stages and source['start'] > last + padding:
             continue
         media, ports = [], set()
         if include_media:
             until = min(source['end'], last + padding) if terminal else source['end']
-            stages = [stage for stage in call.get('media_timeline', []) if stage['host'] == source['host']]
             for stage in stages:
                 begin = max(source['start'], stage['from_epoch'] - padding)
-                finish = min(source['end'], stage['until_epoch'] + padding if stage['until_epoch'] is not None else until)
+                finish = min(source['end'], stage['until_epoch'] + padding if stage['until_epoch'] is not None else source['end'])
                 if begin > finish:
                     continue
                 expressions = []
@@ -189,7 +189,7 @@ def export(index, call_id, output, include_media=False, padding=2, tshark='tshar
         except (ValueError, OSError, subprocess.TimeoutExpired) as error:
             manifest['errors'].append({'source': source['path'], 'error': str(error)})
     manifest['partial'] |= bool(manifest['errors']) or not manifest['files']
-    if not terminal:
-        manifest['warnings'].append('没有观测到 BYE/CANCEL；SDP 媒体窗口延至各源文件结尾，端口重用误关联风险更高。')
+    if not terminal or any(s['until_epoch'] is None for s in call.get('media_timeline', [])):
+        manifest['warnings'].append('至少一个媒体阶段未观测到结束；其窗口延至源文件结尾，端口重用误关联风险更高。')
     write_json(output / 'session.json', manifest)
     return manifest

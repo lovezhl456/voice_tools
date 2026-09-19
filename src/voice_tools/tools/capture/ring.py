@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 import re
 import shlex
+import threading
 import time
 from uuid import uuid4
 
@@ -40,8 +41,9 @@ def remote_json(ssh, directory, name):
     if not re.fullmatch(r'(?:status\.json|replies/[a-f0-9]{32}\.json)', name):
         raise ValueError('不支持的远端状态路径')
     raw = ssh.checked(['python3', '-c',
-                       "from pathlib import Path; import sys; p=Path(sys.argv[1]); "
-                       "assert p.stat().st_size <= 4194304; print(p.read_text())", directory + '/' + name])
+                       "from pathlib import Path; import sys,json,time; p=Path(sys.argv[1]); "
+                       "assert p.stat().st_size <= 4194304; v=json.loads(p.read_text()); "
+                       "v['_remote_read_epoch']=time.time(); print(json.dumps(v))", directory + '/' + name])
     value = json.loads(raw)
     if not isinstance(value, dict):
         raise ValueError('远端状态格式无效')
@@ -68,17 +70,22 @@ def settings(path, seconds, segment_seconds, max_mib, snaplen, snapshot_seconds,
     return plans
 
 
-def launch(config, ssh_factory=SSH):
+def launch(config, ssh_factory=SSH, progress=None):
     ssh = ssh_factory(config['host'], config.get('ssh_port', 22), config.get('identity'))
+    directory = '/tmp/voice-tools-' + uuid4().hex
     row = {'name': config['name'], 'host': config['host'], 'ssh_port': config.get('ssh_port', 22),
            'identity': config.get('identity'), 'sudo': config.get('sudo', False),
-           'segment_seconds': config['segment_seconds'], 'seconds': config['seconds'], 'status': 'preparing'}
+           'segment_seconds': config['segment_seconds'], 'seconds': config['seconds'],
+           'status': 'preparing', 'remote_dir': directory}
+    # Persist the intended path before the first remote mutation. A lost SSH
+    # reply or interrupted startup must not leave an undiscoverable capture job.
+    if progress:
+        progress(row)
     try:
-        prepared = ssh.checked(['sh', '-c', 'set -eu; umask 077; d=$(mktemp -d /tmp/voice-tools-XXXXXXXXXXXX); '
-                               'printf "%s\\n%s\\n%s\\n" "$d" "$(id -u)" "$(id -g)"'])
-        directory, uid, gid = prepared.splitlines()
+        prepared = ssh.checked(['sh', '-c', 'set -eu; umask 077; mkdir ' + shlex.quote(directory) + '; '
+                               'printf "%s\\n%s\\n" "$(id -u)" "$(id -g)"'])
+        uid, gid = prepared.splitlines()
         remote_directory(directory)
-        row['remote_dir'] = directory
         config = {**config, 'uid': int(uid), 'gid': int(gid)}
         files = {name: Path(__file__).with_name(name).read_text() for name in ('remote.py', 'esl.py')}
         files['config.json'] = json.dumps(config)
@@ -101,6 +108,8 @@ def launch(config, ssh_factory=SSH):
                 time.sleep(.25)
     except (ValueError, OSError) as error:
         row.update(status='failed', error=str(error))
+    if progress:
+        progress(row)
     return row
 
 
@@ -116,10 +125,22 @@ def start(config_path, output, seconds=86400, segment_seconds=60, max_mib=512, s
     write_json(output / 'job.json', data)
     if dry_run:
         return data
-    with ThreadPoolExecutor(max_workers=len(plans)) as pool:
-        jobs = [pool.submit(launch, p, ssh_factory) for p in plans]
-        for future in as_completed(jobs):
-            data['hosts'].append(future.result()); write_json(output / 'job.json', data)
+    lock = threading.Lock()
+    def progress(row):
+        with lock:
+            data['hosts'] = [h for h in data['hosts'] if h['name'] != row['name']] + [dict(row)]
+            temporary = output / 'job.json.part'
+            write_json(temporary, data)
+            temporary.replace(output / 'job.json')
+    try:
+        with ThreadPoolExecutor(max_workers=len(plans)) as pool:
+            jobs = [pool.submit(launch, p, ssh_factory, progress) for p in plans]
+            for future in as_completed(jobs):
+                future.result()
+    except KeyboardInterrupt:
+        data['status'] = 'interrupted'
+        write_json(output / 'job.json', data)
+        raise
     data['status'] = 'running' if all(h['status'] in ('running', 'complete') for h in data['hosts']) else 'partial'
     write_json(output / 'job.json', data)
     return data
@@ -146,7 +167,7 @@ def status(job, ssh_factory=SSH):
         try:
             ssh = ssh_factory(row['host'], row.get('ssh_port', 22), row.get('identity'))
             state = remote_json(ssh, row['remote_dir'], 'status.json')
-            if state['status'] == 'running' and time.time() - state['updated_epoch'] > 30:
+            if state['status'] == 'running' and state.get('_remote_read_epoch', time.time()) - state['updated_epoch'] > 30:
                 state['status'] = 'unresponsive'
             results.append({'name': row['name'], **state})
         except (ValueError, OSError, KeyError) as error:
@@ -264,8 +285,12 @@ def run_window(config_path, output, seconds=300, segment_seconds=60, max_mib=512
     # Keep job, frozen export and recoverable remote locations even on interruption.
     output = new_output(output); output.chmod(0o700)
     started = time.time()
-    job = start(config_path, output / 'job', seconds, segment_seconds, max_mib, snaplen,
-                snapshot_seconds, max_channels, dry_run, mode='window')
+    try:
+        job = start(config_path, output / 'job', seconds, segment_seconds, max_mib, snaplen,
+                    snapshot_seconds, max_channels, dry_run, mode='window')
+    except KeyboardInterrupt:
+        stop(output / 'job')
+        raise ValueError('启动中断已尝试停止；job.json 保留预分配路径，请检查 status/stop/fetch') from None
     if dry_run:
         write_json(output / 'batch.json', {'schema_version': '1.0', 'tool': 'capture-batch',
                                          'status': 'planned', 'hosts': [], 'plans': job['plans']})
@@ -279,7 +304,7 @@ def run_window(config_path, output, seconds=300, segment_seconds=60, max_mib=512
             time.sleep(.5)
     except KeyboardInterrupt:
         stop(output / 'job')
-        raise ValueError('本地中断已发送远端停止请求；job.json 保留，可继续 status/fetch') from None
+        raise ValueError('本地中断已尝试停止远端任务；job.json 保留，请检查 status/stop/fetch') from None
     # Fetch into a child directory, then point the top-level manifest at it.
     current = status(output / 'job')
     windows = {h['name']: (h['started_epoch'], h.get('captured_until_epoch') or h['updated_epoch'])

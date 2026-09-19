@@ -20,15 +20,20 @@ def codec_for(packet, src, sport, dst, dport, when, mappings):
     matches = []
     for item in mappings:
         media = item.get('media', {})
-        # SDP endpoint describes the receiving side. Do not apply its map globally.
-        if media.get('ip') != dst or media.get('port') != dport:
-            continue
         if when < item.get('from_epoch', 0) or (item.get('until_epoch') is not None and when >= item['until_epoch']):
+            continue
+        # An observed SAVP endpoint protects both directions. The other SDP leg
+        # may be missing; its absence is not evidence that those bytes are plain.
+        endpoint = (media.get('ip'), media.get('port'))
+        if endpoint in ((src, sport), (dst, dport)) and 'SAVP' in media.get('protocol', '').upper():
+            encrypted = True
+        # Codec maps still describe the receiving endpoint, not every stream.
+        if endpoint != (dst, dport):
             continue
         matches.append(item)
     if matches:
         selected = max(matches, key=lambda item: item.get('from_epoch', 0))
-        media = selected['media']; encrypted = 'SAVP' in media.get('protocol', '')
+        media = selected['media']
         result = media.get('codecs', {}).get(str(packet['pt']), result)
     return result, encrypted
 

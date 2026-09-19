@@ -1,5 +1,6 @@
 """逐报文解析 SIP/SDP；保留每个 TCP 帧中多个 SIP 消息的边界。"""
 import ipaddress
+import math
 from pathlib import Path
 import shutil
 import subprocess
@@ -121,19 +122,23 @@ def scan(path, consume, sip_ports=(5060,), max_packets=1000000, tshark='tshark')
     base = base_command(path, tshark, sip_ports) + ['-c', str(max_packets + 1)]
     with tempfile.TemporaryDirectory(prefix='voice-session-index-') as temp:
         timeline = Path(temp) / 'times.tsv'
-        execute(base + ['-T', 'fields', '-e', 'frame.time_epoch'], timeline)
+        execute(base + ['-T', 'fields', '-e', 'frame.time_epoch', '-e', 'frame.cap_len', '-e', 'frame.len'], timeline)
         first = last = None
-        count = 0
+        count = truncated = 0
         with timeline.open() as stream:
             for line in stream:
                 count += 1
                 if count > max_packets:
                     break
-                timestamp = float(line.strip())
+                when, captured, wire = line.strip().split('\t')
+                timestamp = float(when)
+                if not math.isfinite(timestamp):
+                    raise ValueError('PCAP 时间戳无效')
+                truncated += int(captured) < int(wire)
                 first = timestamp if first is None else min(first, timestamp)
                 last = timestamp if last is None else max(last, timestamp)
         summary = {'packets': min(count, max_packets), 'first_epoch': first, 'last_epoch': last,
-                   'limited': count > max_packets, 'sip_messages': 0}
+                   'limited': count > max_packets, 'sip_messages': 0, 'truncated_packets': truncated}
         xml = Path(temp) / 'sip.xml'
         execute(base_command(path, tshark, sip_ports) + ['-c', str(max_packets), '-Y', 'sip.Call-ID',
                                                        '-T', 'pdml', '-J', 'frame ip ipv6 tcp udp sip sdp'], xml)

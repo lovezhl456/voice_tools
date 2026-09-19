@@ -36,6 +36,8 @@ def atomic(path, value, owner=None):
 def capture_command(config, directory):
     seconds, interval = config['seconds'], config['segment_seconds']
     slots = config.get('ring_files', 32) if config['mode'] == 'ring' else math.ceil(seconds / interval) + 1
+    if not 2 <= slots <= 4096:
+        raise ValueError('采集分片数须为 2–4096；增加分片间隔或缩短采集时长')
     budget = config['max_mib'] * 1048576
     # dumpcap switches *after* crossing the byte threshold. Reserve a full packet
     # and header in every slot; do not substitute snaplen for actual packet sizes.
@@ -44,6 +46,7 @@ def capture_command(config, directory):
         raise ValueError('文件额度不足以容纳分片数和 snaplen；增加额度或分片间隔')
     args = ['dumpcap', '-q', '-P', '-i', config.get('interface', 'any'), '-f', config['bpf'],
             '-s', str(config['snaplen']), '-b', f'duration:{interval}', '-b', f'filesize:{kilobytes}',
+            '-b', 'printname:stdout',
             '-a', f'duration:{seconds}', '-w', str(Path(directory) / 'capture.pcap')]
     args += ['-b' if config['mode'] == 'ring' else '-a', f'files:{slots}']
     return args
@@ -107,10 +110,14 @@ def copy_stable(source, target, owner=None, signature=None):
 
 def capture_statistics(text):
     rows = re.findall(r"Packets received/dropped on interface '[^\n]*?':\s*(\d+)/(\d+)"
-                      r"(?:[^\n]*?ps_ifdrop:(\d+))?", text)
+                      r"(?:\s+\(pcap:(\d+)/dumpcap:(\d+)/flushed:(\d+)/ps_ifdrop:(\d+)\))?", text)
+    detailed = bool(rows) and all(r[2] for r in rows)
     return {'statistics_available': bool(rows),
-            'kernel_dropped_packets': sum(int(r[1]) for r in rows) if rows else None,
-            'interface_dropped_packets': sum(int(r[2] or 0) for r in rows) if rows else None}
+            'capture_dropped_packets': sum(int(r[1]) for r in rows) if rows else None,
+            'kernel_dropped_packets': sum(int(r[2]) for r in rows) if detailed else None,
+            'dumpcap_dropped_packets': sum(int(r[3]) for r in rows) if detailed else None,
+            'flushed_packets': sum(int(r[4]) for r in rows) if detailed else None,
+            'interface_dropped_packets': sum(int(r[5]) for r in rows) if detailed else None}
 
 
 class Agent:
@@ -119,6 +126,9 @@ class Agent:
         self.owner = (config.get('uid', os.getuid()), config.get('gid', os.getgid()))
         self.stop = threading.Event()
         self.events_lock = threading.Lock()
+        self.closed_lock = threading.Lock()
+        self.closed_names = {}
+        self.closed_notifications = 0
         self.refresh = queue.Queue(maxsize=500)
         self.states = {}
         self.cache = {}
@@ -183,6 +193,8 @@ class Agent:
                 rows = json.loads(cp.stdout)['rows']
                 if cp.returncode:
                     raise ValueError('FS query failed')
+                if not isinstance(rows, list) or any(not isinstance(r, dict) or not isinstance(r.get('uuid'), str) for r in rows):
+                    raise ValueError('Invalid FS channels result')
                 ids = sorted({str(esl.UUID(r['uuid'])) for r in rows})
                 limit = self.config.get('max_channels', 100)
                 offset = self.config.setdefault('_snapshot_offset', 0) % max(1, len(ids))
@@ -207,7 +219,7 @@ class Agent:
                 values = esl.headers(cp.stdout)
                 values.update({'unique-id': uid, 'event-name': 'SNAPSHOT'})
                 item = esl.record(values)
-                if item and item.get('call_id'):
+                if item:
                     item.update(evidence='fs_snapshot', window_seconds=self.config.get('snapshot_seconds', 10))
                     self.emit(item)
         except (OSError, ValueError, KeyError, subprocess.TimeoutExpired):
@@ -231,15 +243,29 @@ class Agent:
             self.stop.wait(.5)
 
     def files(self):
-        all_files = [p for p in (self.root / 'spool').glob('*.pcap') if not p.is_symlink()]
-        all_files.sort(key=lambda p: p.stat().st_mtime_ns)
+        entries = []
+        for p in (self.root / 'spool').glob('*.pcap'):
+            try:
+                info = p.lstat()
+                if stat.S_ISREG(info.st_mode):
+                    entries.append((info.st_mtime_ns, p))
+            except FileNotFoundError:
+                self.evicted = True
+        all_files = [p for _, p in sorted(entries)]
         current = {p.name for p in all_files}
         if self.seen_files - current:
             self.evicted = True
+        if self.config['mode'] == 'ring':
+            count = self.config.get('ring_files', 32)
+            if self.closed_notifications > count or (self.closed_notifications >= count and self.process and self.process.poll() is None):
+                self.evicted = True
         self.seen_files |= current
         self.seen_files = set(sorted(self.seen_files)[-10000:])
         if self.process and self.process.poll() is None:
-            all_files = all_files[:-1]  # active file is never frozen
+            # A file can be open yet stable, and two files can have equal mtimes.
+            # Only dumpcap's native post-close notification establishes closure.
+            with self.closed_lock:
+                all_files = [p for p in all_files if p.name in self.closed_names]
         result = []
         for p in all_files:
             try:
@@ -256,15 +282,52 @@ class Agent:
         self.cache = {k: v for k, v in self.cache.items() if k in current}
         return result
 
+    def mark_closed(self, name):
+        path = Path(name)
+        if path.parent != self.root / 'spool' or path.suffix != '.pcap':
+            return
+        with self.closed_lock:
+            self.closed_names[path.name] = True
+            self.closed_notifications += 1
+            if len(self.closed_names) > 4096:
+                self.closed_names.pop(next(iter(self.closed_names)))
+
+    def observe_closed_files(self):
+        for line in iter(lambda: self.process.stdout.readline(4096), b''):
+            self.mark_closed(line.decode('utf-8', 'replace').strip())
+
+    def observe_capture_log(self):
+        # Even with -q, dumpcap prints each rotated filename to stderr. Cap that
+        # stream too; high traffic must not turn a bounded ring into a full disk.
+        path = self.root / 'capture.log'
+        try:
+            with path.open('ab') as initial:
+                stream = initial
+                try:
+                    for block in iter(lambda: self.process.stderr.readline(65536), b''):
+                        if stream.tell() + len(block) > 1048576:
+                            stream.close()
+                            path.replace(self.root / 'capture.previous.log')
+                            stream = path.open('wb')
+                            path.chmod(0o600); self.own(path)
+                        stream.write(block); stream.flush()
+                finally:
+                    stream.close()
+        except OSError:
+            self.errors.append('Capture log unavailable; stopping to preserve bounded capture')
+            self.forced_reason = 'capture_log_failed'
+            self.stop.set()
+
     def status(self):
         files = self.files()
         alive = self.running or (self.process is not None and self.process.poll() is None)
         elapsed = (self.finished or time.time()) - self.started
         rc = self.process.poll() if self.process else None
         state = 'running' if alive else ('complete' if rc == 0 and elapsed >= self.config['seconds'] - 1 else 'partial')
-        if self.forced_reason:
+        if self.forced_reason and not alive:
             state = 'stopped' if self.forced_reason == 'requested_stop' else 'failed'
         if state == 'complete' and (self.file_errors or self.capture_health['kernel_dropped_packets']
+                                    or self.capture_health.get('capture_dropped_packets')
                                     or self.capture_health.get('interface_dropped_packets')
                                     or any(f['truncated_packets'] for f in files)):
             state = 'partial'
@@ -276,6 +339,7 @@ class Agent:
                   'reason': self.forced_reason, 'size_policy': 'native_file_bytes',
                   'captured_until_epoch': self.finished, 'invalid_files': sorted(self.file_errors),
                   'capture_health': self.capture_health,
+                  'closed_file_notifications': self.closed_notifications,
                   'warnings': ['冻结仅包含已关闭分片；首末包时间不是连续无丢包的证明。']}
         atomic(self.root / 'status.json', result, self.owner)
         return result
@@ -290,7 +354,8 @@ class Agent:
         files = [row for row in self.files() if row['first_epoch'] is not None
                  and row['last_epoch'] >= start and row['first_epoch'] <= end]
         # Reserve space for both bounded event logs and the manifest, as well as PCAPs.
-        event_bytes = sum(p.stat().st_size for p in (self.root / 'events.previous.jsonl', self.root / 'events.jsonl') if p.exists())
+        with self.events_lock:
+            event_bytes = sum(p.stat().st_size for p in (self.root / 'events.previous.jsonl', self.root / 'events.jsonl') if p.exists())
         used = sum(p.stat().st_size for p in (self.root / 'frozen').rglob('*') if p.is_file())
         if used + sum(r['bytes'] for r in files) + event_bytes + 65536 + 2048 * len(files) > self.config.get('frozen_mib', self.config['max_mib']) * 1048576:
             raise ValueError('Frozen evidence quota exhausted; release a previously fetched freeze first')
@@ -311,24 +376,47 @@ class Agent:
                 Path(str(target) + '.part').unlink(missing_ok=True)
                 meta['errors'].append({'file': row['file'], 'error': 'Closed fragment expired or changed during freeze'})
         # Keep the most recent mapping preceding the window, plus events inside it.
-        preceding, selected, preceding_health = {}, [], None
+        preceding, preceding_media, selected, preceding_health = {}, {}, [], None
+        invalid_events = 0
         with self.events_lock:
             for p in (self.root / 'events.previous.jsonl', self.root / 'events.jsonl'):
                 if not p.exists():
                     continue
                 for line in p.read_text().splitlines():
-                    item = json.loads(line)
-                    when = datetime.fromisoformat(item['observed_at']).timestamp()
+                    try:
+                        item = json.loads(line)
+                        when = datetime.fromisoformat(item['observed_at']).timestamp()
+                    except (ValueError, KeyError, TypeError, OverflowError, OSError):
+                        invalid_events += 1
+                        continue
                     if when < start and item.get('uuid'):
                         preceding[item['uuid']] = item
+                        if item.get('flow'):
+                            preceding_media[item['uuid']] = item
                     elif when < start and item.get('evidence') in ('fs_event_gap', 'fs_event_status'):
                         preceding_health = item
                     elif start <= when <= end:
                         selected.append(item)
             if preceding_health and preceding_health.get('evidence') == 'fs_event_gap':
                 selected.insert(0, preceding_health)
+            if invalid_events:
+                selected.append({'schema_version': '1.0', 'evidence': 'fs_event_gap', 'observed_at': esl.iso(start),
+                                 'reason': 'Invalid or truncated event records', 'invalid_records': invalid_events})
+            baseline = list(preceding.values())
+            baseline.extend(item for uid, item in preceding_media.items() if preceding[uid] != item)
+            baseline.sort(key=lambda item: datetime.fromisoformat(item['observed_at']).timestamp())
             target = dest / 'events.jsonl'
-            target.write_text(''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in list(preceding.values()) + selected))
+            body = ''.join(json.dumps(r, ensure_ascii=False) + '\n' for r in baseline + selected).encode('utf-8')
+            # The live event log may have grown while large PCAPs were copied.
+            # Recheck exact bytes; keep the PCAP evidence and a gap receipt if the
+            # requested mapping no longer fits the reserved frozen quota.
+            reserved = used + sum(f['bytes'] for f in meta['files']) + 65536 + 2048 * len(files)
+            if reserved + len(body) > self.config.get('frozen_mib', self.config['max_mib']) * 1048576:
+                baseline = []
+                selected = [{'schema_version': '1.0', 'evidence': 'fs_event_gap', 'observed_at': esl.iso(start),
+                             'reason': 'Mapping grew beyond frozen quota while copying captures'}]
+                body = (json.dumps(selected[0]) + '\n').encode('utf-8')
+            target.write_bytes(body)
             target.chmod(0o600); self.own(target)
         meta['events'] = {'file': 'events.jsonl', 'sha256': hashlib.sha256(target.read_bytes()).hexdigest(), 'bytes': target.stat().st_size}
         state = self.status()
@@ -337,6 +425,7 @@ class Agent:
         partial = bool(meta['errors']) or not files or self.event_truncated or bool(self.file_errors)
         partial |= any(r.get('truncated_packets') for r in files)
         partial |= bool(state.get('capture_health', {}).get('kernel_dropped_packets'))
+        partial |= bool(state.get('capture_health', {}).get('capture_dropped_packets'))
         partial |= bool(state.get('capture_health', {}).get('interface_dropped_packets'))
         partial |= start < self.started or end > (state.get('captured_until_epoch') or state['updated_epoch'])
         partial |= self.evicted and (first is None or start < first)
@@ -346,7 +435,7 @@ class Agent:
             partial = True
             meta['warnings'].append('所选窗口存在 FS 事件/快照缺口。')
         meta.update(status='partial' if partial else 'complete', available_packet_window=[first, last],
-                    event_records=len(selected) + len(preceding), esl_enabled=bool(self.config.get('esl')),
+                    event_records=len(selected) + len(baseline), esl_enabled=bool(self.config.get('esl')),
                     capture_health=state.get('capture_health', {}), invalid_files=sorted(self.file_errors),
                     capture_status=state['status'], events_truncated=self.event_truncated)
         meta['warnings'].append('按整片冻结，可能包括窗口两侧邻近流量；所有原始来源独立保留。')
@@ -368,7 +457,10 @@ class Agent:
                 elif req.get('action') == 'freeze':
                     # Give the active fragment a chance to close, never copy it live.
                     if self.process and self.process.poll() is None and time.time() < req['to_epoch'] + self.config['segment_seconds'] + 2:
-                        continue
+                        # Byte-based rotation may already cover the requested end.
+                        # Waiting the full timer interval could overwrite that evidence.
+                        if not any(f['last_epoch'] is not None and f['last_epoch'] >= req['to_epoch'] for f in self.files()):
+                            continue
                     result = self.freeze(req)
                 elif req.get('action') == 'release':
                     freeze_id = req.get('freeze_id', '')
@@ -399,35 +491,38 @@ class Agent:
         self.running = True
         if self.config.get('esl'):
             esl.validate_config(self.config['esl'])
-        with (self.root / 'capture.log').open('w') as log:
-            self.own(self.root / 'capture.log')
-            try:
-                self.process = subprocess.Popen(capture_command(self.config, self.root / 'spool'),
-                                                stdout=log, stderr=log, start_new_session=True)
-                threads.append(threading.Thread(target=self.observe, daemon=True))
-                if self.config.get('esl'):
-                    threads.append(threading.Thread(target=esl.listen, args=(self.config['esl'], self.stop, self.emit), daemon=True))
-                for thread in threads:
-                    thread.start()
-                while not self.stop.is_set() and self.process.poll() is None:
-                    self.status(); self.requests(); self.stop.wait(.25)
-                    if time.time() - self.started > self.config['seconds'] + 10:
-                        self.forced_reason = 'remote_deadline'; break
-            except (OSError, ValueError):
-                self.forced_reason = 'agent_or_capture_failed'
-                self.errors.append('Unable to start or maintain capture; inspect capture.log on the host')
-            finally:
-                self.terminate_capture(); self.finished = time.time(); self.stop.set()
-                for thread in threads:
-                    thread.join(timeout=12)
-                    if thread.is_alive():
-                        self.event_truncated = True
-                log.flush()
-                with (self.root / 'capture.log').open('rb') as reader:
-                    reader.seek(max(0, reader.seek(0, 2) - 65536))
-                    self.capture_health = capture_statistics(reader.read().decode('utf-8', 'replace'))
-                self.running = False
-                self.status()
+        log = self.root / 'capture.log'
+        log.touch(mode=0o600); self.own(log)
+        try:
+            self.process = subprocess.Popen(capture_command(self.config, self.root / 'spool'),
+                                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+            threads = [threading.Thread(target=target, daemon=True) for target in
+                       (self.observe_closed_files, self.observe_capture_log, self.observe)]
+            if self.config.get('esl'):
+                threads.append(threading.Thread(target=esl.listen, args=(self.config['esl'], self.stop, self.emit), daemon=True))
+            for thread in threads:
+                thread.start()
+            deadline = time.monotonic() + self.config['seconds'] + 10
+            while not self.stop.is_set() and self.process.poll() is None:
+                self.status(); self.requests(); self.stop.wait(.25)
+                if time.monotonic() > deadline:
+                    self.forced_reason = 'remote_deadline'; break
+        except (OSError, ValueError):
+            self.forced_reason = 'agent_or_capture_failed'
+            self.errors.append('Unable to start or maintain capture; inspect capture.log on the host')
+        finally:
+            self.terminate_capture(); self.finished = time.time(); self.stop.set()
+            for thread in threads:
+                thread.join(timeout=12)
+                if thread.is_alive():
+                    self.event_truncated = True
+            if self.process:
+                self.process.stdout.close(); self.process.stderr.close()
+            with log.open('rb') as reader:
+                reader.seek(max(0, reader.seek(0, 2) - 65536))
+                self.capture_health = capture_statistics(reader.read().decode('utf-8', 'replace'))
+            self.running = False
+            self.status()
         # Once stopped, the immutable spool remains available through one-shot CLI requests.
 
 

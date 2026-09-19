@@ -92,7 +92,7 @@ def reconstruct(packets, output, stem, budget_bytes, max_seconds=3600):
         return info, 0
     first = decoded[0][0]['timestamp']
     placements = [(((p['timestamp'] - first + 2**31) % 2**32 - 2**31), pcm) for p, pcm in decoded]
-    if any(pos < 0 for pos, _ in placements):
+    if any(pos < 0 for pos, _ in placements) or any(b[0] < a[0] for a, b in zip(placements, placements[1:])):
         info.update(status='unsupported', reason='RTP 时间戳回退，不能可靠重建时间轴')
         return info, 0
     samples = max(pos + len(pcm) // 2 for pos, pcm in placements)
