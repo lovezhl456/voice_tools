@@ -91,6 +91,15 @@ class SSH:
         if result.returncode:
             raise ValueError(f"SCP 失败：{result.stderr[-2000:].strip()}")
 
+    def upload(self, local, remote):
+        try:
+            result = subprocess.run(['scp', *self.options, '-P', str(self.port), str(local),
+                                     f'{self.host}:{remote}'], capture_output=True, text=True, timeout=300)
+        except subprocess.TimeoutExpired as error:
+            raise ValueError('SCP 部署超时；任务路径保留在 job.json') from error
+        if result.returncode:
+            raise ValueError('SCP 部署失败：' + result.stderr[-2000:].strip())
+
 
 def dump_vars(ssh, fs_cli, uuid):
     uuid = str(UUID(uuid))

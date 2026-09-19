@@ -14,6 +14,7 @@
 | **HOMER 7 CLI** | 按号码、Call-ID、时间等查询 SIP，追踪通话、导出报文并检查 UDP 风险线索 | `voice-tools homer` | [HOMER 完整手册](docs/homer.md) · [AI 调用约定](docs/homer/ai-usage.md) |
 | **复核与版本评估** | 波形/单轨试听/标注，冻结时间轴，比较固定黄金集上的两个版本 | `voice-tools qa freeze / promote / evaluate / compare` | [人工手册](docs/manual.md) · [Agent 协议](docs/ai-usage.md) |
 | **会话抓包** | SSH 通过 FreeSWITCH UUID 查询媒体端点，限时 dumpcap 抓包并校验 SCP 取回 | `voice-tools capture` | [抓包与报告指南](docs/capture-report.md) |
+| **按号码抓包** | 按主叫/被叫限时采集，服务器按 Call-ID 拆分 SIP/RTP 并打包下载 | `voice-tools capture by-number` | [号码抓包与恢复](docs/capture-by-number.md) |
 | **多主机批量抓包与检索** | 多机限时/环形采集、ESL 与 FS 快照映射、媒体变化、会话检索及 HOMER 联动 | `voice-tools capture batch` · `voice-tools sessions` | [批量抓包与 HOMER 联动](docs/batch-sessions-homer.md) · [主机清单](examples/capture/hosts.example.json) |
 | **媒体分析报告** | 汇总多个录音和 PCAP，查看跨分片 RTP 统计、G.711 重建、RTCP SR/RR/XR 和录音试听 | `voice-tools report` | [多录音与 PCAP 报告](docs/capture-report.md#2-多录音多-pcap-报告) |
 

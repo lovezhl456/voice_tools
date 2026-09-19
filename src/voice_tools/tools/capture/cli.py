@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 def register(commands):
-    parser = commands.add_parser("capture", help="SSH 按 FreeSWITCH UUID 抓包并 SCP 取回")
+    parser = commands.add_parser("capture", help="SSH 按 UUID、号码或时间窗抓包并取回")
     actions = parser.add_subparsers(dest="action", required=True)
     for action in ("start", "fetch"):
         cmd = actions.add_parser(action, help="定位并抓包" if action == "start" else "重试取回已完成的抓包")
@@ -49,6 +49,8 @@ def register(commands):
     recover.set_defaults(run=run_batch)
     from .ring_cli import register as register_ring
     register_ring(actions)
+    from .number_cli import register as register_numbers
+    register_numbers(actions)
 
 
 def run_batch(args):
