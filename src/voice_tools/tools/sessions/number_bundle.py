@@ -1,6 +1,8 @@
 """Server-side session bundle worker; reads the capture file protocol."""
 import hashlib
+import ipaddress
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -9,8 +11,46 @@ import sys
 import zipfile
 
 from voice_tools.core.files import read_json, sha256, write_json
-from voice_tools.core.capture_contract import publish
-from .store import safe_path
+from voice_tools.core.capture_contract import (publish, MAX_BUNDLE_FILES, MAX_BUNDLE_MANIFEST_BYTES,
+                                               MAX_SESSION_MANIFEST_BYTES)
+from .store import safe_path, epoch
+
+
+def event_row(raw):
+    item = json.loads(raw)
+    if not isinstance(item, dict) or item.get('schema_version') != '1.0':
+        raise ValueError('Invalid event schema')
+    if item.get('evidence') in ('fs_event_gap', 'fs_event_status'):
+        return item
+    if item.get('evidence') not in ('fs_snapshot', 'fs_event'):
+        raise ValueError('Invalid event evidence')
+    allowed = {'schema_version', 'evidence', 'observed_at', 'received_at', 'uuid', 'call_id', 'event',
+               'caller', 'callee', 'peer_uuid', 'correlation_id', 'state', 'flow', 'codecs', 'host',
+               'media_changed', 'window_seconds'}
+    item = {key: value for key, value in item.items() if key in allowed}
+    for key in ('call_id', 'caller', 'callee', 'uuid', 'peer_uuid', 'correlation_id', 'event'):
+        if item.get(key) is not None and not isinstance(item[key], str):
+            raise ValueError('Invalid event field')
+    if item.get('call_id'):
+        cid = item['call_id']
+        if len(cid) > 1024 or any(ord(c) < 32 for c in cid) or not isinstance(item.get('observed_at'), str):
+            raise ValueError('Invalid event identity or time')
+        epoch(item['observed_at'])
+    window = item.get('window_seconds', 0)
+    if type(window) not in (int, float) or not math.isfinite(window) or not 0 <= window <= 30:
+        raise ValueError('Invalid snapshot window')
+    if item.get('flow') is not None:
+        flow = item['flow']
+        if not isinstance(flow, dict):
+            raise ValueError('Invalid media flow')
+        for side in ('local', 'remote'):
+            address = ipaddress.ip_address(flow[side + '_ip'])
+            port = flow[side + '_port']
+            if address.is_unspecified or type(port) is not int or not 1 <= port <= 65535:
+                raise ValueError('Invalid media endpoint')
+    if item.get('codecs') is not None and not isinstance(item['codecs'], dict):
+        raise ValueError('Invalid codec map')
+    return item
 
 
 def select_calls(index, selection, limit):
@@ -64,17 +104,25 @@ def process(root, config):
         for path in (root / 'events.previous.jsonl', root / 'events.jsonl'):
             if not path.exists():
                 continue
-            for line in path.read_text().splitlines():
-                try:
-                    item = json.loads(line)
-                    if not isinstance(item, dict):
-                        raise ValueError('Invalid event')
-                    out.write(json.dumps(item, ensure_ascii=False) + '\n')
-                except (ValueError, TypeError):
-                    invalid += 1
+            with path.open('rb') as source:
+                while True:
+                    line = source.readline(65537)
+                    if not line:
+                        break
+                    if len(line) > 65536:
+                        while line and not line.endswith(b'\n'):
+                            line = source.readline(65537)
+                        invalid += 1
+                        continue
+                    try:
+                        item = event_row(line.decode('utf-8'))
+                        out.write(json.dumps(item, ensure_ascii=False) + '\n')
+                    except (ValueError, KeyError, TypeError, OverflowError):
+                        invalid += 1
         if invalid or state.get('events_truncated'):
             out.write(json.dumps({'schema_version': '1.0', 'evidence': 'fs_event_gap',
-                                 'reason': 'Event log rotated or contains invalid records'}) + '\n')
+                                 'reason': 'Event log rotated or contains invalid records',
+                                 'invalid_records': invalid}) + '\n')
     # Reference stopped originals without making another full copy of the spool.
     host = {'schema_version': '1.0', 'tool': 'capture-batch-host', 'name': config['name'],
             'sensor_id': config['sensor_id'], 'status': state['status'],
@@ -89,7 +137,7 @@ def process(root, config):
     bundle = {'schema_version': '1.0', 'tool': 'capture-number-bundle', 'host': config['name'],
               'selection': config['selection'], 'capture_status': state['status'],
               'capture_health': state.get('capture_health', {}), 'index_partial': summary['partial'],
-              'matched_sessions': total, 'eligible_observations': eligible, 'sessions': [], 'errors': [],
+              'matched_sessions': total, 'eligible_observations': eligible, 'sessions': [], 'errors': [], 'error_count': 0,
               'warnings': ['按服务器及精确 Call-ID 分开；号码不自动归一化，不跨 B2BUA 合并。',
                            '仅包含采集窗口内的候选媒体；窗口开始前/结束后的内容不在包中。',
                            '号码以 FS 主被叫字段或初始 INVITE 的 From/To user 匹配。']}
@@ -119,14 +167,24 @@ def process(root, config):
                     break
                 if not result['files']:
                     raise ValueError('匹配到了会话，但没有可导出的 PCAP')
+                if (target / 'session.json').stat().st_size > MAX_SESSION_MANIFEST_BYTES:
+                    raise ValueError('单会话清单超过 16 MiB，请缩短窗口')
                 members = [{'file': 'sessions/' + key + '/' + path.name,
                             'bytes': path.stat().st_size, 'sha256': sha256(path)} for path in paths]
+                record = {**matched, 'directory': 'sessions/' + key, 'partial': result['partial'], 'files': members}
+                preview = {**bundle, 'sessions': bundle['sessions'] + [record], 'status': 'partial',
+                           'exported_sessions': len(bundle['sessions']) + 1,
+                           'omitted_sessions': total - len(bundle['sessions']) - 1}
+                if (1 + sum(len(s['files']) for s in preview['sessions']) > MAX_BUNDLE_FILES or
+                        len(json.dumps(preview, ensure_ascii=False, indent=2).encode()) + 524288 > MAX_BUNDLE_MANIFEST_BYTES):
+                    bundle['warnings'].append('达到会话包条目或清单额度，剩余会话未导出。')
+                    partial = True
+                    break
                 writing = True
                 for path, member in zip(paths, members):
                     package.write(path, member['file'])
                 used += size
-                bundle['sessions'].append({**matched, 'directory': 'sessions/' + key,
-                                           'partial': result['partial'], 'files': members})
+                bundle['sessions'].append(record)
                 partial |= result['partial']
             except (ValueError, OSError, subprocess.TimeoutExpired) as error:
                 if writing:
@@ -134,14 +192,16 @@ def process(root, config):
                     # Do not publish that archive as a valid partial result.
                     raise
                 partial = True
-                bundle['errors'].append({'call_id': matched['call_id'], 'error': str(error)[:500]})
+                bundle['error_count'] += 1
+                if len(bundle['errors']) < 64:
+                    bundle['errors'].append({'call_id': matched['call_id'], 'error': str(error)[:500]})
             finally:
                 if target.exists():
                     shutil.rmtree(target)
         bundle.update(status='partial' if partial else 'complete', exported_sessions=len(bundle['sessions']),
                       omitted_sessions=total - len(bundle['sessions']))
         body = json.dumps(bundle, ensure_ascii=False, indent=2).encode()
-        if used + len(body) > limit or len(body) > 4194304:
+        if used + len(body) > limit or len(body) > MAX_BUNDLE_MANIFEST_BYTES:
             raise ValueError('会话清单超过打包额度，原始抓包保留')
         package.writestr('manifest.json', body)
     if archive.stat().st_size > limit:
@@ -154,7 +214,7 @@ def process(root, config):
         os.chown(final, config['uid'], config['gid'])
     publish(root, config, status=bundle['status'], matched_sessions=total, exported_sessions=len(bundle['sessions']),
             omitted_sessions=bundle['omitted_sessions'], archive={'file': final.name, 'bytes': final.stat().st_size,
-            'sha256': sha256(final)}, warnings=bundle['warnings'], errors=bundle['errors'][:20])
+            'sha256': sha256(final)}, warnings=bundle['warnings'], error_count=bundle['error_count'], errors=bundle['errors'][:20])
 
 
 def main():

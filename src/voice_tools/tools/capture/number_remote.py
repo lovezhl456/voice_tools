@@ -48,6 +48,10 @@ def main():
         if code:
             if read_json(root / 'number-status.json').get('status') != 'failed':
                 raise ValueError('远端拆包失败，原始抓包保留；查看 number-status.json')
+        else:
+            receipt = read_json(root / 'number-status.json')
+            if receipt.get('status') not in ('complete', 'partial') or not receipt.get('archive'):
+                raise ValueError('拆包进程退出但没有有效最终回执，原始抓包保留')
     except Exception as error:
         publish(root, config, status='failed', error=str(error)[:1000])
         if action == 'check':

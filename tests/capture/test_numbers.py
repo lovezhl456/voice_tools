@@ -206,7 +206,7 @@ class NumberCaptureTests(unittest.TestCase):
         output=self.root/'recovery';output.mkdir()
         class LocalSSH:
             def __init__(self,*args):pass
-            def copy(self,remote,local):shutil.copyfile(root/'sessions.zip',local)
+            def copy(self,remote,local,stop=None):shutil.copyfile(root/'sessions.zip',local)
         with patch.object(numbers,'remote_state',side_effect=[{'status':'capturing'},ready]):
             result=numbers.collect_host(row,output,threading.Event(),True,LocalSSH)
         self.assertEqual(result['status'],'complete',result)
@@ -246,7 +246,7 @@ class NumberCaptureTests(unittest.TestCase):
                 if result.returncode: raise ValueError(result.stderr[-1000:])
                 return result.stdout.strip()
             def upload(self, local, remote): shutil.copyfile(local, remote)
-            def copy(self, remote, local):
+            def copy(self, remote, local, stop=None):
                 copied.append(remote)
                 if self.fail: raise ValueError('simulated SCP interruption')
                 shutil.copyfile(remote, local)

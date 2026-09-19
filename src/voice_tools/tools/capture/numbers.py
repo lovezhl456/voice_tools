@@ -13,7 +13,8 @@ from uuid import uuid4
 import zipfile
 
 from voice_tools.core.files import new_output, read_json, sha256, write_json
-from voice_tools.core.capture_contract import TERMINAL, selectors
+from voice_tools.core.capture_contract import (TERMINAL, selectors, selection, bundle_contract,
+    MAX_BUNDLE_FILES, MAX_BUNDLE_MANIFEST_BYTES, MAX_SESSION_MANIFEST_BYTES)
 from .remote import atomic
 from .ring import encoded, load_job, settings
 from .service import SSH, remote_directory
@@ -41,7 +42,7 @@ def command(row, action):
 
 def launch(config, package, progress, ssh_factory=SSH):
     directory = '/tmp/voice-tools-' + uuid4().hex
-    row = {k: config[k] for k in ('name', 'host', 'seconds', 'segment_seconds', 'processing_seconds', 'bundle_mib')}
+    row = {k: config[k] for k in ('name', 'host', 'seconds', 'segment_seconds', 'processing_seconds', 'bundle_mib', 'selection')}
     row.update({k: config.get(k) for k in ('identity', 'sudo')})
     row.update(ssh_port=config.get('ssh_port', 22), remote_dir=directory, status='preparing')
     progress(row)
@@ -70,20 +71,21 @@ def remote_state(ssh, directory):
     raw = ssh.checked(['python3', '-c', 'import pathlib,sys; p=pathlib.Path(sys.argv[1]); '
                        'assert p.stat().st_size <= 4194304; print(p.read_text())', root + '/number-status.json'])
     state = json.loads(raw)
-    if not isinstance(state, dict) or state.get('tool') != 'capture-number-host':
+    if (not isinstance(state, dict) or state.get('tool') != 'capture-number-host' or state.get('schema_version') != '1.0'
+            or state.get('status') not in (*TERMINAL, 'capturing', 'indexing', 'exporting')):
         raise ValueError('号码抓包状态格式无效')
     return state
 
 
 def verify_archive(path, info, budget):
-    if (info.get('file') != 'sessions.zip' or not isinstance(info.get('bytes'), int) or
+    if (not isinstance(info, dict) or info.get('file') != 'sessions.zip' or type(info.get('bytes')) is not int or
         not 0 < info['bytes'] <= budget or path.stat().st_size != info['bytes'] or sha256(path) != info.get('sha256')):
         raise ValueError('压缩包大小或 SHA-256 校验失败')
     with zipfile.ZipFile(path) as archive:
         entries = archive.infolist()
         names = [i.filename for i in entries]
         name_set = set(names)
-        if len(entries) > 50000 or len(names) != len(name_set) or sum(i.file_size for i in entries) > budget:
+        if len(entries) > MAX_BUNDLE_FILES or len(names) != len(name_set) or sum(i.file_size for i in entries) > budget:
             raise ValueError('压缩包展开额度或条目数无效')
         for name in names:
             p = PurePosixPath(name)
@@ -93,11 +95,9 @@ def verify_archive(path, info, budget):
             kind = stat.S_IFMT(archive.getinfo(name).external_attr >> 16)
             if kind not in (0, stat.S_IFREG):
                 raise ValueError('压缩包只允许普通文件')
-        if 'manifest.json' not in names or archive.getinfo('manifest.json').file_size > 4194304:
+        if 'manifest.json' not in names or archive.getinfo('manifest.json').file_size > MAX_BUNDLE_MANIFEST_BYTES:
             raise ValueError('压缩包清单缺失或过大')
-        manifest = json.loads(archive.read('manifest.json'))
-        if manifest.get('tool') != 'capture-number-bundle' or manifest.get('schema_version') != '1.0':
-            raise ValueError('压缩包清单版本无效')
+        manifest = bundle_contract(json.loads(archive.read('manifest.json')))
         expected = {'manifest.json'}
         for session in manifest['sessions']:
             directory = 'sessions/' + hashlib.sha256(session['call_id'].encode()).hexdigest()
@@ -114,6 +114,24 @@ def verify_archive(path, info, budget):
                         digest.update(block)
                 if item['bytes'] != archive.getinfo(name).file_size or item['sha256'] != digest.hexdigest():
                     raise ValueError('会话文件摘要不符')
+            inner_path = directory + '/session.json'
+            pcaps = {f['file'].split('/')[-1]: f for f in session['files'] if f['file'].endswith('.pcapng')}
+            if not pcaps or inner_path not in expected or archive.getinfo(inner_path).file_size > MAX_SESSION_MANIFEST_BYTES:
+                raise ValueError('会话 PCAP/清单缺失或超过额度')
+            inner = json.loads(archive.read(inner_path))
+            if (not isinstance(inner, dict) or inner.get('schema_version') != '1.0' or inner.get('tool') != 'sessions-export'
+                    or inner.get('call_id') != session['call_id'] or inner.get('partial') is not session['partial']
+                    or not isinstance(inner.get('files'), list) or len(inner['files']) != len(pcaps)):
+                raise ValueError('会话内外清单不一致')
+            seen_files = set()
+            for entry in inner['files']:
+                if not isinstance(entry, dict) or not isinstance(entry.get('file'), str):
+                    raise ValueError('会话内文件条目格式无效')
+                name = entry['file']
+                if (name not in pcaps or name in seen_files or entry.get('sha256') != pcaps[name]['sha256']
+                        or type(entry.get('packets')) is not int or entry['packets'] < 1):
+                    raise ValueError('会话内 PCAP 文件清单不一致')
+                seen_files.add(name)
         if expected != name_set:
             raise ValueError('压缩包含未登记文件')
     return manifest
@@ -146,13 +164,16 @@ def collect_host(row, output, stop, wait, ssh_factory=SSH):
         if not state.get('archive'):
             raise ValueError(state.get('error', '远端未生成压缩包，原始抓包保留'))
         info = state['archive']
-        if info.get('file') != 'sessions.zip' or not isinstance(info.get('bytes'), int) or not 0 < info['bytes'] <= row['bundle_mib'] * 1048576:
+        if not isinstance(info, dict) or info.get('file') != 'sessions.zip' or type(info.get('bytes')) is not int or not 0 < info['bytes'] <= row['bundle_mib'] * 1048576:
             raise ValueError('远端压缩包路径或额度无效')
         target = folder / 'sessions.zip.part'
-        ssh.copy(remote_directory(row['remote_dir']) + '/sessions.zip', target)
+        ssh.copy(remote_directory(row['remote_dir']) + '/sessions.zip', target, stop=stop)
         manifest = verify_archive(target, info, row['bundle_mib'] * 1048576)
         if manifest.get('status') != state['status'] or manifest.get('host') != row['name']:
             raise ValueError('压缩包与任务状态不符')
+        if (selection(manifest['selection']) != selection(state.get('selection')) or
+                ('selection' in row and selection(manifest['selection']) != selection(row['selection']))):
+            raise ValueError('压缩包号码条件与原始任务不符')
         target.replace(folder / 'sessions.zip'); (folder / 'sessions.zip').chmod(0o600)
         write_json(folder / 'manifest.json', manifest)
         result.update(status=state['status'], archive=row['name'] + '/sessions.zip', sha256=info['sha256'],
@@ -170,7 +191,8 @@ def collect(data, output, wait, ssh_factory):
     stop = threading.Event()
     try:
         with ThreadPoolExecutor(max_workers=len(data['hosts'])) as pool:
-            futures = {pool.submit(collect_host, row, output, stop, wait, ssh_factory): row for row in data['hosts']}
+            futures = {pool.submit(collect_host, {**row, 'selection': data['selection']}, output, stop, wait, ssh_factory): row
+                       for row in data['hosts']}
             try:
                 for future in as_completed(futures):
                     try:
@@ -233,9 +255,11 @@ def fetch(job, output, wait=False, ssh_factory=SSH):
     data = load_job(job)
     if data.get('purpose') != 'capture-by-number':
         raise ValueError('fetch-number 需要 by-number 生成的 job.json')
+    selection(data.get('selection'))
     for row in data['hosts']:
         remote_directory(row['remote_dir'])
-        if not 2 <= row.get('bundle_mib', 0) <= 2048 or not 30 <= row.get('processing_seconds', 0) <= 86400:
+        if any(type(row.get(key)) is not int or not low <= row[key] <= high for key, low, high in
+               (('bundle_mib', 2, 2048), ('processing_seconds', 30, 86400), ('seconds', 1, 604800))):
             raise ValueError('号码抓包任务额度无效')
     output = new_output(output); output.chmod(0o700)
     atomic(output / 'job.json', data)
