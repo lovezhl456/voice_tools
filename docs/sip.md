@@ -17,7 +17,7 @@ PR #7 合并后的 [深度检查与修复](sip-deep-review.md) 补充了媒体�
 - PCAP／PCAPNG 中显式选定单方向、单 SSRC 的 RTP；G.711 转 PCM16 WAV，RFC 4733 转去重后的按键事件。
 - 需要直接发送原 RTP 载荷时，用 SIPp 单独执行该场景；不与 PJSUA2 同时争用同一通话。
 
-暂不包含 ASR、VAD 条件分支、TTS、自动重拨、批量并发、SRTP 解密、任意 codec 的 PCAP 解码。SIPp 路径第一版只生成无注册、无 Digest 的 IPv4 G.711 单通话场景。复杂代理认证应使用 PJSUA2 路径。
+暂不包含 ASR、VAD 条件分支、TTS、自动重拨、SRTP 解密、任意 codec 的 PCAP 解码。原有 SIPp 回放路径生成无注册、无 Digest 的 IPv4 G.711 单通话场景。新增功能批量和独立 SIPp 压力后端见 [批量与 SIPp 安装使用](sipp.md)。复杂代理认证应使用 PJSUA2 路径。
 
 ## 2. 安装与依赖
 

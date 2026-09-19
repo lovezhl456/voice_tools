@@ -1,0 +1,85 @@
+{
+  "date": "2026-09-19",
+  "full_regression": {
+    "tests": 284,
+    "skipped": 11,
+    "status": "passed",
+    "passed": 273
+  },
+  "affected_regression": 42,
+  "focused_tests": 14,
+  "studio_core_tests": 22,
+  "cli_compatibility_cases": 9,
+  "browser": {
+    "status": "passed",
+    "checks": [
+      "root navigation",
+      "empty queue",
+      "add/remove/reorder/repeat",
+      "export JSON",
+      "refresh persistence",
+      "backend switch",
+      "invalid concurrency",
+      "mixed gateway rejection",
+      "SIPp ZIP download",
+      "80-result scroll/escaping",
+      "375px overflow",
+      "keyboard focus/action",
+      "guide desktop/mobile",
+      "7 HTTP resources",
+      "zero browser errors"
+    ],
+    "errors": []
+  },
+  "native": {
+    "functional": {
+      "status": "completed",
+      "exit_code": null,
+      "counts": {
+        "pending": 0,
+        "running": 0,
+        "planned": 0,
+        "completed": 4,
+        "failed": 0,
+        "cancelled": 0,
+        "interrupted": 0
+      },
+      "statistics": null
+    },
+    "signalling": {
+      "status": "completed",
+      "exit_code": 0,
+      "counts": null,
+      "statistics": {
+        "created": 4,
+        "successful": 4,
+        "failed": 0,
+        "active": 0
+      }
+    },
+    "info": {
+      "status": "completed",
+      "exit_code": 0,
+      "counts": null,
+      "statistics": {
+        "created": 4,
+        "successful": 4,
+        "failed": 0,
+        "active": 0
+      }
+    },
+    "rfc4733": {
+      "status": "failed",
+      "exit_code": 255,
+      "counts": null,
+      "statistics": {
+        "created": 2,
+        "successful": 0,
+        "failed": 0,
+        "active": 2
+      }
+    }
+  },
+  "rfc4733_limitation": "macOS raw IPv4 socket denied; no native media delivery verified",
+  "pcap_independent_decode": "tshark decoded RFC4733 PT101, repeated keys 11#, duration 1280 RTP ticks, 3 end packets per key"
+}

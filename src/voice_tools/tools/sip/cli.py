@@ -17,6 +17,21 @@ def register(commands):
             cmd.add_argument("--out", type=Path, required=True)
             cmd.add_argument("--dry-run", action="store_true", help="保存计划；不导入 PJSUA2、不发 SIP")
         cmd.set_defaults(run=run)
+    batch = actions.add_parser("batch", help="按队列和并发上限执行功能拨测；每通隔离端口与结果")
+    batch.add_argument("queue", type=Path)
+    batch.add_argument("--out", type=Path, required=True)
+    batch.add_argument("--dry-run", action="store_true")
+    batch.set_defaults(run=run)
+    export = actions.add_parser("sipp-export", help="从工作台 load.json 离线生成 SIPp XML、CSV 和启动脚本")
+    export.add_argument("config", type=Path)
+    export.add_argument("--out", type=Path, required=True)
+    export.set_defaults(run=run)
+    load = actions.add_parser("sipp-load", help="独立 SIPp 压力后端：限速、并发上限、总量和总时限")
+    load.add_argument("package", type=Path)
+    load.add_argument("--out", type=Path, required=True)
+    load.add_argument("--sipp", default="sipp")
+    load.add_argument("--dry-run", action="store_true")
+    load.set_defaults(run=run)
     for action in ("pcap-inspect", "pcap-import", "sipp-prepare"):
         cmd = actions.add_parser(action, help={"pcap-inspect": "列出 PCAP／PCAPNG 单向 RTP 流", "pcap-import": "G.711 RTP 转 WAV 和去重的 DTMF 时间表", "sipp-prepare": "离线生成只含选定发送流的 SIPp 回放包"}[action])
         cmd.add_argument("pcap", type=Path)
@@ -58,6 +73,17 @@ def run(args):
         result = {"status": "valid", "network_accessed": False, "plan": load_scenario(args.scenario)}
     elif args.action == "run":
         result = service.run(args.scenario, args.out, args.dry_run)
+        code = 0 if result["status"] in ("planned", "completed") else 3
+    elif args.action == "batch":
+        from .batch import run_queue
+        result = run_queue(args.queue, args.out, args.dry_run)
+        code = 0 if result["status"] in ("planned", "completed") else 3
+    elif args.action == "sipp-export":
+        from .load import export_package
+        result = export_package(args.config, args.out)
+    elif args.action == "sipp-load":
+        from .load import run_load
+        result = run_load(args.package, args.out, args.sipp, args.dry_run)
         code = 0 if result["status"] in ("planned", "completed") else 3
     elif args.action == "sipp-run":
         from .sipp import run_package
