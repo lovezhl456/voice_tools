@@ -1,0 +1,129 @@
+{
+  "date": "2026-09-19",
+  "baseline": "6849b18c9765ede4287212f73a8a2e15928791b4",
+  "scope": "static UI and offline CLI; no SIP calls",
+  "compiler": {
+    "passed": 21,
+    "total": 21
+  },
+  "cli_compatibility": {
+    "passed": 8,
+    "total": 8,
+    "success_commands": 14,
+    "expected_exit_2": 1
+  },
+  "browser": {
+    "flow_groups": 5,
+    "assertions": 50,
+    "status": "passed",
+    "desktop": [
+      1440,
+      1000
+    ],
+    "mobile_emulation": [
+      375,
+      812
+    ]
+  },
+  "http": {
+    "status": "passed",
+    "routes": 14,
+    "local_links": 36
+  },
+  "evidence": [
+    {
+      "local_path": ".local/studio-core-tests.log",
+      "sha256": "e18ab8dad2bc6ef540ff78d4c3bd431b2e5b6ed7278ffefa0823ae5edc1b420b"
+    },
+    {
+      "local_path": ".local/studio-cli-checks.log",
+      "sha256": "f1ee8f1952c4e480c43bc2cba7b68e5bdfda556d977305972fbd3a45ac717da8"
+    },
+    {
+      "local_path": ".local/browser/editor-scenario.json",
+      "sha256": "466f042719c2fa0d1e1b2a74e3e60447962f48ab66d8844aa6a59903219eddc6"
+    },
+    {
+      "local_path": ".local/browser/editor.studio.json",
+      "sha256": "cd323d1f29fb567545beb7aaa06267216e600c7b2e9391eb6280aec382d35336"
+    },
+    {
+      "local_path": ".local/browser/asset-scenario.json",
+      "sha256": "9bbfc1e0c1acfd6458ebe328d72f5e45200414cc2697a626d618c9c409b3d99e"
+    },
+    {
+      "local_path": ".local/browser/download-validate.json",
+      "sha256": "28c108fcb1154d6c88c48cf656d3aae78ba87534036355a0e91046cdcb9b2a67"
+    },
+    {
+      "local_path": ".local/browser/asset-download-validate.json",
+      "sha256": "975bc7eb8bea86ead943f183b7b01f95e5e1ead09bc33e43fd05e1f7fd96542a"
+    },
+    {
+      "local_path": ".local/browser/asset-download-dry-run.json",
+      "sha256": "d2e6ef4cd0fa29eaa494532683fea0eeb54c1d62f3705add4699d47e47e53d2b"
+    },
+    {
+      "local_path": ".local/browser/manage.log",
+      "sha256": "5a0d652fa850ba23c107fa692cefda6b141e16b94c1c433cafdce9fecfd17e3a"
+    },
+    {
+      "local_path": ".local/browser/mobile-negative.log",
+      "sha256": "56b693d3f4e8347a4d72c42d43c51701474089a4c3a30b8c482d7ab9fd75ee9d"
+    },
+    {
+      "local_path": ".local/browser/recovery.log",
+      "sha256": "e90aeadd253ea1e02eec7612449a74728db3c5e0d1cc8744aa4e0ed31e413b74"
+    },
+    {
+      "local_path": ".local/browser/storage-failure.log",
+      "sha256": "5d2cb08fa92d02df327b0f344085f0ede4c6ade157ccabf4a04c52b78565da44"
+    },
+    {
+      "local_path": ".local/browser/desktop.png",
+      "sha256": "228dc9b53863fba0f4203587bcc9036d172b7de9e37317ab3b3daf5c568d8e63"
+    },
+    {
+      "local_path": ".local/browser/mobile.png",
+      "sha256": "9a50e0fe77f32d8681a02a0f179151fb29db1689c4803f1f4d5c7e9448b52f8f"
+    },
+    {
+      "local_path": ".local/browser/editor.log",
+      "sha256": "4015e98db7593ae9b3200814f844e289eac9e3b84091234d317a63da1ec8e8c1"
+    }
+  ],
+  "pre_pr_review": {
+    "baseline": "e5233739bffcd5dfcf3924bb2dc340f4deb80fc6",
+    "date": "2026-09-19",
+    "compiler": {
+      "passed": 22,
+      "total": 22
+    },
+    "cli_compatibility": {
+      "passed": 9,
+      "total": 9,
+      "success_commands": 16,
+      "expected_exit_2": 1
+    },
+    "browser_added_assertions": 7,
+    "fix": "Normalize omitted optional runtime fields in Studio imports and persisted drafts",
+    "evidence": [
+      {
+        "local_path": ".local/studio-pr-core.log",
+        "sha256": "1caa66048320e6f189029b30ca68d233011fc738e91079894ba835ddac5d3cb4"
+      },
+      {
+        "local_path": ".local/studio-pr-cli.log",
+        "sha256": "463cb59f088767f67d7d05552b4b02e70a14a0e97a86ba60fdec47d9fd8edf3f"
+      },
+      {
+        "local_path": ".local/browser/pr-import.log",
+        "sha256": "503222e6c1e92aa0d69391b1f0d03b412243832b7e0b950e022777482203e2cb"
+      },
+      {
+        "local_path": ".local/browser/pr-minimal-scenario.json",
+        "sha256": "e8513a5a221d7dce9de88a1743c5cd898512ed86f7776012464d1cb85fed4140"
+      }
+    ]
+  }
+}

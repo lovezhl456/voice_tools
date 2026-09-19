@@ -1,0 +1,157 @@
+{
+  "research_date": "2026-09-19",
+  "scope": "Official public docs and GitHub metadata; UI/runtime not installed or commercially licensed for evaluation",
+  "sources": [
+    {
+      "snapshot": "RestComm--visual-designer",
+      "repo": "RestComm/visual-designer",
+      "commit": "4fc70866adeb9f98054b27ab259517841396bb7d",
+      "homepage": "http://www.restcomm.com/",
+      "license": "AGPL-3.0",
+      "pushed_at": "2018-06-19T11:30:12Z",
+      "source": "https://github.com/RestComm/visual-designer/blob/4fc70866adeb9f98054b27ab259517841396bb7d/README.md",
+      "sha256": "90913f24355767679cffa53d1ec9d5d8184450b190d888b5067e4625c095b5b1"
+    },
+    {
+      "snapshot": "jambonz--jambonz-feature-server",
+      "repo": "jambonz/jambonz-feature-server",
+      "commit": "74510b0bef3e0a936a9d2e4fad07989ef948afd2",
+      "homepage": null,
+      "license": "MIT",
+      "pushed_at": "2026-09-15T12:09:28Z",
+      "source": "https://github.com/jambonz/jambonz-feature-server/blob/74510b0bef3e0a936a9d2e4fad07989ef948afd2/README.md",
+      "sha256": "7de69dfe1c5fc7ff39d1ab0083237d365507f6ee4928444917d039e9d6d466cb"
+    },
+    {
+      "snapshot": "jambonz--node-red-contrib-jambonz",
+      "repo": "jambonz/node-red-contrib-jambonz",
+      "commit": "bb7b7341e7d627cd37c90e34dbdf840626b0fb2f",
+      "homepage": null,
+      "license": null,
+      "pushed_at": "2026-09-10T20:09:58Z",
+      "source": "https://github.com/jambonz/node-red-contrib-jambonz/blob/bb7b7341e7d627cd37c90e34dbdf840626b0fb2f/README.md",
+      "sha256": "df9359e58044fd7a86fa17e110e8a2a5d594e9c1c64bcafa66577f84c2bea5bc"
+    },
+    {
+      "snapshot": "jambonz-verbs",
+      "url": "https://docs.jambonz.org/verbs/verbs/overview",
+      "final_url": "https://docs.jambonz.org/verbs/verbs/overview",
+      "retrieved_at": "2026-09-19T11:45:33.280841+00:00",
+      "sha256": "3f65febad3406f48da3772944ffaca8945685d1aa9d03caa02eb58871ae66841"
+    },
+    {
+      "snapshot": "node-red--node-red",
+      "repo": "node-red/node-red",
+      "commit": "1e85f1efbc8875ad960400905038154a4e4dd76e",
+      "homepage": "http://nodered.org",
+      "license": "Apache-2.0",
+      "pushed_at": "2026-09-18T11:58:12Z",
+      "source": "https://github.com/node-red/node-red/blob/1e85f1efbc8875ad960400905038154a4e4dd76e/README.md",
+      "sha256": "1cd81f510ce63f317c2c72b52971b98e4f749a6d11e0ce67453d139e380f32bc"
+    },
+    {
+      "snapshot": "node-red-editor",
+      "url": "https://nodered.org/docs/user-guide/editor/",
+      "final_url": "https://nodered.org/docs/user-guide/editor/",
+      "retrieved_at": "2026-09-19T11:44:25.986282+00:00",
+      "sha256": "561f2b2ab76f8695b166a9800448114fe68a5568eccc58f77bc399190e380c20"
+    },
+    {
+      "snapshot": "node-red-palette",
+      "url": "https://nodered.org/docs/user-guide/editor/palette/",
+      "final_url": "https://nodered.org/docs/user-guide/editor/palette/",
+      "retrieved_at": "2026-09-19T11:45:33.084218+00:00",
+      "sha256": "cd051f9b1e00cb8fcbfceb0945ab4ddfe843a5f61f9f52e8fb99e38ee55b3c93"
+    },
+    {
+      "snapshot": "nodered-subflow",
+      "url": "https://nodered.org/docs/user-guide/editor/workspace/subflows",
+      "final_url": "https://nodered.org/docs/user-guide/editor/workspace/subflows",
+      "retrieved_at": "2026-09-19T11:48:47.646384+00:00",
+      "sha256": "ab53ca697d8cda2aff120aa5b3678ee6e95452507ddec1f89e23d57716236adf"
+    },
+    {
+      "snapshot": "reactflow",
+      "url": "https://reactflow.dev/learn",
+      "final_url": "https://reactflow.dev/learn",
+      "retrieved_at": "2026-09-19T11:44:26.392383+00:00",
+      "sha256": "23e5d56b42c7c00afaf17cc0b2f529147303b823f06ea853ff0f3bedf7a552b1"
+    },
+    {
+      "snapshot": "rts-cn--xswitch-free",
+      "repo": "rts-cn/xswitch-free",
+      "commit": "4c1c33c9bcc755860324fcd97207b280515dbe4c",
+      "homepage": null,
+      "license": null,
+      "pushed_at": "2023-05-28T13:55:59Z",
+      "source": "https://github.com/rts-cn/xswitch-free/blob/4c1c33c9bcc755860324fcd97207b280515dbe4c/README.md",
+      "sha256": "00eb6e82c68fe344a125c109faf550bf33ff32469ed58973782427dd007c0a16"
+    },
+    {
+      "snapshot": "twilio-studio",
+      "url": "https://www.twilio.com/docs/studio/user-guide",
+      "final_url": "https://www.twilio.com/docs/studio/user-guide",
+      "retrieved_at": "2026-09-19T11:44:25.654819+00:00",
+      "sha256": "5012926e62a18335bc58783f8d94eda40297e8aaf2c8242092189c9a802e7933"
+    },
+    {
+      "snapshot": "xswitch-auto-call",
+      "url": "https://docs.xswitch.cn/xswitch-user/auto-call/",
+      "final_url": "https://docs.xswitch.cn/xswitch-user/auto-call/",
+      "retrieved_at": "2026-09-19T11:48:46.287436+00:00",
+      "sha256": "3dd9b4c9844e6931b3f7ca97bdf94264afaa292a013585c9a61f49582e10ad63"
+    },
+    {
+      "snapshot": "xswitch-cloud",
+      "url": "https://docs.xswitch.cn/dev/cloud/",
+      "final_url": "https://docs.xswitch.cn/dev/cloud/",
+      "retrieved_at": "2026-09-19T11:48:46.234398+00:00",
+      "sha256": "f38ea818395a741c8e997902f27df206c9dbd3e1e6908daff2e9a52e7a6f0dcd"
+    },
+    {
+      "snapshot": "xswitch-docs",
+      "url": "https://docs.xswitch.cn/",
+      "final_url": "https://docs.xswitch.cn/",
+      "retrieved_at": "2026-09-19T11:45:33.120000+00:00",
+      "sha256": "4bb2a6d0cf5968ca498df5e1937baf774c4f116f1677cd6001a1fcabdf569b63"
+    },
+    {
+      "snapshot": "xswitch-extended",
+      "url": "https://docs.xswitch.cn/xswitch-user/advanced/extended/",
+      "final_url": "https://docs.xswitch.cn/xswitch-user/advanced/extended/",
+      "retrieved_at": "2026-09-19T11:48:46.261393+00:00",
+      "sha256": "0f538886181880ef8acc6622f8611e5027bf23d7ee7b62c4b2b6eebe4f4067c3"
+    },
+    {
+      "snapshot": "xswitch-home",
+      "url": "https://xswitch.cn/",
+      "final_url": "https://xswitch.cn/",
+      "retrieved_at": "2026-09-19T11:44:25.558249+00:00",
+      "sha256": "ffb5681d187baaca7cf102095c3b37ddaf7384aee48a205387e33e4c1c4b908d"
+    },
+    {
+      "snapshot": "xswitch-menu",
+      "url": "https://docs.xswitch.cn/xswitch-user/advanced/menu/",
+      "final_url": "https://docs.xswitch.cn/xswitch-user/advanced/menu/",
+      "retrieved_at": "2026-09-19T11:48:46.287400+00:00",
+      "sha256": "9b4f7d90dc9c20ddd8d8173a6f90055325e408c6486cd0cf69f5cd7a66ab3e57"
+    },
+    {
+      "snapshot": "xswitch-user",
+      "url": "https://docs.xswitch.cn/xswitch-user/",
+      "final_url": "https://docs.xswitch.cn/xswitch-user/",
+      "retrieved_at": "2026-09-19T11:45:33.003704+00:00",
+      "sha256": "5141fa5b6f46e5c0fce18995707ddf5be9a6f63b57253a6257ddbf56a111ac84"
+    },
+    {
+      "snapshot": "xyflow--xyflow",
+      "repo": "xyflow/xyflow",
+      "commit": "0a1f9575b25679f2880175de8d3eae21aedde921",
+      "homepage": "https://xyflow.com",
+      "license": "MIT",
+      "pushed_at": "2026-09-17T13:54:17Z",
+      "source": "https://github.com/xyflow/xyflow/blob/0a1f9575b25679f2880175de8d3eae21aedde921/README.md",
+      "sha256": "be7df4c1810d7c7d0e44e26d08404a97fa9ab62d3fdf3e5fd4c31f3070472d63"
+    }
+  ]
+}

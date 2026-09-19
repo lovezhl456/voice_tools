@@ -97,6 +97,8 @@ voice-tools report build --capture outputs/call-capture --audio data/call.wav \
 
 参见 [人工手册](docs/sip.md)、[大模型协议](docs/sip-ai.md) 和 [20 项用例 HTML](docs/sip-cases/index.html)。HTML 是 2026-09-19 的结果摘要，完整本地录音和日志不随仓库分发。
 
+配套 [SIP Case Studio 可视化用例原型](docs/sip-studio/index.html)：顺序拖拽、侧栏参数、素材与环境管理、导出 CLI JSON；当前仅离线预演。[人读说明](docs/sip-studio/README.md) · [产品设计](docs/sip-studio/design.html) · [AI 维护协议](docs/sip-studio/ai-contract.md)。
+
 ## 开发与新增工具
 
 | 入口 | 内容 |
