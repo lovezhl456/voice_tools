@@ -51,3 +51,5 @@ VOICE_TOOLS_SIP_LOOPBACK=1 python -m unittest tests.sip.test_loopback -v
 ```
 
 第一组为离线测试；第二组使用可选 PJSUA2，仅绑定 127.0.0.1 的独立 SIP 对端，发送合成音频／DTMF。生产网关、NAT 和运营商线路需另外验收。
+
+2026-09-19 本轮验收：开启本机 SIP 集成测试的全仓 `unittest discover -s tests -v` 共 **299 项全部通过，无跳过**，其中 **19 项真实本机 SIP 测试**。覆盖重复 RFC4733 按键、SIP INFO 按键、440/480 Hz 双频、静音 RTP、无 RTP、预期拒接和无响应；所有呼叫只发往 127.0.0.1。

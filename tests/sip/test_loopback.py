@@ -115,6 +115,17 @@ class LoopbackTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 3, result)
         self.assertEqual([r["status"] for r in result["assertions"]["items"]], ["passed", "failed"])
 
+    def test_received_sip_info_dtmf(self):
+        proc, result, report = self.call(mode="echo_info", assertions=[{"type": "dtmf", "digits": "2"}])
+        self.assertEqual(proc.returncode, 0, result)
+        self.assertEqual(result["assertions"]["status"], "passed")
+
+    def test_received_dual_tone(self):
+        proc, result, report = self.call(mode="tone", assertions=[
+            {"type": "tone", "frequencies_hz": [440, 480], "min_duration_s": .2}])
+        self.assertEqual(proc.returncode, 0, result)
+        self.assertEqual(result["assertions"]["status"], "passed")
+
     def test_no_rtp_is_failure_even_with_recording(self):
         proc, result, report = self.call(mode="no_rtp", assertions=[{"type": "received_rtp"}])
         self.assertEqual(proc.returncode, 3, result)

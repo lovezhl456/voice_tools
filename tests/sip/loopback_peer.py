@@ -6,6 +6,7 @@ receives telephone-event/SIP INFO and saves an inspectable synthetic PCAP.
 import argparse
 import hashlib
 import json
+import math
 import re
 import select
 import socket
@@ -30,6 +31,14 @@ def serve(directory, mode="answer", duration=12):
               "reinvite_code": None, "post_switch_non_silent_packets": 0}
     (directory / "ready.json").write_text(json.dumps(report))
     remote_rtp = None
+    remote_dtmf_pt = None
+    tone_cycle = None
+    if mode == "tone":
+        from voice_tools.audio.rtp import decode_g711
+        levels = struct.unpack('<256h', decode_g711(bytes(range(256)), 'PCMA'))
+        tone_cycle = bytes(min(range(256), key=lambda code: abs(levels[code] -
+            5000 * (math.sin(2 * math.pi * 440 * i / 8000) + math.sin(2 * math.pi * 480 * i / 8000))))
+            for i in range(200))
     media_start = None
     next_audio = None
     seq = stamp = 0
@@ -71,6 +80,8 @@ def serve(directory, mode="answer", duration=12):
             if remote_rtp and next_audio is not None and now >= next_audio and mode != "no_rtp":
                 # Known non-zero PCMA waveform, independent of production decoder.
                 payload = b"\xd5" * 160 if mode == "silence" else b"\xaa" * 80 + b"\x2a" * 80
+                if tone_cycle is not None:
+                    payload = bytes(tone_cycle[(stamp + i) % len(tone_cycle)] for i in range(160))
                 transmit(rtp(seq, stamp, payload, 8, 4321), remote_rtp, current_media)
                 seq, stamp, next_audio = seq + 1, stamp + 160, next_audio + .02
             if mode == "reinvite" and media_start and now - media_start >= .35 and not reinvite_sent:
@@ -101,9 +112,9 @@ def serve(directory, mode="answer", duration=12):
                         key = (ssrc, stamp_rx, payload[0])
                         if key not in incoming_events:
                             incoming_events.add(key); report["dtmf"].append("0123456789*#ABCD"[payload[0]])
-                        if mode == "echo_dtmf" and remote_rtp:
+                        if mode == "echo_dtmf" and remote_rtp and remote_dtmf_pt is not None:
                             event_stamp = echoed_events.setdefault(key, stamp)
-                            transmit(rtp(seq, event_stamp, payload, 101, 4321), remote_rtp, current_media)
+                            transmit(rtp(seq, event_stamp, payload, remote_dtmf_pt, 4321), remote_rtp, current_media)
                             seq += 1
                     elif pt in (0, 8):
                         report["audio_packets"] += 1
@@ -150,6 +161,9 @@ def serve(directory, mode="answer", duration=12):
                     match = re.search(r"m=audio (\d+)", text)
                     if not match: continue
                     remote_rtp = ("127.0.0.1", int(match[1]))
+                    offered_dtmf = re.search(r"a=rtpmap:(\d+) telephone-event/8000", text)
+                    remote_dtmf_pt = int(offered_dtmf[1]) if offered_dtmf else None
+                    report["remote_dtmf_pt"] = remote_dtmf_pt
                     source_addr, invite_headers = address, headers
                     if mode == "early":
                         response(headers, address, 183, "Session Progress", body)
@@ -163,6 +177,16 @@ def serve(directory, mode="answer", duration=12):
                     match = re.search(r"Signal\s*=\s*([0-9A-D*#])", text, re.I)
                     if match: report["sip_info"].append(match[1])
                     response(headers, address, 200, "OK")
+                    if mode == "echo_info" and match:
+                        h = invite_headers
+                        target = h["contact"].split("<", 1)[1].split(">", 1)[0]
+                        serial = 30 + len(report["sip_info"])
+                        content = f"Signal={match[1]}\r\nDuration=160\r\n"
+                        message = (f"INFO {target} SIP/2.0\r\nVia: SIP/2.0/UDP 127.0.0.1:{port};branch=z9hG4bKinfo{serial}\r\n"
+                                   f"From: {h['to'].split(';tag=')[0]};tag=local-test\r\nTo: {h['from']}\r\nCall-ID: {h['call-id']}\r\n"
+                                   f"CSeq: {serial} INFO\r\nMax-Forwards: 70\r\nContent-Type: application/dtmf-relay\r\n"
+                                   f"Content-Length: {len(content)}\r\n\r\n{content}")
+                        transmit(message.encode(), source_addr, sip)
                 elif start.startswith("BYE "):
                     report["bye_received"] = True; response(headers, address, 200, "OK"); finish = now + .1
                 elif start.startswith("CANCEL "):
@@ -177,7 +201,7 @@ def serve(directory, mode="answer", duration=12):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
-    parser.add_argument("--mode", default="answer", choices=("answer", "auth", "early", "reject", "drop", "hangup", "register", "register_auth", "reinvite", "silence", "no_rtp", "echo_dtmf"))
+    parser.add_argument("--mode", default="answer", choices=("answer", "auth", "early", "reject", "drop", "hangup", "register", "register_auth", "reinvite", "silence", "no_rtp", "echo_dtmf", "echo_info", "tone"))
     parser.add_argument("--duration", type=float, default=12)
     args = parser.parse_args()
     serve(args.out, args.mode, args.duration)
