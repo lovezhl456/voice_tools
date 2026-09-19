@@ -1,5 +1,44 @@
 # 双声道录音质检
 
+[返回工具导航](../README.md)
+
+## 快速开始
+
+按 [README](../README.md#安装与命令导航) 安装后，先用合成场景体验：
+
+```bash
+voice-tools qa generate --out data/demo
+voice-tools qa analyze data/demo --out outputs/demo --include-audio
+open outputs/demo/report.html  # macOS；其他系统用浏览器打开同一文件
+```
+
+这些场景是正弦波和噪声，只验证工程规则，不代表生产准确率，也不会自动成为黄金集。每次使用新的输出目录。
+
+处理自己的 **8–48 kHz、PCM16 WAV，最长 1 小时**：默认左轨用户、右轨 AI。先用已知内容的受控通话核实声道，再加 `--channels-verified`。
+
+```bash
+voice-tools qa analyze data/calls --out outputs/run-001 \
+  --system-channel 1 --channels-verified --timeout 5
+
+# 可选 CPU VAD（8/16/32/48 kHz），先安装 .[vad]
+voice-tools qa analyze data/calls --out outputs/run-vad --backend webrtcvad
+```
+
+未提供事件文件时会输出 `acoustic_only` 候选。同名 `xxx.events.json` 可补充 AI 接管、应答机会、等待和打断；见下文与[事件示例](../examples/call.events.json)。
+
+人工复核导出的 `review.csv` 后，可晋升标签并评估：
+
+```bash
+voice-tools qa promote outputs/run-001/review.csv \
+  --results outputs/run-001/results.jsonl \
+  --dataset-kind real --out data/golden/v1.json
+
+voice-tools qa evaluate data/golden/v1.json \
+  --results outputs/run-001/results.jsonl --out outputs/metrics-v1.json
+```
+
+复核人、带时区的时间和明确判断是标签晋升的必要信息。具体判定边界、输出和评估方式见下文。
+
 ## 输入与判定
 
 这个工具寻找 **应答机会之后没有检测到 AI 轨输出，或输出晚于阈值** 的片段。输入是双声道 PCM16 WAV；声道 0 为左、1 为右。配置值必须对应真实录音系统的角色，不能凭声道位置推断身份。单声道返回 `INSUFFICIENT_EVIDENCE`，不尝试复制声道或做说话人分离。

@@ -1,0 +1,111 @@
+{
+  "count": 1,
+  "data": [
+    {
+      "hepid": 1,
+      "profile": "call",
+      "fields_mapping": [
+        {
+          "id": "sid",
+          "type": "string"
+        },
+        {
+          "id": "data_header.method",
+          "type": "string"
+        },
+        {
+          "id": "protocol_header.correlation_id",
+          "type": "string"
+        },
+        {
+          "id": "data_header.callid",
+          "type": "string"
+        },
+        {
+          "id": "data_header.ruri_user",
+          "type": "string"
+        },
+        {
+          "id": "data_header.from_user",
+          "type": "string"
+        },
+        {
+          "id": "data_header.to_user",
+          "type": "string"
+        },
+        {
+          "id": "data_header.user_agent",
+          "type": "string"
+        },
+        {
+          "id": "protocol_header.srcIp",
+          "type": "string"
+        },
+        {
+          "id": "protocol_header.srcPort",
+          "type": "integer"
+        },
+        {
+          "id": "protocol_header.dstIp",
+          "type": "string"
+        },
+        {
+          "id": "protocol_header.dstPort",
+          "type": "integer"
+        },
+        {
+          "id": "protocol_header.timeSeconds",
+          "type": "integer"
+        },
+        {
+          "id": "protocol_header.timeUseconds",
+          "type": "integer"
+        },
+        {
+          "id": "protocol_header.payloadType",
+          "type": "integer"
+        },
+        {
+          "id": "protocol_header.protocolFamily",
+          "type": "integer"
+        },
+        {
+          "id": "protocol_header.protocol",
+          "type": "integer"
+        },
+        {
+          "id": "protocol_header.captureId",
+          "type": "integer"
+        },
+        {
+          "id": "protocol_header.capturePass",
+          "type": "string"
+        },
+        {
+          "id": "data_header.cseq",
+          "type": "string"
+        },
+        {
+          "id": "data_header.from_tag",
+          "type": "string"
+        },
+        {
+          "id": "data_header.protocol",
+          "type": "string"
+        },
+        {
+          "id": "raw",
+          "type": "string"
+        },
+        {
+          "id": "profile",
+          "type": "string"
+        },
+        {
+          "id": "node",
+          "type": "string"
+        }
+      ]
+    }
+  ]
+}
