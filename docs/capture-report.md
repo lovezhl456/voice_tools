@@ -2,6 +2,8 @@
 
 多主机、多通话的定时抓包、会话检索、FS 周期快照和 HOMER 联动见[批量会话指南](batch-sessions-homer.md)。本页保留单个 UUID 的操作说明；持续留存、ESL 和一键编排见 [2.0 指南](capture-v2.md)。
 
+需要交互查看 SIP 时序时，参见 [sngrep 联动说明](sngrep-workflow.md)与[安装使用手册](sngrep.md)。UUID 抓包可能只含媒体；显示时序需有可识别的 SIP，关联媒体还需 SDP 等会话信息。
+
 `voice-tools capture` 通过 SSH 在指定 Linux 主机上查询活动 FreeSWITCH 通话，按端点运行 dumpcap（可选旧 tcpdump 后端），再用 SCP 取回 PCAP。`voice-tools report` 在本机汇总一份或多份录音、PCAP，输出离线 HTML 和 JSON。两者不需要 GPU 或在线模型。
 
 ## 1. 按 UUID 抓包
