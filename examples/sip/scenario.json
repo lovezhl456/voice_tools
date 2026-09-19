@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0",
+  "target_uri": "sip:test@example.invalid:5060",
+  "account": {
+    "id_uri": "sip:tester@127.0.0.1"
+  },
+  "network": {
+    "sip_port": 0,
+    "rtp_port": 4000
+  },
+  "codec": "PCMA",
+  "connect_timeout_s": 30,
+  "max_call_s": 120,
+  "record_early": false,
+  "steps": [
+    {"action": "wait", "seconds": 1},
+    {"action": "dtmf", "digits": "1#", "method": "rfc4733", "duration_ms": 160, "gap_ms": 100},
+    {"action": "wait", "seconds": 2},
+    {"action": "hangup"}
+  ]
+}

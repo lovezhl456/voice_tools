@@ -1,0 +1,1477 @@
+{
+  "schema_version": "1.0",
+  "execution_date": "2026-09-19",
+  "scope": "Historical summary exported from retained local evidence; no raw recordings, workstation paths or call identifiers included.",
+  "upstream_selftests": {
+    "passed": 6,
+    "total": 6,
+    "source_log_sha256": "cb29d82e8d9d358cbb21a6b7223ded39874e0fedb6de3de64811c18d0e5d0b18",
+    "tests": [
+      "test_play",
+      "test_ausrc",
+      "test_call_answer",
+      "test_call_dtmf",
+      "test_call_reject",
+      "test_call_cancel"
+    ]
+  },
+  "cases": [
+    {
+      "id": "P01",
+      "phase": "pjsua",
+      "title": "PCMA 双向回声与对端录音",
+      "mode": "echo",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:05:09.786779+00:00",
+      "finished_at": "2026-09-19T08:05:14.876892+00:00",
+      "source_urls": [
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_call.py",
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_media_playrec.py"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "对端录音收到发送信号",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.56,
+          "rms": 3693.176357410189,
+          "samples": 20480,
+          "sha256": "75031548ccba5ee0a510fd3b90bb0d4a34d6428e6bfa282d01a4bb313b93bedc",
+          "correlation": 0.9999097256045434,
+          "offset_spread_s": 0.020000000000000018,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 2.58,
+          "rms": 3710.2383134101387,
+          "samples": 20640,
+          "sha256": "b2cb0c6a41614fe99a9b0655efd15716dda8a83ce7bfd7d70c5c8f703a60803e",
+          "correlation": 0.9999097256045435,
+          "offset_spread_s": 0.020000000000000018,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "e9424d7494166a1f47ec92ae17986f1ac23fd101a89573807715024c7acb503a"
+    },
+    {
+      "id": "P02",
+      "phase": "pjsua",
+      "title": "PCMU 双向回声与对端录音",
+      "mode": "echo",
+      "codec": "PCMU",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:05:14.878580+00:00",
+      "finished_at": "2026-09-19T08:05:19.828092+00:00",
+      "source_urls": [
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_call.py",
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_media_playrec.py"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "对端录音收到发送信号",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.44,
+          "rms": 3814.31461788364,
+          "samples": 19520,
+          "sha256": "3cf4524c146b32157fc55073a37c3490ede809db55b90fbfd0d0c107494a6cfe",
+          "correlation": 0.999898922963484,
+          "offset_spread_s": 0.020000000000000018,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 2.46,
+          "rms": 3817.055423070867,
+          "samples": 19680,
+          "sha256": "baa1551cacf4b91e22784b40a6ce2cbbeb7b00e9d575509f38901493cf844b19",
+          "correlation": 0.999906159489037,
+          "offset_spread_s": 0.019999999999999962,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "64cde55d915afb2bc450485afa7efc1a24358922302a684fd4921b4a99ec9299"
+    },
+    {
+      "id": "P03",
+      "phase": "pjsua",
+      "title": "双向不同 WAV：对端提示音与客户端播放",
+      "mode": "prompt",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:05:19.830633+00:00",
+      "finished_at": "2026-09-19T08:05:24.786130+00:00",
+      "source_urls": [
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/scripts-call-wav/600_playwav_basic.py",
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_media_playrec.py"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "对端录音收到发送信号",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.42,
+          "rms": 4660.486701381091,
+          "samples": 19360,
+          "sha256": "4e71b658f029394a20be9963673788db02ab9873d06bb4a89cb53d13060d51c6",
+          "correlation": 0.9999092215257048,
+          "offset_spread_s": 0.009999999999999995,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 2.44,
+          "rms": 3810.4476553846307,
+          "samples": 19520,
+          "sha256": "4a632614e282f3c11bab5a792f4091dcdca5d558503bf6c4fe77bb22d3f4243a",
+          "correlation": 0.9999119747029823,
+          "offset_spread_s": 0.0,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "d2245987d88c76717317bf1c8992bbf6926b782cbdd2e623b1dd289cdae195b6"
+    },
+    {
+      "id": "P04",
+      "phase": "pjsua",
+      "title": "RFC4733 重复数字与特殊按键",
+      "mode": "echo",
+      "codec": "PCMA",
+      "digits": "11220*#",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:05:24.789744+00:00",
+      "finished_at": "2026-09-19T08:05:32.461549+00:00",
+      "source_urls": [
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_call.py",
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_media_playrec.py"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "dtmf",
+          "digits": "11220*#",
+          "method": "rfc4733",
+          "duration_ms": 160,
+          "gap_ms": 180
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "对端录音收到发送信号",
+          "passed": true
+        },
+        {
+          "name": "按键顺序和重复次数一致",
+          "passed": true
+        },
+        {
+          "name": "接收端确认 DTMF 传输方式",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 5.24,
+          "rms": 2577.8211706466313,
+          "samples": 41920,
+          "sha256": "a2ca0b83a9d51eee54424678e82dab727f5c6c74e885ed8728d23a16fc1cccba",
+          "correlation": 0.9999111893345445,
+          "offset_spread_s": 0.012249999999999983,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 5.24,
+          "rms": 2600.1919323608604,
+          "samples": 41920,
+          "sha256": "f6487b0382b501e4aedd7124927fb5028f13bdaed7566fdaefa6a4f8e29e1e63",
+          "correlation": 0.9999119747029823,
+          "offset_spread_s": 0.0,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "6a63b2c1e0717a3d03617b3c64a6c94a864791bc3926ed574b2a1b6897e493b4"
+    },
+    {
+      "id": "P05",
+      "phase": "pjsua",
+      "title": "SIP INFO 数字、星号与井号",
+      "mode": "echo",
+      "codec": "PCMA",
+      "digits": "12*#",
+      "method": "sip_info",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:05:32.464970+00:00",
+      "finished_at": "2026-09-19T08:05:38.988001+00:00",
+      "source_urls": [
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_call.py",
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_media_playrec.py"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "dtmf",
+          "digits": "12*#",
+          "method": "sip_info",
+          "duration_ms": 160,
+          "gap_ms": 180
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "对端录音收到发送信号",
+          "passed": true
+        },
+        {
+          "name": "按键顺序和重复次数一致",
+          "passed": true
+        },
+        {
+          "name": "接收端确认 DTMF 传输方式",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 4.04,
+          "rms": 2929.445222638259,
+          "samples": 32320,
+          "sha256": "1b787d397e5ba382e4fe48d498bff4cd489a30fb1bd0b1b9854d05a0181c8e0f",
+          "correlation": 0.9999117185445279,
+          "offset_spread_s": 0.020000000000000018,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 4.06,
+          "rms": 2932.9269647525593,
+          "samples": 32480,
+          "sha256": "eb8bb6a4c4844d78bdd722ba3891a172ff583d0ab733da5ebb7b2d62a9d6a6a9",
+          "correlation": 0.9999119747029823,
+          "offset_spread_s": 0.009999999999999953,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "5fcf6f6310c867be8134b4f90d31bc66be61bbd90936d53e51bf2fcc2f866790"
+    },
+    {
+      "id": "P06",
+      "phase": "pjsua",
+      "title": "486 拒接保留失败原因",
+      "mode": "busy",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:05:38.992209+00:00",
+      "finished_at": "2026-09-19T08:05:41.553729+00:00",
+      "source_urls": [
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/call.c"
+      ],
+      "exit_code": 3,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "预期呼叫失败并检查原因、进程清理及已接收录音。",
+      "assertions": [
+        {
+          "name": "CLI 非零退出且标记失败",
+          "passed": true
+        },
+        {
+          "name": "对端返回 486",
+          "passed": true
+        }
+      ],
+      "metrics": {},
+      "last_sip_code": 486,
+      "acceptance_sha256": "7c27c43f33c86e301890d5214515196c8e39273214ff4b9eee73758710f45794"
+    },
+    {
+      "id": "P07",
+      "phase": "pjsua",
+      "title": "不接听超时并清理呼叫",
+      "mode": "timeout",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:05:41.556587+00:00",
+      "finished_at": "2026-09-19T08:05:47.082156+00:00",
+      "source_urls": [
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/call.c"
+      ],
+      "exit_code": 3,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "预期呼叫失败并检查原因、进程清理及已接收录音。",
+      "assertions": [
+        {
+          "name": "CLI 非零退出且标记失败",
+          "passed": true
+        },
+        {
+          "name": "等待超时",
+          "passed": true
+        },
+        {
+          "name": "发送 CANCEL 清理待接通呼叫",
+          "passed": true
+        }
+      ],
+      "metrics": {},
+      "last_sip_code": 0,
+      "acceptance_sha256": "702f0c5177f002f1fbbf32a1b4f61de23a34973c3b93510eb9b915caf0bf130b"
+    },
+    {
+      "id": "P08",
+      "phase": "pjsua",
+      "title": "对端提前挂断保留录音",
+      "mode": "remote_bye",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:05:47.087019+00:00",
+      "finished_at": "2026-09-19T08:05:50.568082+00:00",
+      "source_urls": [
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/scripts-sipp/uas-early-bye.xml"
+      ],
+      "exit_code": 3,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "wait",
+          "seconds": 4
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "预期呼叫失败并检查原因、进程清理及已接收录音。",
+      "assertions": [
+        {
+          "name": "CLI 非零退出且标记失败",
+          "passed": true
+        },
+        {
+          "name": "识别远端提前挂断",
+          "passed": true
+        },
+        {
+          "name": "保留接收录音",
+          "passed": true
+        }
+      ],
+      "metrics": {},
+      "last_sip_code": 200,
+      "acceptance_sha256": "7becf44f34d35ccb14db1675a4c63c6878ae290b8c7522431106404ce6807725"
+    },
+    {
+      "id": "P09",
+      "phase": "pjsua",
+      "title": "PCAP 转音频与按键后执行",
+      "mode": "pcap",
+      "codec": "PCMA",
+      "digits": "1",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:05:50.571496+00:00",
+      "finished_at": "2026-09-19T08:05:56.124449+00:00",
+      "source_urls": [
+        "https://github.com/SIPp/sipp/blob/v3.7.7/docs/media.rst",
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_call.py",
+        "https://github.com/pjsip/pjproject/blob/2.17/tests/pjsua/mod_media_playrec.py"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play_media",
+          "file": "bundle/media.json"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "对端录音收到发送信号",
+          "passed": true
+        },
+        {
+          "name": "按键顺序和重复次数一致",
+          "passed": true
+        },
+        {
+          "name": "接收端确认 DTMF 传输方式",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.5,
+          "rms": 3518.434416597814,
+          "samples": 20000,
+          "sha256": "1a7b8fa92a54b7c9f17ba595c02c36dc0e323fd186714d5e1a1eb54975a367be",
+          "correlation": 0.9362635695914738,
+          "offset_spread_s": 0.016500000000000015,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 2.52,
+          "rms": 3523.8493014606574,
+          "samples": 20160,
+          "sha256": "d9e213ac27ef311f1a1ca083f6d8a97335fac623ab31aa201f03c7ac6139b052",
+          "correlation": 0.9999061825860631,
+          "offset_spread_s": 0.01150000000000001,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "b5b55d9da0f34a34b1ba3bfaa303776dd5fbcb8938cae0dadb0ae2fac30fc48c"
+    },
+    {
+      "id": "B01",
+      "phase": "baresip",
+      "title": "独立栈 PCMA 音频回声",
+      "mode": "echo",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:00:02.594278+00:00",
+      "finished_at": "2026-09-19T08:00:06.516809+00:00",
+      "source_urls": [
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/call.c",
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/play.c"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.5,
+          "rms": 3764.444724843227,
+          "samples": 20000,
+          "sha256": "71e9fcbf5b6bfee6d36e02381f991c15d128ab772093fcbaf2247578038c1f51",
+          "correlation": 0.9999111893345445,
+          "offset_spread_s": 0.02512500000000001,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "1b45efbedc3e9f3dce18af82b7f3a823423624b9a4de2c395a71288647baa081"
+    },
+    {
+      "id": "B02",
+      "phase": "baresip",
+      "title": "独立栈 PCMU 音频回声",
+      "mode": "echo",
+      "codec": "PCMU",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:00:06.518310+00:00",
+      "finished_at": "2026-09-19T08:00:10.411035+00:00",
+      "source_urls": [
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/call.c",
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/play.c"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.56,
+          "rms": 3721.860274320155,
+          "samples": 20480,
+          "sha256": "f8edc46bb8ff353f50d0903292a02fc8b30fd9802e521b11bba5af5e233421d2",
+          "correlation": 0.999906159489037,
+          "offset_spread_s": 0.0,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "657b11bb87ee311b098ebf0e7e289f4304d8fa58e46ed57f875ba89ceefed66b"
+    },
+    {
+      "id": "B03",
+      "phase": "baresip",
+      "title": "RFC4733 重复按键往返",
+      "mode": "echo",
+      "codec": "PCMA",
+      "digits": "11220*#",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:00:10.413236+00:00",
+      "finished_at": "2026-09-19T08:00:16.921714+00:00",
+      "source_urls": [
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/call.c"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "dtmf",
+          "digits": "11220*#",
+          "method": "rfc4733",
+          "duration_ms": 160,
+          "gap_ms": 180
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "按键顺序和重复次数一致",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 5.04,
+          "rms": 2651.2864792847445,
+          "samples": 40320,
+          "sha256": "88d4519e455053473c365efd64ee553184e53170e068bf23b9d3f38947f86ae2",
+          "correlation": 0.9999117185445279,
+          "offset_spread_s": 0.034499999999999975,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "bd949cc302d9e6a0a52d2d072e90af9cefd432592833a3aa15ad297fb12da04d"
+    },
+    {
+      "id": "B04",
+      "phase": "baresip",
+      "title": "SIP INFO 输入与 RFC4733 回送",
+      "mode": "echo",
+      "codec": "PCMA",
+      "digits": "12*#",
+      "method": "sip_info",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:00:16.924651+00:00",
+      "finished_at": "2026-09-19T08:00:22.259324+00:00",
+      "source_urls": [
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/call.c"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "dtmf",
+          "digits": "12*#",
+          "method": "sip_info",
+          "duration_ms": 160,
+          "gap_ms": 180
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "按键顺序和重复次数一致",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 3.92,
+          "rms": 3006.273249560061,
+          "samples": 31360,
+          "sha256": "5f423031120b37acfe35472b75b49c02b4faf9a7040c09c4a225520ad6ced500",
+          "correlation": 0.9999111893345445,
+          "offset_spread_s": 0.019999999999999962,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "73e1b853f3f98784ea4285202e134427cf001e3b2031584fb9273df63e41a6e7"
+    },
+    {
+      "id": "B05",
+      "phase": "baresip",
+      "title": "独立栈双向 WAV 与对端接收录音",
+      "mode": "prompt",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:00:22.262276+00:00",
+      "finished_at": "2026-09-19T08:00:26.148773+00:00",
+      "source_urls": [
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/ausrc.c",
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/play.c"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "对端录音收到发送信号",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.48,
+          "rms": 3793.4121452100903,
+          "samples": 19840,
+          "sha256": "45c1e33631e44d5cce51c17212a814f9d9a94de6d6620751f50a98039deedde5",
+          "correlation": 0.9999097709356716,
+          "offset_spread_s": 0.0,
+          "matched": true
+        },
+        "peer_rx": {
+          "duration_s": 2.5,
+          "rms": 3764.44460583497,
+          "samples": 20000,
+          "sha256": "e4596fad3fa0818084e32a9d6d406f0e81413e3d3b29b75b744082cfa0609340",
+          "correlation": 0.9999119747029823,
+          "offset_spread_s": 0.0,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "ba0deee588c855c3114f0fde8b8de37d9f6a7a998cdc65b298b38dbbe7ac74c6"
+    },
+    {
+      "id": "B06",
+      "phase": "baresip",
+      "title": "编码无交集时拒绝呼叫",
+      "mode": "codec_mismatch",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:00:26.151936+00:00",
+      "finished_at": "2026-09-19T08:00:27.559725+00:00",
+      "source_urls": [
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/call.c"
+      ],
+      "exit_code": 3,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "预期呼叫失败并检查原因、进程清理及已接收录音。",
+      "assertions": [
+        {
+          "name": "CLI 非零退出且标记失败",
+          "passed": true
+        },
+        {
+          "name": "拒绝不兼容编码",
+          "passed": true
+        }
+      ],
+      "metrics": {},
+      "last_sip_code": 488,
+      "acceptance_sha256": "fffe14eeec038050762ba7aa86e558166a6e8f33592fa624c8f453143a781804"
+    },
+    {
+      "id": "B07",
+      "phase": "baresip",
+      "title": "PCAP 导入的音频与按键跨栈复现",
+      "mode": "pcap",
+      "codec": "PCMA",
+      "digits": "1",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:00:27.563957+00:00",
+      "finished_at": "2026-09-19T08:00:31.842763+00:00",
+      "source_urls": [
+        "https://github.com/SIPp/sipp/blob/v3.7.7/docs/media.rst",
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/call.c",
+        "https://github.com/baresip/baresip/blob/f48c14bc35b55eb4443c627ef77f578a91e2a9ff/test/play.c"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play_media",
+          "file": "bundle/media.json"
+        },
+        {
+          "action": "wait",
+          "seconds": 0.5
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "本地 127.0.0.1 测试端，独立 SIP/RTP 端口，无需注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        },
+        {
+          "name": "按键顺序和重复次数一致",
+          "passed": true
+        },
+        {
+          "name": "对端退出并释放进程",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 2.52,
+          "rms": 3474.0362386281445,
+          "samples": 20160,
+          "sha256": "e2b693ef79766374c3b9cb3175f666ef201aa470042f149f14e59e0405408700",
+          "correlation": 0.9999061825860631,
+          "offset_spread_s": 0.07500000000000001,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "1645e0df8e876b190fa64e779b7bc7b301d0cb3460e3ef6a3b704cbb68a9f71e"
+    },
+    {
+      "id": "N01",
+      "phase": "public",
+      "title": "SIP2SIP 4444 公网回声",
+      "mode": "echo",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:02:05.395089+00:00",
+      "finished_at": "2026-09-19T08:02:12.973740+00:00",
+      "source_urls": [
+        "https://sip2sip.info/help/"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 1
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "仅公开测试分机；当次 DNS UDP SRV 发现出站代理，无账号注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 3.06,
+          "rms": 3248.248221779567,
+          "samples": 24480,
+          "sha256": "68a084bc9a06caa97966e2647436e96b2b81367fdc38d2adc25a7a5b9858a0f2",
+          "correlation": 0.9566045219171331,
+          "offset_spread_s": 0.024499999999999966,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "26a3a6fd9ad348fbf7c212aad868a30de3320fab750e0c1a360eef1f2ad6b341"
+    },
+    {
+      "id": "N02",
+      "phase": "public",
+      "title": "SIP2SIP 3333 公网接收音频",
+      "mode": "announcement",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:02:14.994447+00:00",
+      "finished_at": "2026-09-19T08:02:24.653707+00:00",
+      "source_urls": [
+        "https://sip2sip.info/help/"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "wait",
+          "seconds": 5
+        },
+        {
+          "action": "wait",
+          "seconds": 1
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "仅公开测试分机；当次 DNS UDP SRV 发现出站代理，无账号注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 6.46,
+          "rms": 521.1280326674901,
+          "samples": 51680,
+          "sha256": "42cc32d7bf5dd7faaa27b7880211a6a41098a4e1bca41af6021dd0b3e23e8f3e"
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "cb9bdf490b4be0ef9c8945b0044dd81c5133fd97fd16a1be5dfcbf2bda17caa9"
+    },
+    {
+      "id": "N03",
+      "phase": "public",
+      "title": "IPTel echo 公网回声",
+      "mode": "echo",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:02:26.675538+00:00",
+      "finished_at": "2026-09-19T08:02:32.509746+00:00",
+      "source_urls": [
+        "https://www.iptel.org/#faq"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "play",
+          "file": "marker.wav"
+        },
+        {
+          "action": "wait",
+          "seconds": 1
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "仅公开测试分机；当次 DNS UDP SRV 发现出站代理，无账号注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        },
+        {
+          "name": "十段信号匹配且时间偏移一致",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 3.06,
+          "rms": 3447.877883207027,
+          "samples": 24480,
+          "sha256": "1aac7d7415da98c1213911892df70446a1c815cbe856c56bb2946f5dc6244977",
+          "correlation": 0.999899133483222,
+          "offset_spread_s": 0.025375000000000036,
+          "matched": true
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "5852ff3bcc83738c851b9ae31c18970c80b9b65e5ad8bcfa5d7001445be75636"
+    },
+    {
+      "id": "N04",
+      "phase": "public",
+      "title": "IPTel music 公网接收音频",
+      "mode": "announcement",
+      "codec": "PCMA",
+      "digits": "",
+      "method": "rfc4733",
+      "status": "PASS",
+      "started_at": "2026-09-19T08:02:34.575626+00:00",
+      "finished_at": "2026-09-19T08:02:43.157306+00:00",
+      "source_urls": [
+        "https://www.iptel.org/#faq"
+      ],
+      "exit_code": 0,
+      "steps": [
+        {
+          "action": "wait",
+          "seconds": 0.3
+        },
+        {
+          "action": "wait",
+          "seconds": 5
+        },
+        {
+          "action": "wait",
+          "seconds": 1
+        },
+        {
+          "action": "hangup"
+        }
+      ],
+      "precondition": "仅公开测试分机；当次 DNS UDP SRV 发现出站代理，无账号注册。",
+      "expected": "通话完成，并满足以下媒体及按键断言。",
+      "assertions": [
+        {
+          "name": "策略完成且 CLI 成功",
+          "passed": true
+        },
+        {
+          "name": "协商指定编码",
+          "passed": true
+        },
+        {
+          "name": "接收 WAV 有有效音频",
+          "passed": true
+        }
+      ],
+      "metrics": {
+        "rx": {
+          "duration_s": 6.42,
+          "rms": 1937.2223150572077,
+          "samples": 51360,
+          "sha256": "3426d8bf7de74c4a4d725b91e978145c8b7238a1c08ab4a5610f021099ff9cde"
+        }
+      },
+      "last_sip_code": 200,
+      "acceptance_sha256": "bb4e61c35ceb0f5022ad68c252fb2e7ae4e4787aa9535b7606d8dc7f45f1aa4c"
+    }
+  ]
+}
