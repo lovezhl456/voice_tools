@@ -8,6 +8,9 @@
   const key = row => JSON.stringify([row.sample_id, row.opportunity_id]);
   const player = $("player");
   function message(text) { $("message").textContent = text; }
+  const waveform = createReviewWaveform(player, (start, end) => {
+    $("start").value = start.toFixed(2); $("end").value = end.toFixed(2);
+  }, message);
   for (const record of data.records) {
     if (!record.result) continue;
     const option = new Option(record.input.split(/[\\/]/).pop(), record.sample_id);
@@ -70,10 +73,14 @@
     $("metadata").textContent = `${result.sample_rate} Hz · ${result.duration_s.toFixed(2)} 秒 · 标注窗口 ${op.at_s.toFixed(2)}–${op.observed_until_s.toFixed(2)} 秒`;
     $("status").textContent = `${data.labels[op.status]} · ${data.evidence[op.evidence_level]}`;
     $("warning").textContent = result.warnings.join("；") || "活动不代表有效回答，请试听后判断。";
-    for (const [id, channel] of [["leftTitle", 0], ["rightTitle", 1]]) $(id).textContent = `${channel === 0 ? "左" : "右"}轨 · 配置角色：${result.config.system_channel === channel ? "AI" : "用户"}${result.channel_verified ? "（角色已核实）" : "（角色未核实）"}`;
+    for (const [id, channel] of [["leftTitle", 0], ["rightTitle", 1]]) {
+      $(id).querySelector(".role-name").textContent = result.config.system_channel === channel ? "AI" : "用户";
+      $(id).querySelector(".role-meta").textContent = `${channel === 0 ? "左" : "右"}声道\n${result.channel_verified ? "已核实" : "未核实"}`;
+    }
     $("start").value = Math.max(0, op.at_s - 2).toFixed(2);
-    $("end").value = Math.min(result.duration_s, op.observed_until_s + 1).toFixed(2);
+    $("end").value = (Math.floor(Math.min(result.duration_s, op.observed_until_s + 1) * 100) / 100).toFixed(2);
     $("seek").max = result.duration_s;
+    $("time").textContent = `${Number($("start").value).toFixed(2)} / ${result.duration_s.toFixed(2)} 秒`;
     const label = labels.get(entry.key) || {};
     $("decision").value = label.decision || ""; $("notes").value = label.notes || "";
     if (label.reviewer) $("reviewer").value = label.reviewer;
@@ -81,7 +88,7 @@
     const clip = record.clips && record.clips[op.id];
     $("clip").hidden = $("clipMeta").hidden = !clip;
     if (clip) { $("clip").href = clip.audio; $("clipMeta").href = clip.metadata; }
-    switchSource(false); draw(); updateQueueSelection(); progress();
+    switchSource(false); waveform.load(entry); updateQueueSelection(); progress();
   }
   function bounds() {
     const start = Number($("start").value), end = Number($("end").value);
@@ -95,24 +102,11 @@
     const playing = !player.paused;
     player.pause();
     for (const option of $("channel").options) option.disabled = !sources[option.value];
-    $("play").disabled = !source; player.hidden = !source;
+    $("play").disabled = !source; player.hidden = true;
+    waveform.syncChannel($("channel").value);
     if (!source) { player.removeAttribute("src"); player.load(); message("未附带该声道的音频，无法试听。波形和标注仍可使用。"); return; }
     player.onloadedmetadata = () => { player.currentTime = Math.min(at, player.duration); if (playing) player.play().catch(e => message(e.message)); };
     player.src = source; player.load();
-  }
-  function draw() {
-    if (!current) return;
-    const waves = current.record.waveform, duration = current.record.result.duration_s;
-    for (const [id, channel] of [["leftWave", 0], ["rightWave", 1]]) {
-      const canvas = $(id), ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
-      ctx.clearRect(0, 0, w, h); ctx.fillStyle = "#fae5b2";
-      ctx.fillRect(current.op.at_s / duration * w, 0, (current.op.observed_until_s - current.op.at_s) / duration * w, h);
-      ctx.strokeStyle = channel ? "#427ba0" : "#087875"; ctx.lineWidth = 1; ctx.beginPath();
-      const peaks = waves ? waves.channels[channel] || [] : [];
-      for (let i = 0; i < peaks.length; i++) { const x = i / peaks.length * w; ctx.moveTo(x, h / 2 - peaks[i][1] * h * .46); ctx.lineTo(x, h / 2 - peaks[i][0] * h * .46); }
-      ctx.stroke(); ctx.strokeStyle = "#cd5508"; const x = player.currentTime / duration * w;
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-    }
   }
   async function toggle() {
     if (!current || $("play").disabled) return;
@@ -121,13 +115,17 @@
   player.addEventListener("timeupdate", () => {
     if (!current) return;
     try { const [start,end] = bounds(); if (player.currentTime >= end && !player.paused) { if ($("loop").checked) { player.currentTime = start; player.play().catch(e => message(e.message)); } else player.pause(); } } catch(e) { player.pause(); message(e.message); }
-    $("seek").value = player.currentTime; $("time").textContent = `${player.currentTime.toFixed(2)} / ${current.record.result.duration_s.toFixed(2)} 秒`; draw();
+    $("seek").value = player.currentTime; $("time").textContent = `${player.currentTime.toFixed(2)} / ${current.record.result.duration_s.toFixed(2)} 秒`;
+  });
+  for (const event of ["play", "pause", "ended", "loadedmetadata", "emptied"]) player.addEventListener(event, () => {
+    $("play").textContent = player.paused ? "▶ 播放" : "Ⅱ 暂停";
+    $("play").setAttribute("aria-label", player.paused ? "播放试听" : "暂停试听");
   });
   player.addEventListener("ended", () => { if ($("loop").checked) { player.currentTime = Number($("start").value); player.play().catch(e => message(e.message)); } });
   player.addEventListener("error", () => { if (player.getAttribute("src")) message("音频无法播放，请确认报告 audio 目录完整或使用本地 HTTP 打开。"); });
   $("channel").onchange = () => switchSource(); $("play").onclick = toggle;
-  $("seek").oninput = () => { if (current && player.getAttribute("src")) player.currentTime = Number($("seek").value); };
-  for (const id of ["start", "end"]) $(id).onchange = () => { try { const [start] = bounds(); player.currentTime = start; message(""); } catch(e) { message(e.message); } };
+  $("seek").oninput = () => { if (current) waveform.setTime(Number($("seek").value)); };
+  for (const id of ["start", "end"]) $(id).onchange = () => { try { const [start, end] = bounds(); waveform.syncRange(start, end); waveform.setTime(start); message(""); } catch(e) { message(e.message); } };
   function validate(row) {
     const entry = byKey.get(key(row)); if (!entry) throw Error("标签不属于本批次录音/事件/应答机会");
     if (row.audio_sha256 !== entry.row.audio_sha256) throw Error("音频摘要不匹配");

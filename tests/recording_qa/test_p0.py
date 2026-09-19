@@ -53,6 +53,17 @@ class P0WorkflowTests(unittest.TestCase):
         self.assertNotIn(str(self.root), page)
         self.assertNotIn("__REVIEW_DATA__", page)
         self.assertIn("beforeunload", page)
+        self.assertNotIn("__WAVEFORM_", page)
+        self.assertIn("WaveSurfer.js 7.12.12", page)
+        self.assertIn("Redistribution and use", page)
+        from html.parser import HTMLParser
+        class Scripts(HTMLParser):
+            external = []
+            def handle_starttag(self, tag, attrs):
+                if tag == "script" and "src" in dict(attrs):
+                    self.external.append(dict(attrs)["src"])
+        scripts = Scripts(); scripts.feed(page)
+        self.assertEqual(scripts.external, [], "Offline review must embed its waveform dependencies")
 
     def test_freeze_keeps_windows_fixed_when_threshold_changes(self):
         samples, _ = fixture("missing")

@@ -22,4 +22,4 @@ voice-sip = "voice_tools.tools.sip.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"voice_tools.tools.recording_qa" = ["*.html", "*.js"]
+"voice_tools.tools.recording_qa" = ["*.html", "*.js", "vendor/*.js", "vendor/*.txt", "vendor/*.json"]
