@@ -74,6 +74,7 @@ def run(scenario, output, dry_run=False):
     if dry_run:
         result = {"schema_version": "1.0", "status": "planned", "backend": "pjsua2", "network_accessed": False,
                   "target_uri": plan["target_uri"], "steps": len(plan["steps"]), "planned_duration_s": plan["planned_duration_s"]}
+        result["assertions"] = {"status": "not_evaluated", "configured": plan.get("assertions", [])}
         write_json(output / "result.json", result)
         return result
     interrupted = timed_out = False
@@ -125,9 +126,11 @@ def run(scenario, output, dry_run=False):
                 remaining -= chunk
             result.setdefault("recording", {})["rx_duration_s"] = frames / rate
     except (OSError, EOFError, wave.Error, ValueError) as exc:
-        if result["status"] == "completed":
+        if result["status"] == "completed" and not result.get("expected_rejection"):
             result["status"] = "failed"
             result["error"] = {"code": "RECORDING_INCOMPLETE", "message": str(exc)}
+    from .assertions import apply_assertions
+    apply_assertions(plan, result, output)
     # A native error must not cause a secret to escape through structured output.
     auth = plan["account"].get("auth")
     if auth and os.environ.get(auth["password_env"]):
@@ -138,5 +141,6 @@ def run(scenario, output, dry_run=False):
             if isinstance(value, list): return [redact(v) for v in value]
             return value
         result = redact(result)
+    write_json(output / "assertions.json", result["assertions"])
     write_json(result_file, result)
     return result
