@@ -1,0 +1,95 @@
+{
+  "schema_version": "1",
+  "cli_version": "1.0.0",
+  "ok": true,
+  "command": "analyze",
+  "source": {
+    "input": "<package-directory>/examples/sample-trace.json",
+    "completeness": {
+      "status": "unknown",
+      "capture_complete": "unknown"
+    }
+  },
+  "messages_inspected": 3,
+  "raw_messages_available": 3,
+  "assumed_mtu": 1500,
+  "fragmentation": {
+    "verdict": "unknown",
+    "reason": "Original IP fragment ID/offset/MF fields are not established by these HOMER SIP records."
+  },
+  "findings": [
+    {
+      "type": "udp_size_risk",
+      "evidence": [
+        {
+          "id": 1,
+          "dbnode": "db-a",
+          "profile": "1_call",
+          "timestamp_us": 1789459200100000,
+          "call_id": "call-a@example.net"
+        }
+      ],
+      "raw_utf8_bytes": 1703,
+      "estimated_ip_bytes": 1731,
+      "assumed_mtu": 1500,
+      "interpretation": "Payload exceeds assumed MTU with minimum IP+UDP headers. Possible fragmentation or drop; not packet-level proof."
+    },
+    {
+      "type": "udp_size_risk",
+      "evidence": [
+        {
+          "id": 2,
+          "dbnode": "db-a",
+          "profile": "1_call",
+          "timestamp_us": 1789459200600000,
+          "call_id": "call-a@example.net"
+        }
+      ],
+      "raw_utf8_bytes": 1703,
+      "estimated_ip_bytes": 1731,
+      "assumed_mtu": 1500,
+      "interpretation": "Payload exceeds assumed MTU with minimum IP+UDP headers. Possible fragmentation or drop; not packet-level proof."
+    },
+    {
+      "type": "udp_size_risk",
+      "evidence": [
+        {
+          "id": 3,
+          "dbnode": "db-a",
+          "profile": "1_call",
+          "timestamp_us": 1789459200700000,
+          "call_id": "call-a@example.net"
+        }
+      ],
+      "raw_utf8_bytes": 1703,
+      "estimated_ip_bytes": 1731,
+      "assumed_mtu": 1500,
+      "interpretation": "Payload exceeds assumed MTU with minimum IP+UDP headers. Possible fragmentation or drop; not packet-level proof."
+    },
+    {
+      "type": "repeated_udp_payload",
+      "evidence": [
+        {
+          "id": 1,
+          "dbnode": "db-a",
+          "profile": "1_call",
+          "timestamp_us": 1789459200100000,
+          "call_id": "call-a@example.net"
+        },
+        {
+          "id": 2,
+          "dbnode": "db-a",
+          "profile": "1_call",
+          "timestamp_us": 1789459200600000,
+          "call_id": "call-a@example.net"
+        }
+      ],
+      "observations": 2,
+      "interpretation": "Identical payload at the same reported capture point and direction; possible retransmission or duplicate collection."
+    }
+  ],
+  "warnings": [
+    "HOMER API coverage does not establish capture completeness or prove IP fragmentation.",
+    "Size calculations re-encode stored raw text as UTF-8 and assume no IP options/extensions/tunnel overhead."
+  ]
+}
