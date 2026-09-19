@@ -55,7 +55,7 @@ voice-tools capture ring-start --inventory data/hosts.json \
 voice-tools capture ring-status --job outputs/ring-job
 ```
 
-默认运行 86400 秒，最多 604800 秒，分片间隔 10–3600 秒，环形 2–4096 个文件。每机 `--max-mib` 为 1–16384 MiB，默认 512。大于 30 秒未更新的 running 状态标为 unresponsive；网络故障保留各机独立结果。
+默认运行 86400 秒，最多 604800 秒，分片间隔 10–3600 秒，环形 2–4096 个文件。每机 `--max-mib` 为 1–16384 MiB，默认 512。以远端自身时钟计算心跳年龄，大于 30 秒未更新的 running 状态标为 unresponsive；不因本地/远端时钟偏差误报。创建远端目录前先将随机任务路径持久化到 job.json；启动中断或 SSH 回执丢失后仍有恢复位置。网络故障保留各机独立结果。
 
 普通包按配置的 IP/CIDR 和 SIP/RTP/RTCP 端口限制。IPv4 后续分片不含端口、IPv6 扩展头链不适合普通端口 BPF，所以还保留限定地址范围内这些 TCP/UDP 包。下游重组后进一步筛选；范围抓包可能包含同地址的相邻流量。
 
@@ -63,13 +63,13 @@ voice-tools capture ring-status --job outputs/ring-job
 
 每个环形槽位以总预算除文件数，再预留 snaplen＋记录头边界，交给 dumpcap 原生 `filesize`。**额度限制保留字节，不保证能回看多少分钟。** 高流量下按大小更频繁轮转；默认 32×60 秒只代表无提前大小轮转时的近似时间覆盖。
 
-每机磁盘预算为：环形/窗口 PCAP 不超过 max-mib，冻结副本另有同等 max-mib 额度；事件日志约 16 MiB（两份各约 8 MiB，允许一个记录边界），另有配置、状态、日志和回执开销。冻结预算计入映射日志和清单预留，因此不是所有额度都用于 PCAP；副本不自动释放。`ring-release` 只删除指定冻结副本。停止或截止后原 spool、配置及日志保留，按运维策略清理。
+每机磁盘预算为：环形/窗口 PCAP 不超过 max-mib，冻结副本另有同等 max-mib 额度；事件日志约 16 MiB（两份各约 8 MiB，允许一个记录边界），采集 stderr 日志另限两份各 1 MiB，另有配置、状态和回执开销。冻结预算计入映射日志和清单预留，因此不是所有额度都用于 PCAP；副本不自动释放。`ring-release` 只删除指定冻结副本。停止或截止后原 spool、配置及日志保留，按运维策略清理。
 
-`capture batch` 使用同一 agent 的窗口模式，文件数为 `ceil(seconds/segment_seconds)+1`；触及文件数或大小轮转预算可早于请求时间结束，此时标 partial，不能承诺抓足时长。
+`capture batch` 使用同一 agent 的窗口模式，文件数为 `ceil(seconds/segment_seconds)+1`，最多 4096；超出时要求增加分片间隔或缩短时长。触及文件数或大小轮转预算可早于请求时间结束，此时标 partial，不能承诺抓足时长。
 
-只复制已关闭分片；正在写入的片段从候选排除，必要时等待窗口结束后一个分片间隔。拷贝前后验证大小/修改时间，冻结后保存 SHA-256；SCP 前后与本地再次校验。窗口外邻近包可能被整片带回。早于启动、超过停止时间、已覆盖的历史、文件损坏、截断、事件缺口或上限、已观测采集点丢弃都会保留 partial。
+仅在 dumpcap 原生 `-b printname:stdout` 发出关闭通知后，运行中的分片才可冻结，不依赖文件大小稳定或 mtime 排序。按大小轮转已覆盖窗口末尾时立即处理；否则等待时间轮转，避免高流量下固定等待造成证据覆盖。拷贝前后验证大小/修改时间，冻结后保存 SHA-256；SCP 前后与本地再次校验。窗口外邻近包可能被整片带回。早于启动、超过停止时间、已覆盖的历史、文件损坏、截断、事件缺口或上限、已观测采集点丢弃都会保留 partial。
 
-`complete` 表示未发现上述限制，**不证明网络零丢包、FS 映射无遗漏或所有业务会话都被采到**。包的首末时间不是连续覆盖证明；dumpcap 没提供丢包计数时用 null，不能当作 0。报告中的序号缺口可能来自网络、过滤、采集点或文件缺失。
+`complete` 表示未发现上述限制，**不证明网络零丢包、FS 映射无遗漏或所有业务会话都被采到**。包的首末时间不是连续覆盖证明；采集点总丢弃、libpcap 报告的丢弃、dumpcap 内部丢弃分别记录，不把总数都标为内核丢包。dumpcap 没提供丢包计数时用 null，不能当作 0。报告中的序号缺口可能来自网络、过滤、采集点或文件缺失。
 
 ## 取回、检索与一键报告
 
@@ -119,7 +119,7 @@ investigation/report/rtp-audio/*.wav
 
 ## 同采集点连续统计
 
-批次清单中同一主机的已知分片自动分组；独立裸 PCAP 默认各自分析，必须明确知道属于同一采集点才指定 `--pcap-group`。不会因 SSRC 或号码相同而跨机器合并或去重。
+批次清单中同一主机的已知分片自动分组；独立裸 PCAP 默认各自分析，必须明确知道属于同一采集点才指定 `--pcap-group`。不会因 SSRC 或号码相同而跨机器合并或去重。已知不同 Call-ID 的导出在报告中分开统计，即使它们复用同一端口和 SSRC。
 
 ```bash
 voice-tools sessions index --pcap-group fs-a data/a-001.pcap data/a-002.pcap \
@@ -139,13 +139,13 @@ voice-tools report build --pcap-group fs-a data/a-001.pcap data/a-002.pcap \
 
 周期快照默认每 10 秒，允许 5–30 秒或 0 关闭。每轮最多 100 条腿（上限 500），超过则轮转取样并标 gap；事件触发有界 UUID 刷新。没有有效 Call-ID 的事件保留在原日志，索引明确标部分证据。ESL 重连、快照限额和丢失首个创建事件仍可能漏掉短呼叫。
 
-会话展示 `dialogs`、`media_timeline` 和关联依据。SDP 更新跟踪端点、tag、CSeq、codec、ptime、显式 RTCP/rtcp-mux；FS 事件和快照跟踪四元组/codec 变化。BYE 按匹配 tag、FS 挂机按 UUID 关闭已观察阶段。**它是观察记录，不是完整 SIP offer/answer、分叉或 NAT 状态机**；拒绝 offer、缺失/乱序信令、重绑定、端口复用仍可能误选。相同业务关联 ID 只作为明确记录的关联线索，不自动证明是同一业务通话。
+会话展示 `dialogs`、`media_timeline` 和关联依据。SDP 更新跟踪端点、tag、CSeq、codec、ptime、显式 RTCP/rtcp-mux；FS 事件和快照跟踪四元组/codec 变化。双向发起 re-INVITE 时按无序 dialog tags 和发送端跟踪阶段；BYE 按匹配 tag、FS 挂机按 UUID 关闭已观察阶段。一条分叉结束不截断另一条；较晚的挂机事件不延长已过期的快照窗口。**它是观察记录，不是完整 SIP offer/answer、分叉或 NAT 状态机**；拒绝 offer、缺失/乱序信令、重绑定、端口复用仍可能误选。相同业务关联 ID 只作为明确记录的关联线索，不自动证明是同一业务通话。
 
 ## 媒体分析边界
 
 - RTP：同方向、四元组、SSRC 连续统计序号回绕、缺口、重复、乱序与跳变；动态 PT 时钟按 SDP 接收端点和观察时间段使用。未知或变化时钟不输出整体 jitter 毫秒值。
 - `--decode-rtp`：仅明文、单声道、8 kHz PCMU/PCMA。每流分别输出 payload 拼接 WAV 和 RTP timestamp 补零 WAV，保留重复冲突与未知包数量。支持头扩展/padding；大序号跳变分段。**补零不是 PLC，拼接不是终端真实播放，不模拟 jitter buffer。** 不把两条 mono 流伪造成原始双声道。
-- SRTP/未知编码：SDP SAVP 标记拒绝重建；无信令时只能按明文 RTP 假设，无法单靠 payload 确认加密。Opus、G.729 等不支持解码并标明原因。
+- SRTP/未知编码：只要任一端点的有效 SDP 阶段声明 SAVP，相关双向流均拒绝重建；无信令时只能按明文 RTP 假设，无法单靠 payload 确认加密。Opus、G.729 等不支持解码并标明原因。
 - 重建预算：每组最多 32 流、保留 payload 64 MiB；单段最长 3600 秒；整个报告 WAV 合计 256 MiB。超过预算保留 partial。RTP 包序号冲突、未知包和不可靠 timestamp 回退不会伪装成完整重建。
 - RTCP：compound SR/RR 的发送计数、signed cumulative loss、fraction lost、jitter；同采集点、反向端点的 SR/RR 能匹配时估算 capture-point RTT。**RTT 不是单向时延；SR/RR 是端点报告。** 未知时钟保留 jitter 时间戳单位。
 - XR：解析 VoIP metrics 的 loss/discard、round-trip delay 和端点上报 MOS-LQ/MOS-CQ；不自行预测 MOS。其他 XR/反馈包保留类型，不宣称已完整解析。每组最多 10000 RTCP 子包，超限标 partial。
@@ -154,7 +154,11 @@ voice-tools report build --pcap-group fs-a data/a-001.pcap data/a-002.pcap \
 
 ## 验证与部署状态
 
-2026-09-19：181 项本地回归测试通过（包括 loopback 模拟 HOMER）；真实 CLI 的 ring 计划 → index → search → export → report 合成链路通过。两份录音、跨分片 1 个序号缺口、2 个 RTCP 子包和 2 份重建 WAV 的结果已核对；84 条本地文档链接、运行时 schema 和 7 个报告资源引用检查通过。
+第二轮深度检查、复现及修复记录见 [capture-v2-review.md](capture-v2-review.md)。
+
+2026-09-19：首次交付通过 181 项本地回归；第二轮深度检查增加 20 个反例与边界场景，完整 201 项全部通过（包括 loopback 模拟 HOMER）。真实 CLI 的 ring 离线计划 → index → search → export → report 合成链路再次通过；核对了两份录音、跨分片 1 个序号缺口、2 个 RTCP 子包和 2 份重建 WAV。
+
+接入包含 SIP 拨测功能的 main（`e641836`）后，全仓共 229 项测试：221 项通过，8 项可选 PJSUA2 loopback 测试因环境条件未满足而跳过。运行时 CLI schema、111 条文档链接和 5 个示例报告资源引用检查通过；跳过项不代表已验收。
 
 合成测试覆盖：IPv4 分片和 TCP SIP 跨文件重组及导出回读、分片边界 RTP 缺口、端点/tag 变化、ESL 帧与 EOF/秘密白名单、远端 agent 的本地模拟生命周期、冻结摘要/释放/配额、损坏/截断/丢弃状态、真实 tshark 的动态 PT/RTCP mux、G.711 时间模型、SR/RR/XR 以及 HOMER 失败后的报告链路。
 

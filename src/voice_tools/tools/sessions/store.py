@@ -209,7 +209,7 @@ def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(
                 details = {}
                 if info['kind'] == 'pcap':
                     details = scan(name, lambda row: add(db, source, row), info['ports'], max_packets, tshark)
-                    summary['partial'] |= details['limited']
+                    summary['partial'] |= details['limited'] or bool(details.get('truncated_packets'))
                     details['sip_ports'] = info['ports']
                     details['originals'] = info.get('originals', [])
                     details['sensor_group'] = info.get('group')

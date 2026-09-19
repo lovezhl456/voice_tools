@@ -22,18 +22,23 @@ def timeline(observations):
                     if data.get('method') == 'CANCEL' and len(observed) == 2:
                         matches = False
                 if matches:
-                    stage['until_epoch'] = when; stage['ended_by'] = data.get('event') or data.get('method')
+                    stage['until_epoch'] = min(when, stage['until_epoch']) if stage['until_epoch'] is not None else when
+                    stage['ended_by'] = data.get('event') or data.get('method')
                     active.pop(key)
             continue
         descriptions = data.get('media', [])
         for index, media in enumerate(descriptions):
             # Keep branches separate, and close an old offer when the same sender
             # updates its media section. A re-INVITE offer is still only advertised.
-            key = (host, 'sdp', data.get('src'), data.get('from_tag'), data.get('to_tag'), index)
-            if data.get('to_tag'):
-                early = (host, 'sdp', data.get('src'), data.get('from_tag'), '', index)
-                if early in active:
-                    active.pop(early)['until_epoch'] = when
+            # From/To tags swap when the other endpoint initiates a re-INVITE.
+            # Sender address plus unordered dialog tags identifies its media leg.
+            tags = tuple(sorted(t for t in (data.get('from_tag'), data.get('to_tag')) if t))
+            key = (host, 'sdp', data.get('src'), tags, index)
+            if len(tags) == 2:
+                for early in list(active):
+                    if (len(early) == 5 and early[:3] == key[:3] and early[4] == index
+                            and len(early[3]) == 1 and set(early[3]).issubset(tags)):
+                        active.pop(early)['until_epoch'] = when
             if key in active:
                 old = active[key]
                 if old['media'] == media:

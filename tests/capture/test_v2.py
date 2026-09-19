@@ -84,6 +84,7 @@ class CaptureV2Tests(unittest.TestCase):
         class Running:
             def poll(self):return None
         agent.process=Running()
+        agent.mark_closed(str(source))
         self.assertEqual(len(agent.files()),1)
         class Ended:
             def poll(self):return 0
@@ -128,7 +129,9 @@ class CaptureV2Tests(unittest.TestCase):
         self.assertEqual(result['status'], 'partial')
         self.assertIn('broken.pcap', result['manifest']['invalid_files'])
         stats = capture_statistics("Packets received/dropped on interface 'eth0': 123/7 (pcap:5/dumpcap:2/flushed:0/ps_ifdrop:3) (5.0%)")
-        self.assertEqual(stats['kernel_dropped_packets'], 7)
+        self.assertEqual(stats['capture_dropped_packets'], 7)
+        self.assertEqual(stats['kernel_dropped_packets'], 5)
+        self.assertEqual(stats['dumpcap_dropped_packets'], 2)
         self.assertEqual(stats['interface_dropped_packets'], 3)
         self.assertIsNone(capture_statistics('no stats')['kernel_dropped_packets'])
 
@@ -168,8 +171,6 @@ class CaptureV2Tests(unittest.TestCase):
     def test_remote_agent_lifecycle_with_local_transport_and_fake_capture(self):
         # Execute the real deployed Python agent. Only SSH transport and packet
         # acquisition are simulated; status, freeze, hashing and release are real.
-        remote=Path('/tmp')/('voice-tools-'+uuid4().hex[:12]);remote.mkdir(mode=0o700)
-        self.addCleanup(shutil.rmtree,remote,True)
         binary=self.root/'bin';binary.mkdir()
         raw=pcap(self.root/'seed.pcap')
         program='''#!/usr/bin/env python3
@@ -187,8 +188,6 @@ time.sleep(1.6)
         class LocalSSH:
             def __init__(self,*args):pass
             def checked(self,args,timeout=30):
-                if args[:2]==['sh','-c'] and 'mktemp' in args[2]:
-                    return f'{remote}\n{os.getuid()}\n{os.getgid()}'
                 result=subprocess.run(args,capture_output=True,text=True,timeout=timeout,env=env)
                 if result.returncode:raise ValueError(result.stderr[-1000:])
                 return result.stdout.strip()
@@ -196,6 +195,8 @@ time.sleep(1.6)
         config=self.root/'hosts.json';config.write_text(json.dumps({'schema_version':'1.0','hosts':[{
             'name':'fs-a','host':'fs-a','addresses':['192.0.2.1'],'rtp_ranges':[[16000,24000]]}]}))
         result=ring.start(config,self.root/'job',seconds=2,segment_seconds=10,max_mib=8,snapshot_seconds=0,ssh_factory=LocalSSH)
+        remote=Path(result['hosts'][0]['remote_dir'])
+        self.addCleanup(shutil.rmtree,remote,True)
         self.assertEqual(result['hosts'][0]['status'],'running',result)
         deadline=time.monotonic()+8
         while time.monotonic()<deadline:

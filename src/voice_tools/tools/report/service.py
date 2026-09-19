@@ -34,6 +34,7 @@ def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), cloc
                 raise ValueError('会话导出文件路径或 SHA-256 校验失败')
             sources[path] = {'ports': set(rtp_ports) | set(record.get('rtp_ports', [])),
                              'sensor': record.get('sensor_id', record.get('host')),
+                             'call_id': meta.get('call_id'),
                              'rtcp_ports': set(record.get('rtcp_ports', [])),
                              'mappings': record.get('media_timeline', [])}
         session_info.append(meta)
@@ -63,6 +64,8 @@ def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), cloc
                              "host": meta.get("host"), "started_at": meta.get("started_at"),
                              "finished_at": meta.get("finished_at"), "bpf": meta.get("bpf"),
                              "tcpdump_stats": meta.get("tcpdump_stats", {}),
+                             'capture_health': meta.get('capture_health', {}),
+                             'truncated_packets': record.get('truncated_packets'),
                              "warnings": meta.get("warnings", [])})
     if not audio_paths and not sources and not correlation_info and not session_info:
         raise ValueError("至少提供一份录音、PCAP 或抓包目录")
@@ -102,19 +105,21 @@ def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), cloc
         data["audio"].append(item)
     grouped = {}
     for path, options in sources.items():
-        key = options.get('sensor') or str(path)
-        group = grouped.setdefault(key, {'paths': [], 'ports': set(), 'rtcp_ports': set(rtcp_ports), 'mappings': []})
+        sensor = options.get('sensor') or str(path)
+        key = (sensor, options.get('call_id'))
+        group = grouped.setdefault(key, {'sensor': sensor, 'call_id': options.get('call_id'),
+                                         'paths': [], 'ports': set(), 'rtcp_ports': set(rtcp_ports), 'mappings': []})
         group['paths'].extend(options.get('paths', [path]))
         group['ports'].update(options['ports'])
         group['rtcp_ports'].update(options.get('rtcp_ports', []))
         group['mappings'].extend(options.get('mappings', []))
     audio_bytes = 0
-    for group_number, (sensor, options) in enumerate(grouped.items(), 1):
+    for group_number, options in enumerate(grouped.values(), 1):
         path = options['paths'][0]
         item = {"path": str(path), "name": path.name}
         try:
             item["sha256"] = sha256(path)
-            item.update(status="ok", sensor=sensor, source_files=[str(p) for p in options['paths']],
+            item.update(status="ok", sensor=options['sensor'], call_id=options['call_id'], source_files=[str(p) for p in options['paths']],
                         analysis=pcap.analyze_group(options['paths'], options['ports'], clock_rates, max_packets, tshark,
                             options['rtcp_ports'], options['mappings'], output / 'rtp-audio' if decode_rtp else None,
                             f'group-{group_number:03d}', 256*1048576-audio_bytes))

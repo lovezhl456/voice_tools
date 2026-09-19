@@ -160,10 +160,16 @@ def render(data):
                      f'{bullets(item.get("warnings", []))}</article>')
     for item in data['captures']:
         stats = item.get('tcpdump_stats', {})
+        health = item.get('capture_health', {})
+        if health.get('statistics_available'):
+            health_text = table(['采集点总丢弃', 'libpcap 报告丢弃', 'dumpcap 内部丢弃', '接口报告丢弃'], [
+                ['未知' if health.get(k) is None else health[k] for k in
+                 ('capture_dropped_packets', 'kernel_dropped_packets', 'dumpcap_dropped_packets', 'interface_dropped_packets')]])
+        else:
+            health_text = (f'<p>tcpdump 捕获 {esc(stats.get("captured") if stats.get("captured") is not None else "未知")} 包；'
+                           f'内核丢弃 {esc(stats.get("dropped_by_kernel") if stats.get("dropped_by_kernel") is not None else "未知")} 包。</p>')
         captures += (f'<article><h3>抓包来源 · {esc(item["host"])}</h3><p>状态 {esc(item["status"])}</p>'
-                     f'<p>tcpdump 捕获 {esc(stats.get("captured") if stats.get("captured") is not None else "未知")} 包；'
-                     f'内核丢弃 {esc(stats.get("dropped_by_kernel") if stats.get("dropped_by_kernel") is not None else "未知")} 包。</p>'
-                     f'<p class="mono">{esc(item["bpf"] or "恢复取回，原端点未知")}</p>{bullets(item["warnings"])}</article>')
+                     f'{health_text}<p class="mono">{esc(item["bpf"] or "恢复取回，原端点未知")}</p>{bullets(item["warnings"])}</article>')
     status = '包含错误或部分统计' if data['partial'] else '分析完成'
     return '''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>''' + esc(data['title']) + '''</title><style>

@@ -257,7 +257,7 @@ def start(ssh, output, *, uuid=None, manual_flows=None, fs_cli="fs_cli", include
             if manifest['status'] == 'partial':
                 warnings.append('dumpcap 提前退出、达到文件额度或异常结束，未覆盖全部请求时长。')
         if manifest['pcap']['truncated_packets'] or manifest['tcpdump_stats']['dropped_by_kernel'] or any(
-                manifest.get('capture_health', {}).get(key) for key in ('kernel_dropped_packets', 'interface_dropped_packets')):
+                manifest.get('capture_health', {}).get(key) for key in ('capture_dropped_packets', 'kernel_dropped_packets', 'interface_dropped_packets')):
             manifest['status'] = 'partial'
             warnings.append('抓包包含截断包或采集点报告了丢弃，完整性受限。')
         if result.returncode not in (0, 124):
