@@ -1,0 +1,13 @@
+{
+  "name": "wavesurfer.js",
+  "version": "7.12.12",
+  "license": "BSD-3-Clause",
+  "source": "https://registry.npmjs.org/wavesurfer.js/-/wavesurfer.js-7.12.12.tgz",
+  "integrity": "sha512-fyKNuREQTliCl4b9w7pUzpFXQIkX5tcdYu1o6vBdH+NlUXvTxshvfbG2hj8OxDevzQNZlDTHzZGyAT3FhuutWw==",
+  "files": {
+    "wavesurfer.min.js": "cb9fff59e7ce18932fab801771589ca48bc0362db82218d86cf05f5b60f0bc5e",
+    "regions.min.js": "fa36e84bd0f22e332e5ac4d0264967e350375fa00418bc18d095bb0e0116e16d",
+    "timeline.min.js": "77f6ba910016dfa9eacbc02b289e51a6b0e7b19fed7d2efce62c2931b5b2f9b2",
+    "wavesurfer.LICENSE.txt": "0fc992dc27cc34dde78bfeb024b4cadff6320f0dcbee2f1228efaeb533ca1364"
+  }
+}

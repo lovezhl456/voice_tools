@@ -8,6 +8,11 @@
   const key = row => JSON.stringify([row.sample_id, row.opportunity_id]);
   const player = $("player");
   function message(text) { $("message").textContent = text; }
+  const waveform = createReviewWaveform(player, (start, end) => {
+    playback.setRange(start, end);
+  }, message);
+  const playback = createReviewPlayback(player, {duration: () => current?.record.result.duration_s,
+    seek: value => waveform.setTime(value), rangeChanged: (start, end) => waveform.syncRange(start, end), error: message});
   for (const record of data.records) {
     if (!record.result) continue;
     const option = new Option(record.input.split(/[\\/]/).pop(), record.sample_id);
@@ -38,7 +43,7 @@
       const small = document.createElement("small"); small.textContent = `${entry.op.at_s.toFixed(2)} s · ${data.labels[entry.op.status]}`;
       button.append(small); button.onclick = () => select(entry); $("queue").append(button);
     }
-    if (!filtered.length) { const p = document.createElement("p"); p.textContent = "没有符合条件的机会。"; $("queue").append(p); if (!formDirty) {player.pause();current=null;$("detail").hidden=true;} }
+    if (!filtered.length) { const p = document.createElement("p"); p.textContent = "没有符合条件的机会。"; $("queue").append(p); if (!formDirty) {playback.pause();current=null;$("detail").hidden=true;} }
     queue.scrollTop = scrollTop;
     if (focusedKey) [...queue.children].find(button => button.dataset.key === focusedKey)?.focus({preventScroll:true});
     progress();
@@ -64,16 +69,21 @@
   }
   function select(entry) {
     if (!saveDraft()) return;
-    player.pause(); current = entry; $("detail").hidden = false;
+    playback.pause(); current = entry; $("detail").hidden = false;
     const {record, op} = entry, result = record.result;
     $("name").textContent = `${record.input.split(/[\\/]/).pop()} · ${op.id}`;
     $("metadata").textContent = `${result.sample_rate} Hz · ${result.duration_s.toFixed(2)} 秒 · 标注窗口 ${op.at_s.toFixed(2)}–${op.observed_until_s.toFixed(2)} 秒`;
     $("status").textContent = `${data.labels[op.status]} · ${data.evidence[op.evidence_level]}`;
     $("warning").textContent = result.warnings.join("；") || "活动不代表有效回答，请试听后判断。";
-    for (const [id, channel] of [["leftTitle", 0], ["rightTitle", 1]]) $(id).textContent = `${channel === 0 ? "左" : "右"}轨 · 配置角色：${result.config.system_channel === channel ? "AI" : "用户"}${result.channel_verified ? "（角色已核实）" : "（角色未核实）"}`;
-    $("start").value = Math.max(0, op.at_s - 2).toFixed(2);
-    $("end").value = Math.min(result.duration_s, op.observed_until_s + 1).toFixed(2);
+    for (const [id, channel] of [["leftTitle", 0], ["rightTitle", 1]]) {
+      $(id).querySelector(".role-name").textContent = result.config.system_channel === channel ? "AI" : "用户";
+      $(id).querySelector(".role-meta").textContent = `${channel === 0 ? "左" : "右"}声道\n${result.channel_verified ? "已核实" : "未核实"}`;
+    }
+    $("start").value = Number(Math.max(0, op.at_s - 2).toFixed(6));
+    $("end").value = Number(Math.min(result.duration_s, op.observed_until_s + 1).toFixed(6));
+    for (const id of ["start", "end"]) $(id).removeAttribute("aria-invalid");
     $("seek").max = result.duration_s;
+    $("time").textContent = `${Number($("start").value).toFixed(2)} / ${result.duration_s.toFixed(2)} 秒`;
     const label = labels.get(entry.key) || {};
     $("decision").value = label.decision || ""; $("notes").value = label.notes || "";
     if (label.reviewer) $("reviewer").value = label.reviewer;
@@ -81,53 +91,21 @@
     const clip = record.clips && record.clips[op.id];
     $("clip").hidden = $("clipMeta").hidden = !clip;
     if (clip) { $("clip").href = clip.audio; $("clipMeta").href = clip.metadata; }
-    switchSource(false); draw(); updateQueueSelection(); progress();
-  }
-  function bounds() {
-    const start = Number($("start").value), end = Number($("end").value);
-    if (!current || !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > current.record.result.duration_s + .000001) throw Error("试听起止须在录音范围内，且终点晚于起点");
-    return [start, end];
+    switchSource(false); waveform.load(entry); updateQueueSelection(); progress();
   }
   function switchSource(keepTime = true) {
     if (!current) return;
-    const sources = current.record.playback_sources || {}, source = sources[$("channel").value];
-    const at = keepTime && Number.isFinite(player.currentTime) ? player.currentTime : Number($("start").value);
-    const playing = !player.paused;
-    player.pause();
+    const sources = current.record.playback_sources || {};
+    // A previous recording may not offer the same selected channel.
+    if (!sources[$("channel").value]) $("channel").value = sources.both ? "both" : sources.left ? "left" : "both";
+    const source = sources[$("channel").value];
     for (const option of $("channel").options) option.disabled = !sources[option.value];
-    $("play").disabled = !source; player.hidden = !source;
-    if (!source) { player.removeAttribute("src"); player.load(); message("未附带该声道的音频，无法试听。波形和标注仍可使用。"); return; }
-    player.onloadedmetadata = () => { player.currentTime = Math.min(at, player.duration); if (playing) player.play().catch(e => message(e.message)); };
-    player.src = source; player.load();
+    player.hidden = true; waveform.syncChannel($("channel").value);
+    playback.setSource(source, keepTime);
+    message(source ? "" : "未附带音频，无法试听。波形和标注仍可使用。");
   }
-  function draw() {
-    if (!current) return;
-    const waves = current.record.waveform, duration = current.record.result.duration_s;
-    for (const [id, channel] of [["leftWave", 0], ["rightWave", 1]]) {
-      const canvas = $(id), ctx = canvas.getContext("2d"), w = canvas.width, h = canvas.height;
-      ctx.clearRect(0, 0, w, h); ctx.fillStyle = "#fae5b2";
-      ctx.fillRect(current.op.at_s / duration * w, 0, (current.op.observed_until_s - current.op.at_s) / duration * w, h);
-      ctx.strokeStyle = channel ? "#427ba0" : "#087875"; ctx.lineWidth = 1; ctx.beginPath();
-      const peaks = waves ? waves.channels[channel] || [] : [];
-      for (let i = 0; i < peaks.length; i++) { const x = i / peaks.length * w; ctx.moveTo(x, h / 2 - peaks[i][1] * h * .46); ctx.lineTo(x, h / 2 - peaks[i][0] * h * .46); }
-      ctx.stroke(); ctx.strokeStyle = "#cd5508"; const x = player.currentTime / duration * w;
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
-    }
-  }
-  async function toggle() {
-    if (!current || $("play").disabled) return;
-    try { const [start,end] = bounds(); if (!player.paused) player.pause(); else { if (player.currentTime < start || player.currentTime >= end) player.currentTime = start; await player.play(); } } catch(e) { message(e.message); }
-  }
-  player.addEventListener("timeupdate", () => {
-    if (!current) return;
-    try { const [start,end] = bounds(); if (player.currentTime >= end && !player.paused) { if ($("loop").checked) { player.currentTime = start; player.play().catch(e => message(e.message)); } else player.pause(); } } catch(e) { player.pause(); message(e.message); }
-    $("seek").value = player.currentTime; $("time").textContent = `${player.currentTime.toFixed(2)} / ${current.record.result.duration_s.toFixed(2)} 秒`; draw();
-  });
-  player.addEventListener("ended", () => { if ($("loop").checked) { player.currentTime = Number($("start").value); player.play().catch(e => message(e.message)); } });
   player.addEventListener("error", () => { if (player.getAttribute("src")) message("音频无法播放，请确认报告 audio 目录完整或使用本地 HTTP 打开。"); });
-  $("channel").onchange = () => switchSource(); $("play").onclick = toggle;
-  $("seek").oninput = () => { if (current && player.getAttribute("src")) player.currentTime = Number($("seek").value); };
-  for (const id of ["start", "end"]) $(id).onchange = () => { try { const [start] = bounds(); player.currentTime = start; message(""); } catch(e) { message(e.message); } };
+  $("channel").onchange = () => switchSource();
   function validate(row) {
     const entry = byKey.get(key(row)); if (!entry) throw Error("标签不属于本批次录音/事件/应答机会");
     if (row.audio_sha256 !== entry.row.audio_sha256) throw Error("音频摘要不匹配");
@@ -148,12 +126,17 @@
     event.preventDefault(); if (!current) return;
     const row = {...current.row, decision:$("decision").value, reviewer:$("reviewer").value.trim(), reviewed_at:new Date().toISOString(), notes:$("notes").value};
     for (const id of extra) row[id] = $(id).value.trim();
-    try { validate(row); labels.set(current.key,row); dirty = true; formDirty = false; refresh(); message("标注已记在本页，请导出 CSV 后再离开。"); } catch(e) { message(e.message); }
+    try { validate(row); labels.set(current.key,row); dirty = true; formDirty = false; refresh(); reconcileSelection(); message("标注已记在本页，请导出 CSV 后再离开。"); } catch(e) { message(e.message); }
   };
   function move(delta) { const index = filtered.indexOf(current); if (filtered.length) select(filtered[Math.max(0,Math.min(filtered.length-1,index+delta))]); }
   $("previous").onclick = () => move(-1); $("next").onclick = () => move(1);
-  $("discard").onclick = () => {formDirty=false; if(current)select(current);message("已恢复本页最后记下的标注。");};
-  for (const id of ["fileFilter","statusFilter","evidenceFilter","unreviewed"]) $(id).onchange = () => { refresh(); if (!filtered.includes(current) && filtered.length && !formDirty) select(filtered[0]); };
+  function reconcileSelection() {
+    if (formDirty) return;
+    if (filtered.length && !filtered.includes(current)) select(filtered[0]);
+    else if (!filtered.length) { playback.pause(); current = null; $("detail").hidden = true; }
+  }
+  $("discard").onclick = () => {formDirty=false; refresh(); reconcileSelection(); if(current)select(current);message("已放弃未记下的修改，并恢复当前筛选结果。");};
+  for (const id of ["fileFilter","statusFilter","evidenceFilter","unreviewed"]) $(id).onchange = () => { refresh(); if (formDirty && !filtered.includes(current)) message("筛选已更新；当前表单有未记下的修改，记下或放弃后再切换录音。"); else reconcileSelection(); };
   function csvCell(value) { let text = String(value ?? ""); if (/^[\s]*[=+\-@]/.test(text)) text = "'" + text; return '"' + text.replaceAll('"','""') + '"'; }
   $("export").onclick = () => {
     if (!saveDraft()) return;
@@ -181,11 +164,11 @@
         if(!row.decision) {if([row.reviewer,row.reviewed_at,row.notes,...extra.map(id=>row[id])].some(x=>x?.trim()))throw Error("CSV 有半填标签");continue;}
         validate(row); const old=labels.get(k); if(old && data.fields.some(id=>String(old[id]??"")!==String(row[id]??"")))throw Error("导入与本页已有标签冲突；请先导出并在重新打开的页面导入"); incoming.set(k,row);
       }
-      incoming.forEach((row,k)=>labels.set(k,row)); const wasDirty=dirty; formDirty=false; refresh(); if(current)select(current); dirty=wasDirty;progress();message(`已导入 ${incoming.size} 条标签。`);
+      incoming.forEach((row,k)=>labels.set(k,row)); const wasDirty=dirty; formDirty=false; refresh(); reconcileSelection(); if(current)select(current); dirty=wasDirty;progress();message(`已导入 ${incoming.size} 条标签。`);
     }catch(e){message(e.message);} finally{$("import").value="";}
   };
   document.addEventListener("keydown", event => { if(/INPUT|SELECT|TEXTAREA/.test(event.target.tagName))return;
-    if(event.code==="Space"){event.preventDefault();toggle();} else if(event.key==="ArrowRight"){event.preventDefault();move(1);} else if(event.key==="ArrowLeft"){event.preventDefault();move(-1);}
+    if(event.code==="Space"){event.preventDefault();playback.toggle();} else if(event.key==="ArrowRight"){event.preventDefault();move(1);} else if(event.key==="ArrowLeft"){event.preventDefault();move(-1);}
     else if(/^[1-5]$/.test(event.key) && current){$("decision").selectedIndex=Number(event.key);formDirty=true;progress();}
   });
   window.addEventListener("beforeunload", event => {if(dirty || formDirty){event.preventDefault();event.returnValue="";}});
