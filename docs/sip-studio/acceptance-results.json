@@ -91,5 +91,39 @@
       "local_path": ".local/browser/editor.log",
       "sha256": "4015e98db7593ae9b3200814f844e289eac9e3b84091234d317a63da1ec8e8c1"
     }
-  ]
+  ],
+  "pre_pr_review": {
+    "baseline": "e5233739bffcd5dfcf3924bb2dc340f4deb80fc6",
+    "date": "2026-09-19",
+    "compiler": {
+      "passed": 22,
+      "total": 22
+    },
+    "cli_compatibility": {
+      "passed": 9,
+      "total": 9,
+      "success_commands": 16,
+      "expected_exit_2": 1
+    },
+    "browser_added_assertions": 7,
+    "fix": "Normalize omitted optional runtime fields in Studio imports and persisted drafts",
+    "evidence": [
+      {
+        "local_path": ".local/studio-pr-core.log",
+        "sha256": "1caa66048320e6f189029b30ca68d233011fc738e91079894ba835ddac5d3cb4"
+      },
+      {
+        "local_path": ".local/studio-pr-cli.log",
+        "sha256": "463cb59f088767f67d7d05552b4b02e70a14a0e97a86ba60fdec47d9fd8edf3f"
+      },
+      {
+        "local_path": ".local/browser/pr-import.log",
+        "sha256": "503222e6c1e92aa0d69391b1f0d03b412243832b7e0b950e022777482203e2cb"
+      },
+      {
+        "local_path": ".local/browser/pr-minimal-scenario.json",
+        "sha256": "e8513a5a221d7dce9de88a1743c5cd898512ed86f7776012464d1cb85fed4140"
+      }
+    ]
+  }
 }

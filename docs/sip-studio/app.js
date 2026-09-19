@@ -9,8 +9,8 @@ try{
   const text=localStorage.getItem(KEY);rawArchive=text;
   if(text){const raw=JSON.parse(text);if(raw.version!==1||!Array.isArray(raw.cases)||!raw.cases.length||raw.cases.length>100||!Array.isArray(raw.envs)||!Array.isArray(raw.assets)||raw.assets.length>100)throw Error('草稿结构或版本无效');
     // Validate saved drafts with the same strict import boundary; IDs are local references only.
-    raw.envs.forEach(e=>{const t={steps:[{action:'hangup'}]};const r=C.validateScenario(C.compile(t,e));if(r.errors.length)throw Error('环境草稿无效');});
-    raw.cases.forEach(c=>{const e=raw.envs.find(e=>e.id===c.envId);if(!e)throw Error('草稿缺少环境');C.importDocument(C.exportDocument(c,e));});
+    raw.envs=raw.envs.map(e=>{const normalized=C.importDocument({studio_version:'1.0',title:'环境检查',tags:'',environment:{name:e.name,config:e.config},steps:[{label:'挂断',action:'hangup'}]});return {...e,config:normalized.env.config};});
+    raw.cases=raw.cases.map(c=>{const e=raw.envs.find(e=>e.id===c.envId);if(!e)throw Error('草稿缺少环境');const normalized=C.importDocument(C.exportDocument(c,e));return {...c,steps:normalized.item.steps};});
     state={version:1,envs:raw.envs,cases:raw.cases,active:raw.cases.some(c=>c.id===raw.active)?raw.active:raw.cases[0].id,assets:raw.assets.map(a=>({id:C.uid(),path:String(a.path).slice(0,4096),name:String(a.name).slice(0,256),kind:a.kind==='media'?'media':'wav',duration:Number(a.duration)||0,peaks:Array.isArray(a.peaks)?a.peaks.slice(0,96):[],eventCount:Number(a.eventCount)||0})),runs:[]};
   }
 }catch(e){restoreError=rawArchive!==null?'上次草稿未加载：'+e.message+'。原始存档保留，可下载恢复。':'浏览器存储不可用。本次会话可以继续编辑，请导出草稿备份。';storageOK=false;}

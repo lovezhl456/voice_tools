@@ -85,3 +85,5 @@ PYTHONPATH=src python3 tests/studio/check_cli_compat.py
 ```
 
 这些命令不发 SIP。UI 变更另需验证实际浏览器的拖拽、侧栏编辑、导入导出、刷新恢复、素材与手机导航。
+
+导入 Studio 草稿与恢复本浏览器存档时，可选运行参数会按 CLI 默认值补齐；不自动追加导入文件里没有的挂断步骤。

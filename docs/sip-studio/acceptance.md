@@ -67,3 +67,14 @@ PYTHONPATH=src python3 tests/studio/check_cli_compat.py
 - 真实 iOS/Android 触摸设备、Safari/Firefox；手机检查使用 Chrome 视口模拟。
 - 原始 RTP 直放、网络抖动/丢包复现、网关/NAT/公网互通；继续使用各自独立 SIPp/CLI 验收。
 - 原 CLI 的 Baresip 2/7 波形验收问题仍以主分支 [深度检查](../sip-deep-review.md) 为准，本 UI 工作没有解决或掩盖它。
+
+## PR 提交前复查 · 2026-09-19
+
+已同步并 merge 最新 main `e5233739bffcd5dfcf3924bb2dc340f4deb80fc6`。仅 AGENTS.md 出现 add/add 冲突，保留主分支的 fetch/merge 与保护工作树约定，并追加 PR 深度检查规则。常规 Git 网络连续失败后，使用 GitHub 官方 Git API 获取缺失的签名提交；重建的 Git 对象 SHA 与远端完全一致，父提交及 tree 均已在本地，验证连通性后完成合并。
+
+复查发现并修复：省略可选 account/network/DTMF 参数的 Studio 文档在 CLI 校验中有效，但 UI 没有补齐默认值，导致参数侧栏、时间预演或环境编辑异常。现与 CLI 导入共用默认值处理，同时修复已持久化的这类草稿恢复；保留名称、标签及原步骤数量，不隐式追加挂断。
+
+- **22/22 单元检查通过**；新增最小 Studio 文档的默认值与步骤数量回归。
+- **9/9 CLI 兼容场景通过**：8 个有效导出分别完成 validate + dry-run，16 条成功命令；缺失文件按预期 exit 2。
+- **新增 7 项浏览器断言通过**：DTMF 默认值、有限预演时长、环境侧栏、真实 JSON 下载、旧草稿恢复、手机环境表单、无运行异常。前述首轮 50 项断言作为初次交付记录保留，不声称本轮重新执行全部原生 SIP 或所有浏览器流程。
+- PR 范围仍为静态编辑原型、文档和离线验证。最新 main 新增的按号码抓包工具随合并保留，不混入本 PR 相对 main 的差异。

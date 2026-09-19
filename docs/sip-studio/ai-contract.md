@@ -4,7 +4,7 @@ Contract version: 1.0. Scope: static local editor prototype. Human guide: [READM
 
 ## Workflow
 
-Before each new work session, fetch the latest remote main and **merge origin/main into the active work branch**. Preserve unrelated changes; do not reset or discard them. Resolve conflicts before continuing. This is the user's explicit workflow instruction. Before every PR submission, perform a deep review of the final diff, boundaries, failure paths, regression risks, documentation and evidence; fix findings and rerun the affected checks. Report unresolved failures honestly. This is also an explicit user instruction. Record the merge baseline in acceptance notes. Current check baseline: `6849b18c9765ede4287212f73a8a2e15928791b4`, fetched and merged 2026-09-19.
+Before each new work session, fetch the latest remote main and **merge origin/main into the active work branch**. Preserve unrelated changes; do not reset or discard them. Resolve conflicts before continuing. This is the user's explicit workflow instruction. Before every PR submission, perform a deep review of the final diff, boundaries, failure paths, regression risks, documentation and evidence; fix findings and rerun the affected checks. Report unresolved failures honestly. This is also an explicit user instruction. Record the merge baseline in acceptance notes. Current check baseline: `e5233739bffcd5dfcf3924bb2dc340f4deb80fc6`, fetched and merged 2026-09-19.
 
 Do not use this prototype delivery as authorization to place calls, create bulk campaigns, install a SIP server or publish a cloud site. Local HTML remains the default. The existing Python/PJSUA2 CLI owns runtime semantics; no FreeSWITCH/ESL execution service is introduced. Existing OpenSIPS/FreeSWITCH gateways can still be targets.
 
@@ -19,7 +19,7 @@ Do not use this prototype delivery as authorization to place calls, create bulk 
 
 ## Data contracts
 
-Studio document: `studio_version`, title, tags, environment `{name,config}`, steps with local id/label and runtime action params. Current version `1.0`. Import creates new IDs and adds a new case/environment; do not overwrite another case. CLI import is also supported, filling **CLI defaults**, not changing omitted behavior such as implicitly appending hangup.
+Studio document: `studio_version`, title, tags, environment `{name,config}`, steps with local id/label and runtime action params. Current version `1.0`. Import creates new IDs and adds a new case/environment; do not overwrite another case. CLI import is also supported, filling **CLI defaults** (including optional fields in Studio documents and persisted browser drafts), not changing omitted behavior such as implicitly appending hangup.
 
 Runtime export: only the existing strict scenario 1.0 fields. Use an explicit action/field whitelist. Never serialize IDs, labels, positions, tags, plugin metadata or a proposed capability into CLI output. Unknown fields/actions, plaintext password fields, malformed JSON and unsupported versions must fail import before mutating state.
 

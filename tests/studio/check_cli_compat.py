@@ -29,6 +29,7 @@ add('all-supported',s=>s.steps=[{action:'wait',seconds:0},{action:'play',file:'a
 add('environment',s=>{s.account.auth={username:'tester',realm:'*',password_env:'STUDIO_TEST_PASSWORD'};s.account.registrar_uri='sip:127.0.0.1:5070';s.account.proxy_uri='sip:127.0.0.1:5070;transport=udp';s.network.bind_address='127.0.0.1';s.codec='PCMU';s.record_early=true;});
 const bare=C.importScenario({schema_version:'1.0',target_uri:'sip:a@localhost',steps:[{action:'dtmf',digits:'1'}]});samples.push({name:'minimal-import',scenario:C.compile(bare.item,bare.env)});
 const doc=C.importDocument(C.exportDocument(item,env));samples.push({name:'studio-roundtrip',scenario:C.compile(doc.item,doc.env)});
+const minimalStudio=C.importDocument({studio_version:'1.0',title:'Minimal Studio',tags:'test',environment:{name:'test',config:{target_uri:'sip:a@localhost'}},steps:[{label:'Press',action:'dtmf',digits:'1'}]});samples.push({name:'minimal-studio',scenario:C.compile(minimalStudio.item,minimalStudio.env)});
 console.log(JSON.stringify(samples));
 '''
     samples = json.loads(subprocess.check_output([node, '-e', script], cwd=ROOT))
@@ -60,7 +61,7 @@ console.log(JSON.stringify(samples));
         result = subprocess.run([sys.executable, '-m', 'voice_tools', '--json', 'sip', 'validate', str(broken)], cwd=ROOT, env=process_env, text=True, capture_output=True)
         assert result.returncode == 2, (result.returncode, result.stdout, result.stderr)
         print('PASS missing asset: CLI rejected with exit 2')
-    print('8 compatibility cases passed; 14 successful CLI commands + 1 expected rejection; no SIP calls')
+    print(f'{len(samples) + 1} compatibility cases passed; {len(samples) * 2} successful CLI commands + 1 expected rejection; no SIP calls')
 
 
 if __name__ == '__main__':

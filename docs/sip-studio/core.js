@@ -93,8 +93,12 @@
     if(!Array.isArray(data.steps))throw Error('steps 必须是数组');
     data.steps.forEach(s=>{if(!s||typeof s.action!=='string'||!Object.hasOwn(stepFields,s.action))throw Error('不支持的 action');object(s,['id','label','action',...stepFields[s.action]],'步骤');str(s.label,'步骤名称',160);});
     const temp={title:data.title,tags:data.tags,steps:data.steps},env={id:uid(),name:data.environment.name,config:clone(data.environment.config)};
-    const result=validateScenario(compile(temp,env));if(result.errors.length)throw Error(result.errors.join('；'));
-    return {item:{...makeCase(env.id,data.title),tags:data.tags,steps:data.steps.map(s=>({...clone(s),id:uid()}))},env};
+    // Studio and CLI imports must share defaults used by the inspector and previews.
+    const normalized=importScenario(compile(temp,env),data.title);
+    normalized.env.name=data.environment.name;
+    normalized.item.tags=data.tags;
+    normalized.item.steps.forEach((step,i)=>{step.label=data.steps[i].label;});
+    return normalized;
   }
   function moveStep(steps,id,to){const at=steps.findIndex(s=>s.id===id);if(at<0||steps[at].action==='hangup')return steps;const next=clone(steps),[s]=next.splice(at,1);const end=next.findIndex(s=>s.action==='hangup');next.splice(Math.max(0,Math.min(to,end<0?next.length:end)),0,s);return next;}
   function wavInfo(buffer){
