@@ -4,4 +4,7 @@ BUILTIN_TOOLS = (
     "voice_tools.tools.audio.cli",
     "voice_tools.tools.recording_qa.cli",
     "voice_tools.tools.homer.cli",
+    "voice_tools.tools.capture.cli",
+    "voice_tools.tools.report.cli",
+    "voice_tools.tools.sessions.cli",
 )

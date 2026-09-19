@@ -141,7 +141,7 @@ class Handler(BaseHTTPRequestHandler):
                 rows = [{k: v for k, v in r.items() if k not in ('node', 'dbnode', 'profile', 'table')} for r in rows]
                 self.reply(201, {'data': rows, 'total': len(rows), 'keys': []})
             else:
-                assert search == {'id': 0, 'callid': ['call-a@example.net'], 'uuid': []}, 'Transaction is an object, not search array'
+                assert search == {'id': 0, 'callid': getattr(self.server, 'expected_call_ids', ['call-a@example.net']), 'uuid': []}, 'Transaction is an object, not search array'
                 if route == '/call/transaction':
                     rows = [r for r in self.filtered(body, []) if r['sid'] in search['callid']]
                     self.reply(201, {'total': len(rows), 'data': {'messages': rows, 'calldata': [], 'hosts': {}, 'alias': {}}, 'keys': []})
