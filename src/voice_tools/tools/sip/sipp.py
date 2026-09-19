@@ -13,6 +13,7 @@ from pathlib import Path
 from voice_tools.core.files import new_output, read_json, sha256, write_json
 from .pcap import export_stream, media_from_stream, select
 from .scenario import number, sip_uri
+from .processes import termination_as_interrupt
 
 
 def prepare(capture, stream_id, output, target, local_ip, sip_port=5062, rtp_port=6000,
@@ -197,7 +198,7 @@ def run_package(path, output, binary="sipp", capture_interface=None, tshark="tsh
         if sha256(output / name) != plan["files"][name]:
             raise ValueError("SIPp 包在复制时发生变化；尚未拨号")
     capture = process = None
-    with (output / "sipp.log").open("wb") as log, (output / "capture.log").open("wb") as capture_log:
+    with termination_as_interrupt(), (output / "sipp.log").open("wb") as log, (output / "capture.log").open("wb") as capture_log:
         try:
             if capture_interface:
                 capture_cmd = [capture_bin, "-n", "-i", capture_interface, "-f", f"udp and port {plan['rtp_port']}",

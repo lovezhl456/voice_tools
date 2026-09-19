@@ -78,7 +78,10 @@ class Backend:
         try:
             self._initialize()
         except BaseException:
-            self.close()
+            try:
+                self.close()
+            except Exception:
+                pass  # Cleanup already attempted every resource; preserve the initialization error.
             raise
 
     def _initialize(self):
@@ -144,11 +147,15 @@ class Backend:
         if not self.call or self.disconnected:
             return
         info = self.call.getInfo()
+        previous = self.audio
+        self.media_ready = False
         for item in info.media:
             if item.type != pj.PJMEDIA_TYPE_AUDIO or item.status != pj.PJSUA_CALL_MEDIA_ACTIVE:
                 continue
-            self.audio = self.call.getAudioMedia(item.index)
-            self.media_ready = True
+            audio = self.call.getAudioMedia(item.index)
+            if previous and previous.getPortId() != audio.getPortId():
+                self.detach_media(previous)
+            self.audio = audio
             try:
                 self.codec = self.call.getStreamInfo(item.index).codecName
             except pj.Error:
@@ -156,9 +163,31 @@ class Backend:
             if self.recorder is None and (self.connected or self.plan["record_early"]):
                 self.recorder = pj.AudioMediaRecorder()
                 self.recorder.createRecorder(str(self.output / "rx.wav"))
-                self.audio.startTransmit(self.recorder)
                 self.record_started = self.clock()
                 self.emit("recording_start", file="rx.wav", role="remote_received", early=not self.connected)
+            # SDP updates can replace the conference port after 183 or re-INVITE.
+            # Reconnecting an existing edge is idempotent; the WAV stays open.
+            if self.recorder is not None:
+                self.audio.startTransmit(self.recorder)
+            if self.player is not None:
+                self.player.startTransmit(self.audio)
+            self.media_ready = True
+            return
+        if previous:
+            self.detach_media(previous)
+        self.audio = None
+
+    def detach_media(self, audio):
+        if self.recorder is not None:
+            try:
+                audio.stopTransmit(self.recorder)
+            except pj.Error:
+                pass  # PJSIP may already have removed the previous port.
+        if self.player is not None:
+            try:
+                self.player.stopTransmit(audio)
+            except pj.Error:
+                pass
 
     def poll(self, milliseconds):
         self.ep.libHandleEvents(milliseconds)
@@ -200,27 +229,35 @@ class Backend:
         if self.closed:
             return
         self.closed = True
-        if self.ep:
+        errors = []
+
+        def cleanup(action):
             try:
+                action()
+            except Exception as exc:
+                errors.append(exc)
+
+        if self.ep:
+            def end_call():
                 self.hangup()
                 for _ in range(50):
                     if not self.call or self.disconnected:
                         break
                     self.poll(20)
-            finally:
-                self.stop_playback()
-                if self.audio and self.recorder:
-                    try:
-                        self.audio.stopTransmit(self.recorder)
-                    except pj.Error:
-                        pass
-                self.audio = self.recorder = None
-                self.call = None
-                self.rejected_calls.clear()
-                if self.account:
-                    self.account.shutdown()
-                self.account = None
-                gc.collect()
-                self.ep.libDestroy()
-                self.ep = None
-                gc.collect()
+            cleanup(end_call)
+        cleanup(self.stop_playback)
+        if self.audio:
+            cleanup(lambda: self.detach_media(self.audio))
+        self.player = self.audio = self.recorder = None
+        self.call = None
+        self.rejected_calls.clear()
+        if self.account:
+            cleanup(self.account.shutdown)
+        self.account = None
+        gc.collect()
+        if self.ep:
+            cleanup(self.ep.libDestroy)
+        self.ep = None
+        gc.collect()
+        if errors:
+            raise errors[0]

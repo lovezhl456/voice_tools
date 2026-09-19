@@ -10,6 +10,7 @@ from pathlib import Path
 
 from voice_tools.core.files import new_output, read_json, sha256, write_json
 from .scenario import load_scenario, template
+from .processes import termination_as_interrupt
 
 
 def doctor():
@@ -75,30 +76,53 @@ def run(scenario, output, dry_run=False):
                   "target_uri": plan["target_uri"], "steps": len(plan["steps"]), "planned_duration_s": plan["planned_duration_s"]}
         write_json(output / "result.json", result)
         return result
-    interrupted = False
-    with (output / "native.log").open("wb") as log:
+    interrupted = timed_out = False
+    with termination_as_interrupt(), (output / "native.log").open("wb") as log:
         process = subprocess.Popen([sys.executable, "-m", "voice_tools.tools.sip.worker", str(output / "plan.json"), str(output)],
                                    stdout=log, stderr=log)
         try:
             code = process.wait(timeout=2 * plan["connect_timeout_s"] + plan["max_call_s"] + 20)
-        except (subprocess.TimeoutExpired, KeyboardInterrupt):
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            stop_worker(process)
+            code = process.returncode
+        except KeyboardInterrupt:
             interrupted = True
             stop_worker(process)
             code = process.returncode
     result_file = output / "result.json"
     if result_file.exists():
-        result = read_json(result_file)
+        try:
+            result = read_json(result_file)
+            if not isinstance(result, dict) or result.get("status") not in ("completed", "failed", "interrupted"):
+                raise ValueError("无效原生进程结果")
+        except (ValueError, OSError) as exc:
+            # Preserve malformed evidence before writing the parent's failure receipt.
+            shutil.copyfile(result_file, output / "worker-result.invalid.json")
+            result = {"schema_version": "1.0", "backend": "pjsua2", "status": "failed",
+                      "error": {"code": "WORKER_RESULT_INVALID", "message": str(exc)}}
     else:
         result = {"schema_version": "1.0", "backend": "pjsua2", "status": "failed",
                   "error": {"code": "WORKER_EXITED", "message": "原生进程未写出完整结果；检查 native.log，现有文件保留"}}
     if interrupted or code != 0:
         result["status"] = "interrupted" if interrupted else "failed"
+    if timed_out:
+        result["status"] = "failed"
+        result["error"] = {"code": "WORKER_TIMEOUT", "message": "原生进程超过执行时限；已终止并保留现有产物"}
     result["worker_exit_code"] = code
     try:
         with wave.open(str(output / "rx.wav"), "rb") as received:
             frames, rate = received.getnframes(), received.getframerate()
             if frames <= 0:
                 raise ValueError("接收录音没有音频帧")
+            if received.getnchannels() != 1 or received.getsampwidth() != 2 or rate != 8000 or received.getcomptype() != "NONE":
+                raise ValueError("接收录音不是预期的单声道 8 kHz PCM16")
+            remaining = frames
+            while remaining:
+                chunk = min(remaining, 65536)
+                if len(received.readframes(chunk)) != chunk * 2:
+                    raise ValueError("接收录音的数据被截断")
+                remaining -= chunk
             result.setdefault("recording", {})["rx_duration_s"] = frames / rate
     except (OSError, EOFError, wave.Error, ValueError) as exc:
         if result["status"] == "completed":

@@ -4,6 +4,8 @@
 
 面向大模型的字段、调用顺序和结果解释见 [SIP Agent 协议](sip-ai.md)。命令发现使用 `voice-tools schema --tool sip`。本次实现和真实本地回环的验证范围见 [验证记录](sip-validation.md)。
 
+PR #7 合并后的 [深度检查与修复](sip-deep-review.md) 补充了媒体端口切换、SIGTERM、异常清理和损坏产物的回归。通话中的媒体连接更新会复用同一个接收 WAV；Ctrl-C／SIGTERM 会终止本次原生子进程并保留结果。不可捕获的 SIGKILL 不在此保证内。
+
 公共测试号码和本地应答端的选型见 [测试服务调研](sip-test-targets.md)。已完成 [分层互通验收](sip-interop.md)：20 个端到端用例及 6 个 Baresip 官方自测通过；包含 pjsua、Baresip 和 4 通公共测试服务实际呼叫。[仓库内 HTML 用例摘要](sip-cases/index.html)。
 
 ## 1. 第一版能做什么

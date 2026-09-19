@@ -2,6 +2,8 @@
 
 PR 整合复核：基于 `main` 的 `dda856c`，在独立工作树中执行全仓测试，**209 项全部通过**，已开启 `VOICE_TOOLS_SIP_LOOPBACK=1`，包含 8 项真实 localhost SIP 集成测试，没有跳过。该次只复测本地，不重拨公网；下面保留初始实现阶段的验证记录，分层互通见 [sip-interop.md](sip-interop.md)。
 
+后续 [深度检查与修复](sip-deep-review.md) 增加 re-INVITE、SIGTERM、REGISTER Digest 和失败产物回归；本篇以下计数保留原阶段含义。
+
 实现范围和操作步骤见 [人工手册](sip.md)，机器接口和维护规则见 [Agent 协议](sip-ai.md)。本次按用户确认，仅做本地回环，不连接外部网关。
 
 ## 已通过

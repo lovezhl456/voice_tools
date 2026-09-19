@@ -23,7 +23,7 @@ def object_fields(value, allowed, label):
 
 
 def number(value, low, high, label, integer=False):
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or (isinstance(value, float) and not math.isfinite(value)):
         raise ValueError(f"{label} 必须是有限数值")
     if not low <= value <= high or (integer and not isinstance(value, int)):
         raise ValueError(f"{label} 须为 {low}–{high}" + (" 的整数" if integer else ""))
@@ -66,6 +66,24 @@ def resolve(base, value):
     return (p if p.is_absolute() else base / p).resolve()
 
 
+def validate_dtmf_events(events, duration):
+    """Keep PCAP export and subsequent media loading on the same event contract."""
+    if not isinstance(events, list) or len(events) > 256:
+        raise ValueError("media.dtmf 必须是最多 256 项的列表")
+    previous_end = -1.0
+    for event in events:
+        object_fields(event, {"at_s", "digit", "duration_ms", "end_observed"}, "DTMF event")
+        at = number(event.get("at_s"), 0, duration, "DTMF at_s")
+        ms = number(event.get("duration_ms"), 40, 8000, "DTMF duration_ms", True)
+        if event.get("digit") not in list(DIGITS):
+            raise ValueError("无效 DTMF digit")
+        if "end_observed" in event and not isinstance(event["end_observed"], bool):
+            raise ValueError("DTMF end_observed 必须为 boolean")
+        if at + ms / 1000 > duration + 1 / 8000 or at + 1e-9 < previous_end:
+            raise ValueError("DTMF 事件重叠、乱序或超出素材时间轴")
+        previous_end = at + ms / 1000
+
+
 def media_bundle(path):
     path = Path(path).resolve()
     data = read_json(path)
@@ -79,18 +97,7 @@ def media_bundle(path):
     if abs(duration - audio["duration_s"]) > 1 / 8000:
         raise ValueError("media 时长与 WAV 不一致")
     events = data.get("dtmf", [])
-    if not isinstance(events, list) or len(events) > 256:
-        raise ValueError("media.dtmf 必须是最多 256 项的列表")
-    previous_end = -1.0
-    for event in events:
-        object_fields(event, {"at_s", "digit", "duration_ms", "end_observed"}, "DTMF event")
-        at = number(event.get("at_s"), 0, duration, "DTMF at_s")
-        ms = number(event.get("duration_ms"), 40, 8000, "DTMF duration_ms", True)
-        if event.get("digit") not in list(DIGITS):
-            raise ValueError("无效 DTMF digit")
-        if at + ms / 1000 > duration + 1 / 8000 or at < previous_end:
-            raise ValueError("DTMF 事件重叠、乱序或超出素材时间轴")
-        previous_end = at + ms / 1000
+    validate_dtmf_events(events, duration)
     return {"path": str(path), "audio": audio, "duration_s": duration, "dtmf": events,
             "warnings": data.get("warnings", [])}
 
@@ -117,7 +124,7 @@ def load_scenario(path):
         if key in net:
             # PJSUA transport and RTP media use the same explicitly configured address.
             import ipaddress
-            ipaddress.IPv4Address(net[key])
+            ipaddress.IPv4Address(text(net[key], "network." + key))
     net["sip_port"] = number(net.get("sip_port", 0), 0, 65535, "sip_port", True)
     net["rtp_port"] = number(net.get("rtp_port", 4000), 1024, 65000, "rtp_port", True)
     if net["rtp_port"] % 2:
@@ -136,7 +143,7 @@ def load_scenario(path):
     resolved, total = [], 0.0
     fields = {"wait": {"seconds"}, "play": {"file"}, "dtmf": {"digits", "method", "duration_ms", "gap_ms"}, "play_media": {"file"}, "hangup": set()}
     for i, raw in enumerate(steps):
-        if not isinstance(raw, dict) or raw.get("action") not in fields:
+        if not isinstance(raw, dict) or not isinstance(raw.get("action"), str) or raw["action"] not in fields:
             raise ValueError(f"steps[{i}] 不支持的 action")
         action = raw["action"]
         object_fields(raw, fields[action] | {"action"}, f"steps[{i}]")

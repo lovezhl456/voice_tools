@@ -12,7 +12,7 @@ import wave
 from pathlib import Path
 
 from voice_tools.core.files import new_output, sha256, write_json
-from .scenario import MAX_SECONDS, VERSION, template
+from .scenario import MAX_SECONDS, VERSION, template, validate_dtmf_events
 
 FIELDS = ("frame.number", "frame.time_epoch", "frame.cap_len", "frame.len", "ip.src", "ipv6.src", "udp.srcport",
           "ip.dst", "ipv6.dst", "udp.dstport", "rtp.ssrc", "rtp.seq", "rtp.timestamp", "rtp.p_type", "rtp.payload", "sip.Method")
@@ -179,6 +179,8 @@ def media_from_stream(stream, codec=None, audio_pt=None, dtmf_pt=None):
             maximum = max(maximum, start + math.ceil(duration / 8) * 8)
     if not decoded or not 0 < maximum <= MAX_SECONDS * 8000:
         raise ValueError("所选流没有可解码音频或时长超限")
+    event_list = sorted(events.values(), key=lambda x: x["at_s"])
+    validate_dtmf_events(event_list, maximum / 8000)
     audio, covered = array.array("h", [0]) * maximum, bytearray(maximum)
     table = [g711_sample(b, codec) for b in range(256)]
     for start, payload in sorted(decoded):
@@ -187,12 +189,6 @@ def media_from_stream(stream, codec=None, audio_pt=None, dtmf_pt=None):
             if covered[i] and audio[i] != value:
                 raise ValueError("音频 RTP 时间轴有内容冲突的重叠，拒绝猜测覆盖顺序")
             audio[i], covered[i] = value, 1
-    event_list = sorted(events.values(), key=lambda x: x["at_s"])
-    previous_end = -1
-    for event in event_list:
-        if event["duration_ms"] < 40 or event["at_s"] < previous_end:
-            raise ValueError("DTMF 时长少于 40 ms 或事件重叠；需要人工整理")
-        previous_end = event["at_s"] + event["duration_ms"] / 1000
     warnings = ["缺失的音频采样填零；该 WAV 是内容重建，不复现原网络抖动。", "时间零点为所选流最早 RTP 时间戳，不是 SIP 接通时刻。"]
     if any(not e["end_observed"] for e in event_list):
         warnings.append("有 DTMF 未捕获结束包，时长是已观察到的最大值。")
