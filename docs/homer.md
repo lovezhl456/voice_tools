@@ -4,6 +4,8 @@
 
 [返回工具导航](../README.md) · [AI 调用约定](homer/ai-usage.md) · [整合来源与历史资料](homer/integration.md)
 
+多主机 tcpdump、FS UUID/Call-ID 快照、本地会话检索与本 CLI 的联合查询见[批量抓包与 HOMER 联动](batch-sessions-homer.md)。HOMER 的认证、配置及原退出码保持不变。
+
 ## 从独立版迁移
 
 本手册保留原版 11 章操作说明，命令和安装步骤已更新为本仓库入口。

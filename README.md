@@ -12,8 +12,11 @@
 | **双声道录音质检** | 批量筛查用户发言后 AI 无声或延迟输出的候选片段，生成试听报告与人工复核表 | `voice-tools qa` | [录音质检指南](docs/recording-qa.md) · [事件示例](examples/call.events.json) |
 | **HOMER 7 CLI** | 按号码、Call-ID、时间等查询 SIP，追踪通话、导出报文并检查 UDP 风险线索 | `voice-tools homer` | [HOMER 完整手册](docs/homer.md) · [AI 调用约定](docs/homer/ai-usage.md) |
 | **复核与版本评估** | 波形/单轨试听/标注，冻结时间轴，比较固定黄金集上的两个版本 | `voice-tools qa freeze / promote / evaluate / compare` | [人工手册](docs/manual.md) · [Agent 协议](docs/ai-usage.md) |
+| **会话抓包** | SSH 通过 FreeSWITCH UUID 查询媒体端点，限时 tcpdump 抓包并校验 SCP 取回 | `voice-tools capture` | [抓包与报告指南](docs/capture-report.md) |
+| **多主机批量抓包与检索** | 多机定时分片、FS UUID/Call-ID 快照、按号码/时间检索，并联动 HOMER search/trace | `voice-tools capture batch` · `voice-tools sessions` | [批量抓包与 HOMER 联动](docs/batch-sessions-homer.md) · [主机清单](examples/capture/hosts.example.json) |
+| **媒体分析报告** | 汇总多个录音和 PCAP，查看声道波形、RTP 缺口/乱序候选和离线试听 | `voice-tools report` | [多录音与 PCAP 报告](docs/capture-report.md#2-多录音多-pcap-报告) |
 
-录音体检与质检在本机 CPU 上离线运行；HOMER 查询连接你配置的 HOMER 7 服务，保存的 trace 可以离线分析。所有工具都不需要 GPU 或在线模型。
+录音体检、质检与媒体报告在本机 CPU 上离线运行；HOMER 查询连接你配置的 HOMER 7 服务，抓包连接指定 SSH 主机，保存的 trace 可以离线分析。所有工具都不需要 GPU 或在线模型。
 
 ## 安装与命令导航
 
@@ -29,11 +32,14 @@ voice-tools schema --tool qa
 voice-tools audio --help
 voice-tools qa --help
 voice-tools homer --help
+voice-tools capture --help
+voice-tools sessions --help
+voice-tools report --help
 ```
 
 默认依赖 NumPy，用于录音质检；HOMER 工具自身仅用 Python 标准库。可选 CPU WebRTC VAD：`python -m pip install -e '.[vad]'`。也可用 `python -m voice_tools` 代替 `voice-tools`。
 
-格式准备使用本机可选的 FFmpeg / FFprobe。原生 PCM16 WAV 体检无需它们。音频/QA 的 `--json` 放在工具名之前；HOMER 保留其原有 JSON 协议和退出码。
+格式准备使用本机可选的 FFmpeg / FFprobe。原生 PCM16 WAV 体检无需它们。音频、QA、抓包、会话检索与报告的 `--json` 放在工具名之前；HOMER 保留其原有 JSON 协议和退出码。
 
 ## 快速体验
 
@@ -66,13 +72,24 @@ voice-tools homer search --since 15m --caller 1001 --transport udp --all
 
 HOMER 的搜索退出码 **6** 表示返回了部分结果，应继续读取 stdout JSON。报文大小与重建 PCAP 只能提供风险线索，不能证明原始 IP 分片。支持的接口版本、全部参数和上线核对步骤见[完整手册](docs/homer.md)。
 
+### 会话抓包 → 离线报告
+
+```bash
+voice-tools capture start --host fs-prod --uuid 11111111-2222-3333-4444-555555555555 \
+  --seconds 60 --sudo --out outputs/call-capture
+voice-tools report build --capture outputs/call-capture --audio data/call.wav \
+  --include-audio --out outputs/call-report
+```
+
+`fs-prod` 使用你已配置并验证的 SSH 别名。可先加 `--dry-run` 只查询端点；抓包需要活动通话，PCAP 分析需要本机 tshark。多文件参数、失败恢复、权限与证据边界见[完整指南](docs/capture-report.md)。
+
 ## 开发与新增工具
 
 | 入口 | 内容 |
 |---|---|
 | [架构与扩展约定](docs/architecture.md) | 模块边界、命令注册、新增工具步骤 |
-| [工具源码](src/voice_tools/tools) | `audio/`、`recording_qa/` 与 `homer/`，各自维护业务逻辑 |
-| [测试](tests) | 录音场景、人工复核工作流、HOMER 模拟 HTTP 与统一入口回归 |
+| [工具源码](src/voice_tools/tools) | `audio/`、`recording_qa/`、`homer/`、`capture/`、`sessions/` 与 `report/`，各自维护业务逻辑 |
+| [测试](tests) | 录音场景、人工复核、模拟 SSH/HOMER、PCAP 会话检索与统一入口回归 |
 | [CI 模板](docs/ci.example.yml) | Python 3.9 / 3.12 / 3.13 测试模板，尚未启用 |
 | [HOMER 整合来源](docs/homer/integration.md) | 原包校验值、迁移范围与保留的历史资料 |
 

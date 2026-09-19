@@ -2,7 +2,7 @@
 
 ## 选择
 
-采用 **单仓库、单 Python 包、多个独立工具**。统一安装和命令入口；每个工具拥有自己的业务规则、配置、输出协议、测试和使用文档。当前提供录音体检与格式准备、录音质检与复核评估、HOMER 7 CLI，不为尚未明确的工具预建空模块，也不引入服务、数据库或插件框架。[README](../README.md) 作为工具导航，详细说明由各工具手册承载。
+采用 **单仓库、单 Python 包、多个独立工具**。统一安装和命令入口；每个工具拥有自己的业务规则、配置、输出协议、测试和使用文档。当前提供录音体检与格式准备、录音质检与复核评估、HOMER 7 CLI、会话抓包、批量检索与媒体报告；本地会话索引使用 SQLite，不为尚未明确的工具预建空模块，也不引入常驻服务或插件框架。[README](../README.md) 作为工具导航，详细说明由各工具手册承载。
 
 ```text
 voice_tools/
@@ -33,12 +33,18 @@ voice_tools/
 │       │   ├── dataset.py        # 冻结时间轴供人工核对
 │       │   ├── compare.py        # 同样本、窗口和时限的版本比较
 │       │   └── metrics.py        # 分层指标、拒判覆盖率与区间
+│       ├── capture/              # SSH/fs_cli、限时抓包、SCP 和批量快照
+│       ├── sessions/             # SQLite 会话索引、导出与 HOMER CLI 联动
+│       ├── report/               # 多音频/PCAP 与会话证据 HTML 报告
 │       └── homer/
 │           ├── cli.py            # homer 命令适配，延迟导入客户端
 │           └── client.py         # HOMER API、原参数和 JSON/退出码协议
 ├── tests/
 │   ├── audio/                    # 公共音频能力
 │   ├── recording_qa/             # 录音规则、工作流和回归
+│   ├── capture/                  # 模拟 SSH、抓包边界与批量失败恢复
+│   ├── sessions/                 # 多会话关联、PCAP 导出与 HOMER 联动
+│   ├── report/                   # 多输入分析、HTML 与错误隔离
 │   └── homer/                    # 模拟 HTTP、客户端与入口兼容回归
 ├── docs/
 │   ├── architecture.md
@@ -50,6 +56,10 @@ voice_tools/
 ```
 
 依赖方向：`cli → tools/<tool> → audio / core`。`audio` 和 `core` 不导入具体工具；工具之间不直接互相导入。报告中与“应答机会”有关的列属于录音质检，不提前抽象成所有工具的通用报告。
+
+会话抓包位于 `tools/capture/`，负责 SSH/fs_cli、BPF、远端 tcpdump 和 SCP；联合媒体报告位于 `tools/report/`，复用公共音频读取/健康指标，并独立使用本机 tshark。两者通过版本化的 `capture.json` 和 PCAP 文件交换数据，不直接互相导入。详见[抓包与报告指南](capture-report.md)。
+
+批量抓包产出 `batch.json`、各机 `host.json`、分片 PCAP 和 FS `sessions.jsonl`。`tools/sessions/` 建立不可变 SQLite 索引，通过文件协议读取这些产物，并通过原 `voice-tools homer` 子进程 CLI 查询 HOMER。会话导出的 `session.json` 和关联回执 `correlation.json` 可被报告工具读取；工具间仍不直接导入实现。详见[批量会话指南](batch-sessions-homer.md)。
 
 ## 新工具怎么加入
 
