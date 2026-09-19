@@ -2,7 +2,7 @@
 
 ## 选择
 
-采用 **单仓库、单 Python 包、多个独立工具**。统一安装和命令入口；每个工具拥有自己的业务规则、配置、输出协议、测试和使用文档。当前提供录音质检与 HOMER 7 CLI，不为尚未明确的工具预建空模块，也不引入服务、数据库或插件框架。[README](../README.md) 作为工具导航，详细说明由各工具手册承载。
+采用 **单仓库、单 Python 包、多个独立工具**。统一安装和命令入口；每个工具拥有自己的业务规则、配置、输出协议、测试和使用文档。当前提供录音体检与格式准备、录音质检与复核评估、HOMER 7 CLI，不为尚未明确的工具预建空模块，也不引入服务、数据库或插件框架。[README](../README.md) 作为工具导航，详细说明由各工具手册承载。
 
 ```text
 voice_tools/
@@ -11,18 +11,28 @@ voice_tools/
 │   ├── cli.py                    # voice-tools 入口，只负责装配
 │   ├── audio/
 │   │   ├── io.py                 # WAV、采样率、声道、文件完整性
-│   │   └── activity.py           # 能量活动 / 可选 WebRTC VAD
+│   │   ├── activity.py           # 能量活动 / 可选 WebRTC VAD
+│   │   ├── formats.py            # 可选 FFmpeg、格式探测和转换
+│   │   └── health.py             # 逐轨健康指标与波形摘要
 │   ├── core/
-│   │   └── files.py              # JSON、摘要、输出目录保护
+│   │   ├── files.py              # JSON、摘要、输出目录保护
+│   │   ├── command.py            # 机器调用 JSON 封套
+│   │   └── schema.py             # 从解析器导出命令契约
 │   └── tools/
 │       ├── __init__.py            # 内置工具注册表
+│       ├── audio/                 # audio inspect / prepare
 │       ├── recording_qa/
 │       │   ├── cli.py            # qa 子命令适配
 │       │   ├── detector.py       # 应答窗口、排除与候选判定
 │       │   ├── scenarios.py      # 可复现合成场景及独立预期
 │       │   ├── batch.py          # 批量调度、逐文件错误隔离
 │       │   ├── reports.py        # 此工具专属的可读报告
-│       │   └── review.py         # 人工标注、黄金集、评估
+│       │   ├── review.py         # 人工标注、黄金集、评估
+│       │   ├── workbench.py      # 复核页生成、声道预览与片段映射
+│       │   ├── review.html       # 离线复核模板，脚本为 review.js
+│       │   ├── dataset.py        # 冻结时间轴供人工核对
+│       │   ├── compare.py        # 同样本、窗口和时限的版本比较
+│       │   └── metrics.py        # 分层指标、拒判覆盖率与区间
 │       └── homer/
 │           ├── cli.py            # homer 命令适配，延迟导入客户端
 │           └── client.py         # HOMER API、原参数和 JSON/退出码协议
@@ -43,9 +53,9 @@ voice_tools/
 
 ## 新工具怎么加入
 
-例如未来新增格式转换：增加 `tools/convert/{cli.py,service.py}`、`tests/convert/` 和 `docs/convert.md`，提供 `register(subparsers)` 后加入 `BUILTIN_TOOLS`。命令为 `voice-tools convert ...`，库调用直接调用 `service` 中的函数。只有确实被多个工具使用、且语义一致的能力才移入公共层。
+新增工具时，增加 `tools/<tool>/{cli.py,service.py}`、对应测试与文档，提供 `register(subparsers)` 后加入 `BUILTIN_TOOLS`。命令为 `voice-tools <tool> ...`，库调用直接调用 `service` 中的函数。只有确实被多个工具使用、且语义一致的能力才移入公共层。
 
-通常在 `register` 中声明 argparse 参数并设置 `run(args)`。接入已有独立 CLI 时，可在工具子解析器上设置 `run_argv(argv)`：顶层识别工具名后，将后续参数原样交给它，并保留其退出码。HOMER 使用此方式保留 JSON 参数错误、全局选项在动作前后的位置和独立帮助；适配器只负责转发，不复制业务逻辑。工具名须紧跟 `voice-tools`，顶层的 `--help`、`--version` 仍属于工具集。
+通常在 `register` 中声明 argparse 参数并设置 `run(args)`。接入已有独立 CLI 时，可在工具子解析器上设置 `run_argv(argv)`：顶层识别工具名后，将后续参数原样交给它，并保留其退出码。HOMER 使用此方式保留 JSON 参数错误、全局选项在动作前后的位置和独立帮助；适配器只负责转发，不复制业务逻辑。工具名紧跟 `voice-tools` 或 `voice-tools --json`，顶层的 `--help`、`--version` 仍属于工具集。`voice-tools schema` 从当前解析器生成参数声明；音频与 QA 的机器调用约定见 [Agent 接入协议](ai-usage.md)。
 
 新增工具后同步维护 README 工具列表、完整手册、示例与测试；首页只保留用途和快速入口。`--help` 应清楚列出可用工具与操作。
 
@@ -53,7 +63,7 @@ VAD、降噪等重依赖放在可选 extra 中，并在使用时导入。`--help
 
 ## 稳定边界
 
-- 命令：`voice-tools <tool> <action>`；录音质检使用 `qa generate / analyze / promote / evaluate`；HOMER 使用 `homer search / trace / message / export / analyze` 等，并保留 `homerctl` 兼容入口。
+- 命令：`voice-tools <tool> <action>`；音频体检与准备使用 `audio inspect / prepare`；录音质检使用 `qa generate / analyze / freeze / promote / evaluate / compare`；HOMER 使用 `homer search / trace / message / export / analyze` 等，并保留 `homerctl` 兼容入口。
 - 输出：各工具管理自己的格式和退出码。录音质检记录 `schema_version`、工具版本、输入 SHA-256、参数和结果；HOMER 沿用 `schema_version=1`、`cli_version=1.0.0` 的 JSON 协议，退出码 6 的部分结果仍写入 stdout。不得把一种工具的退出码解释套用到另一种工具。
 - 路径：真实录音、生成数据、报告均留在忽略的 `data/`、`outputs/`；禁止把真实录音或凭据提交到代码仓库。
 - 批量任务：单条失败不使其他条目丢失；报告保留失败原因，进程以非零状态提示部分失败。
@@ -67,4 +77,4 @@ VAD、降噪等重依赖放在可选 extra 中，并在使用时导入。`--help
 
 合成场景用于工程回归。人工标注需带录音摘要、机会 ID、复核人、时间及判断；通过校验才能晋升黄金集。能量或 VAD 都不能证明“AI 正确回答”，也不能从录音直接判断 LLM、TTS 或 RTP 的根因。
 
-后续根据真实样本再增加 FFmpeg 格式适配、轻量 VAD 标定、日志适配器和人工标注界面。拆成多个包或服务的触发条件是独立发布、依赖冲突或运行边界确实不同，而不是工具数量增加。
+0.2 增加可选 FFmpeg 格式适配、离线复核界面与固定时间轴上的版本评估。后续根据真实样本再做轻量 VAD 标定和日志适配。拆成多个包或服务的触发条件是独立发布、依赖冲突或运行边界确实不同，而不是工具数量增加。

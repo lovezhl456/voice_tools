@@ -20,6 +20,7 @@ REASONS = {
 }
 REVIEW_FIELDS = ["sample_id", "audio_sha256", "opportunity_id", "at_s", "observed_until_s",
                  "status", "decision", "reviewer", "reviewed_at", "notes"]
+EXTRA_REVIEW_FIELDS = ["first_audible_s", "expected_response", "deadline_s", "policy_id", "scenario", "line_id", "group_id", "split"]
 
 
 def csv_safe(value):
@@ -35,7 +36,7 @@ def write_csv(path, fields, rows):
             writer.writerow({key: csv_safe(row.get(key, "")) for key in fields})
 
 
-def render_report(output, records, summary):
+def render_report(output, records, summary, hide_paths=False):
     with (output / "results.jsonl").open("w", encoding="utf-8") as stream:
         for record in records:
             stream.write(json.dumps(record, ensure_ascii=False, allow_nan=False) + "\n")
@@ -65,11 +66,12 @@ def render_report(output, records, summary):
         warnings = "".join(f"<li>{esc(warning)}</li>" for warning in result["warnings"])
         table = ('<div class="table"><table><thead><tr><th>机会</th><th>观察窗口</th><th>结果</th><th>证据</th><th>理由 / 试听</th></tr></thead><tbody>'
                  + "".join(rows) + '</tbody></table></div>') if rows else f'<p>{esc(LABELS.get(result["status"], result["status"]))}</p>'
-        sections.append(f'<section><h2>{esc(Path(record["input"]).name)}</h2><details><summary>原始路径</summary><p>{esc(record["input"])}</p></details>'
+        display_path = Path(record["input"]).name if hide_paths else record["input"]
+        sections.append(f'<section><h2>{esc(Path(record["input"]).name)}</h2><details><summary>来源</summary><p>{esc(display_path)}</p></details>'
                         f'<p>采样率 {result["sample_rate"]} Hz · {result["duration_s"]:.2f} 秒 · '
                         f'AI 声道 {result["config"]["system_channel"]}（0 左 / 1 右）</p><ul>{warnings}</ul>{table}</section>')
     write_csv(output / "summary.csv", ["file", "audio_sha256", "status", "candidates", "opportunities", "error"], summaries)
-    write_csv(output / "review.csv", REVIEW_FIELDS, reviews)
+    write_csv(output / "review.csv", REVIEW_FIELDS + EXTRA_REVIEW_FIELDS, reviews)
     document = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>双声道录音质检报告</title><style>
 body{font:16px/1.6 system-ui,sans-serif;background:#f3f6fa;color:#182535;margin:0}main{max-width:1120px;margin:auto;padding:24px}
@@ -78,6 +80,7 @@ li,p{overflow-wrap:anywhere}.table{overflow-x:auto}table{border-collapse:collaps
 audio{display:block;width:240px;margin-top:8px}.bad{color:#a62924}.count{font-size:20px;font-weight:600}@media(max-width:600px){main{padding:12px}section,.intro{padding:14px}h1{font-size:25px}}
 </style><main><h1>双声道录音质检报告</h1><div class="intro">'''
     document += f'<p class="count">{summary["files"]} 个文件 · {summary["candidates"]} 个候选 · {summary["errors"]} 个处理错误</p>'
+    document += '<p><a href="review.html"><strong>进入交互复核：双轨波形、单轨试听与人工标注 →</strong></a></p>'
     document += ('<p>所有结果都需要复核。有活动不等于 AI 正确回答；录音无法单独定位模型、TTS 或 RTP 根因。'
                  '缺少事件的结果仅是声学候选。未附带音频时，可使用 --include-audio 生成便于试听的本地报告。</p>'
                  '<p>人工标注：编辑同目录 review.csv 的 decision、reviewer、reviewed_at、notes。'
@@ -86,3 +89,5 @@ audio{display:block;width:240px;margin-top:8px}.bad{color:#a62924}.count{font-si
                  '<p><a href="review.csv" download>下载人工复核表</a> · <a href="summary.csv" download>下载文件汇总</a></p></div>')
     document += "".join(sections) + "</main></html>"
     (output / "report.html").write_text(document, encoding="utf-8")
+    from .workbench import render_workbench
+    render_workbench(output, records, summary, hide_paths)

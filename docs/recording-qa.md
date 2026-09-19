@@ -1,5 +1,7 @@
 # 双声道录音质检
 
+0.2 新增交互复核、时间轴冻结、版本对比与分层指标，流程见[人工使用手册](manual.md)，自动调用见[大模型接入协议](ai-usage.md)。
+
 [返回工具导航](../README.md)
 
 ## 快速开始
@@ -103,6 +105,7 @@ voice-tools qa analyze data/calls data/another.wav \
 | `results.jsonl` | 逐录音完整结果、参数、事件快照、输入/事件 SHA-256 |
 | `summary.csv` | 逐文件汇总 |
 | `review.csv` | 逐应答机会的人工复核表，判断列默认留空 |
+| `review.html` | 波形、左右轨试听、循环、人工标注和 CSV 导入/导出 |
 | `report.html` | 中文可读报告，附带音频时可以试听对应窗口 |
 | `audio/` | 仅在 `--include-audio` 时复制原始录音，按摘要命名避免同名覆盖 |
 
@@ -130,6 +133,6 @@ voice-tools qa generate --out data/demo-16k --sample-rate 16000 --seed 20260916
 
 `sample_id` 由音频摘要与事件文件摘要生成；同一音频的不同业务事件不能互相冒用标签。未提供事件的自动机会编号会随检测器参数变化，因此晋升稳定黄金集前建议将人工确认的机会固化为事件文件，并重新分析、复核。评估遇到缺少预测或窗口改变会报错，不能静默缩小样本量。
 
-指标是候选二分类：`missing/delayed` 为正例，`audible` 为负例，`exclude/uncertain` 明示计数但不计分。报告输出 TP/FP/FN/TN、precision、recall；分母为零的指标为 `null`。有活动却无有效回答的噪声可能成为假阴性，需要通过真实标注发现并调节检测方法。
+指标是候选二分类：`missing/delayed` 为正例，`audible` 为负例，`exclude/uncertain` 明示计数但不计分。0.2 将观察不足、证据不足和算法排除单列为 `abstained`，不当成通过；同时提供评分覆盖率与包含无法判定正例的保守召回。报告输出 TP/FP/FN/TN、precision、recall、分层指标及区间；分母为零为 `null`。有活动却无有效回答的噪声可能成为假阴性，需要真实标注。
 
 `--dataset-kind synthetic` 与 `real` 必须明确选择；人工复核过的合成声音仍是合成数据。本仓库不交付伪造的人工黄金标签。真实黄金集需要补齐不同线路、音量、噪声、编解码和业务等待策略的样本，最好独立复核分歧并保留版本。
