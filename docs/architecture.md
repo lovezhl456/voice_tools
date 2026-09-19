@@ -65,6 +65,8 @@ voice_tools/
 
 2.0 新增 `capture/remote.py` 与 `esl.py` 可独立部署到远端，仅依赖标准库与主机命令。`sessions investigate` 通过公有 CLI 编排 capture/HOMER/index/export/report；SQLite 写入 user_version=2，读取兼容版本 1。公共 `audio/rtp.py` 不依赖具体工具。详见 [2.0 数据与执行边界](capture-v2.md)。
 
+SIP 自动拨测位于 `tools/sip/`，通过 `voice-tools sip` 和 `voice-sip` 接入。离线校验/素材层与 PJSUA2 原生子进程分离；`runner.py` 管理有上限的单通话策略，`pcap.py` 用 tshark 和 G.711 解码准备素材，`sipp.py` 管理独立回放包。接收录音与本地播放源重建使用不同产物名称和证据类型。详细契约见 [SIP Agent 文档](sip-ai.md)，使用说明见 [SIP 手册](sip.md)。
+
 ## 新工具怎么加入
 
 新增工具时，增加 `tools/<tool>/{cli.py,service.py}`、对应测试与文档，提供 `register(subparsers)` 后加入 `BUILTIN_TOOLS`。命令为 `voice-tools <tool> ...`，库调用直接调用 `service` 中的函数。只有确实被多个工具使用、且语义一致的能力才移入公共层。

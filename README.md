@@ -8,6 +8,7 @@
 
 | 工具 | 适用场景 | 命令入口 | 使用文档 |
 |---|---|---|---|
+| **SIP 自动拨测** | 轻量 SIP UDP 呼叫、播放/按键/录音，PCAP 素材导入与独立 SIPp 回放 | `voice-tools sip` / `voice-sip` | [使用手册](docs/sip.md) · [大模型协议](docs/sip-ai.md) |
 | **录音体检与准备** | 查看逐轨音频健康指标，转换为保留声道和时间映射的 PCM16 WAV | `voice-tools audio inspect / prepare` | [人工使用手册](docs/manual.md) |
 | **双声道录音质检** | 批量筛查用户发言后 AI 无声或延迟输出的候选片段，生成试听报告与人工复核表 | `voice-tools qa` | [录音质检指南](docs/recording-qa.md) · [事件示例](examples/call.events.json) |
 | **HOMER 7 CLI** | 按号码、Call-ID、时间等查询 SIP，追踪通话、导出报文并检查 UDP 风险线索 | `voice-tools homer` | [HOMER 完整手册](docs/homer.md) · [AI 调用约定](docs/homer/ai-usage.md) |
@@ -35,6 +36,8 @@ voice-tools homer --help
 voice-tools capture --help
 voice-tools sessions --help
 voice-tools report --help
+voice-tools sip --help
+voice-tools schema --tool sip
 ```
 
 默认依赖 NumPy，用于录音质检；HOMER 工具自身仅用 Python 标准库。可选 CPU WebRTC VAD：`python -m pip install -e '.[vad]'`。也可用 `python -m voice_tools` 代替 `voice-tools`。
@@ -86,6 +89,12 @@ voice-tools report build --capture outputs/call-capture --audio data/call.wav \
 ## 2.0 长期排障入口
 
 采用 **HOMER 查信令＋远端环形 PCAP 留媒体＋voice_tools 编排与出报告**。`capture ring-start` 启动有时限和额度的多机任务；`sessions investigate` 冻结历史窗口、查 HOMER、索引、导出并生成报告。配置、恢复、ESL 和分析边界见 [2.0 操作指南](docs/capture-v2.md)。
+
+### SIP 自动拨测
+
+安装原生 PJSUA2 后，使用 `voice-sip` 执行一通 SIP UDP 呼叫，按 JSON 策略播放音频、发送按键并录音。PCAP 默认转成音频与去重按键；原包直放由 SIPp 单独执行。
+
+参见 [人工手册](docs/sip.md)、[大模型协议](docs/sip-ai.md) 和 [20 项用例 HTML](docs/sip-cases/index.html)。HTML 是 2026-09-19 的结果摘要，完整本地录音和日志不随仓库分发。
 
 ## 开发与新增工具
 

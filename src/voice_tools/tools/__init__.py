@@ -7,4 +7,5 @@ BUILTIN_TOOLS = (
     "voice_tools.tools.capture.cli",
     "voice_tools.tools.report.cli",
     "voice_tools.tools.sessions.cli",
+    "voice_tools.tools.sip.cli",
 )
