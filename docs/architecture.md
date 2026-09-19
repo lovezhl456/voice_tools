@@ -65,6 +65,8 @@ voice_tools/
 
 2.0 新增 `capture/remote.py` 与 `esl.py` 可独立部署到远端，仅依赖标准库与主机命令。`sessions investigate` 通过公有 CLI 编排 capture/HOMER/index/export/report；SQLite 写入 user_version=2，读取兼容版本 1。公共 `audio/rtp.py` 不依赖具体工具。详见 [2.0 数据与执行边界](capture-v2.md)。
 
+号码抓包由 `capture/numbers.py` 部署并取回，`capture/number_remote.py` 监督限时采集，通过独立 Python 模块进程启动 `sessions/number_bundle.py`。双方使用已停止的采集清单和公共 `core/capture_contract.py` 交换状态；采集工具不导入会话索引/导出的实现。远端运行时 ZIP 仅包含所需的标准库模块，拆包使用目标机 tshark/mergecap。输出协议见[号码抓包](capture-by-number.md)。
+
 SIP 自动拨测位于 `tools/sip/`，通过 `voice-tools sip` 和 `voice-sip` 接入。离线校验/素材层与 PJSUA2 原生子进程分离；`runner.py` 管理有上限的单通话策略，`pcap.py` 用 tshark 和 G.711 解码准备素材，`sipp.py` 管理独立回放包。接收录音与本地播放源重建使用不同产物名称和证据类型。详细契约见 [SIP Agent 文档](sip-ai.md)，使用说明见 [SIP 手册](sip.md)。
 
 ## 新工具怎么加入
