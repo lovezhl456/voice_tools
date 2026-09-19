@@ -2,7 +2,7 @@
 
 ## 选择
 
-采用 **单仓库、单 Python 包、多个独立工具**。统一安装和命令入口；每个工具拥有自己的业务规则、配置、输出协议、测试和使用文档。当前提供录音体检与格式准备、录音质检与复核评估、HOMER 7 CLI、会话抓包、批量检索与媒体报告；本地会话索引使用 SQLite，不为尚未明确的工具预建空模块，也不引入常驻服务或插件框架。[README](../README.md) 作为工具导航，详细说明由各工具手册承载。
+采用 **单仓库、单 Python 包、多个独立工具**。统一安装和命令入口；每个工具拥有自己的业务规则、配置、输出协议、测试和使用文档。当前提供录音体检与格式准备、录音质检与复核评估、HOMER 7 CLI、会话抓包、批量检索与媒体报告；本地会话索引使用 SQLite，不为尚未明确的工具预建空模块，不安装永久守护服务或引入插件框架；2.0 的远端采集 agent 是有明确截止时间的临时任务。[README](../README.md) 作为工具导航，详细说明由各工具手册承载。
 
 ```text
 voice_tools/
@@ -13,10 +13,12 @@ voice_tools/
 │   │   ├── io.py                 # WAV、采样率、声道、文件完整性
 │   │   ├── activity.py           # 能量活动 / 可选 WebRTC VAD
 │   │   ├── formats.py            # 可选 FFmpeg、格式探测和转换
+│   │   ├── rtp.py                # G.711 payload / timestamp 重建
 │   │   └── health.py             # 逐轨健康指标与波形摘要
 │   ├── core/
 │   │   ├── files.py              # JSON、摘要、输出目录保护
 │   │   ├── command.py            # 机器调用 JSON 封套
+│   │   ├── packets.py            # 明确同采集点分片合并与来源校验
 │   │   └── schema.py             # 从解析器导出命令契约
 │   └── tools/
 │       ├── __init__.py            # 内置工具注册表
@@ -57,9 +59,11 @@ voice_tools/
 
 依赖方向：`cli → tools/<tool> → audio / core`。`audio` 和 `core` 不导入具体工具；工具之间不直接互相导入。报告中与“应答机会”有关的列属于录音质检，不提前抽象成所有工具的通用报告。
 
-会话抓包位于 `tools/capture/`，负责 SSH/fs_cli、BPF、远端 tcpdump 和 SCP；联合媒体报告位于 `tools/report/`，复用公共音频读取/健康指标，并独立使用本机 tshark。两者通过版本化的 `capture.json` 和 PCAP 文件交换数据，不直接互相导入。详见[抓包与报告指南](capture-report.md)。
+会话抓包位于 `tools/capture/`，负责 SSH/fs_cli、ESL、BPF、远端 dumpcap 环形/限时任务、冻结与 SCP（保留旧 tcpdump 后端）；联合媒体报告位于 `tools/report/`，复用公共音频读取/健康指标，并独立使用本机 tshark。两者通过版本化的 `capture.json` 和 PCAP 文件交换数据，不直接互相导入。详见[抓包与报告指南](capture-report.md)。
 
-批量抓包产出 `batch.json`、各机 `host.json`、分片 PCAP 和 FS `sessions.jsonl`。`tools/sessions/` 建立不可变 SQLite 索引，通过文件协议读取这些产物，并通过原 `voice-tools homer` 子进程 CLI 查询 HOMER。会话导出的 `session.json` 和关联回执 `correlation.json` 可被报告工具读取；工具间仍不直接导入实现。详见[批量会话指南](batch-sessions-homer.md)。
+批量抓包产出 `batch.json`、各机 `host.json`、分片 PCAP 和 FS `events.jsonl`（兼容旧 `sessions.jsonl`）。`tools/sessions/` 建立不可变 SQLite 索引，通过文件协议读取这些产物，并通过原 `voice-tools homer` 子进程 CLI 查询 HOMER。会话导出的 `session.json` 和关联回执 `correlation.json` 可被报告工具读取；工具间仍不直接导入实现。详见[批量会话指南](batch-sessions-homer.md)。
+
+2.0 新增 `capture/remote.py` 与 `esl.py` 可独立部署到远端，仅依赖标准库与主机命令。`sessions investigate` 通过公有 CLI 编排 capture/HOMER/index/export/report；SQLite 写入 user_version=2，读取兼容版本 1。公共 `audio/rtp.py` 不依赖具体工具。详见 [2.0 数据与执行边界](capture-v2.md)。
 
 ## 新工具怎么加入
 

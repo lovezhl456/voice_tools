@@ -2,7 +2,7 @@
 
 面向语音业务的工具集，统一安装，通过 `voice-tools <工具> <操作>` 使用。各工具独立维护功能、配置、输出和测试；从下面选择当前要解决的问题。
 
-**0.2 文档入口：** [人工使用手册](docs/manual.md) · [大模型接入协议](docs/ai-usage.md) · [命令 schema](docs/cli-schema.json)。运行 `voice-tools schema` 发现参数，再用 `voice-tools --json …` 获取结构化结果。
+**2.0 文档入口：** [采集 2.0 与长期排障方案](docs/capture-v2.md) · [人工使用手册](docs/manual.md) · [大模型接入协议](docs/ai-usage.md) · [命令 schema](docs/cli-schema.json)。运行 `voice-tools schema` 发现参数，再用 `voice-tools --json …` 获取结构化结果。
 
 ## 工具列表
 
@@ -12,9 +12,9 @@
 | **双声道录音质检** | 批量筛查用户发言后 AI 无声或延迟输出的候选片段，生成试听报告与人工复核表 | `voice-tools qa` | [录音质检指南](docs/recording-qa.md) · [事件示例](examples/call.events.json) |
 | **HOMER 7 CLI** | 按号码、Call-ID、时间等查询 SIP，追踪通话、导出报文并检查 UDP 风险线索 | `voice-tools homer` | [HOMER 完整手册](docs/homer.md) · [AI 调用约定](docs/homer/ai-usage.md) |
 | **复核与版本评估** | 波形/单轨试听/标注，冻结时间轴，比较固定黄金集上的两个版本 | `voice-tools qa freeze / promote / evaluate / compare` | [人工手册](docs/manual.md) · [Agent 协议](docs/ai-usage.md) |
-| **会话抓包** | SSH 通过 FreeSWITCH UUID 查询媒体端点，限时 tcpdump 抓包并校验 SCP 取回 | `voice-tools capture` | [抓包与报告指南](docs/capture-report.md) |
-| **多主机批量抓包与检索** | 多机定时分片、FS UUID/Call-ID 快照、按号码/时间检索，并联动 HOMER search/trace | `voice-tools capture batch` · `voice-tools sessions` | [批量抓包与 HOMER 联动](docs/batch-sessions-homer.md) · [主机清单](examples/capture/hosts.example.json) |
-| **媒体分析报告** | 汇总多个录音和 PCAP，查看声道波形、RTP 缺口/乱序候选和离线试听 | `voice-tools report` | [多录音与 PCAP 报告](docs/capture-report.md#2-多录音多-pcap-报告) |
+| **会话抓包** | SSH 通过 FreeSWITCH UUID 查询媒体端点，限时 dumpcap 抓包并校验 SCP 取回 | `voice-tools capture` | [抓包与报告指南](docs/capture-report.md) |
+| **多主机批量抓包与检索** | 多机限时/环形采集、ESL 与 FS 快照映射、媒体变化、会话检索及 HOMER 联动 | `voice-tools capture batch` · `voice-tools sessions` | [批量抓包与 HOMER 联动](docs/batch-sessions-homer.md) · [主机清单](examples/capture/hosts.example.json) |
+| **媒体分析报告** | 汇总多个录音和 PCAP，查看跨分片 RTP 统计、G.711 重建、RTCP SR/RR/XR 和录音试听 | `voice-tools report` | [多录音与 PCAP 报告](docs/capture-report.md#2-多录音多-pcap-报告) |
 
 录音体检、质检与媒体报告在本机 CPU 上离线运行；HOMER 查询连接你配置的 HOMER 7 服务，抓包连接指定 SSH 主机，保存的 trace 可以离线分析。所有工具都不需要 GPU 或在线模型。
 
@@ -81,7 +81,11 @@ voice-tools report build --capture outputs/call-capture --audio data/call.wav \
   --include-audio --out outputs/call-report
 ```
 
-`fs-prod` 使用你已配置并验证的 SSH 别名。可先加 `--dry-run` 只查询端点；抓包需要活动通话，PCAP 分析需要本机 tshark。多文件参数、失败恢复、权限与证据边界见[完整指南](docs/capture-report.md)。
+`fs-prod` 使用你已配置并验证的 SSH 别名。可先加 `--dry-run` 只查询端点；抓包需要活动通话，PCAP 分析需要本机 tshark，同采集点跨分片分析另需 mergecap。多文件参数、失败恢复、权限与证据边界见[完整指南](docs/capture-report.md)。
+
+## 2.0 长期排障入口
+
+采用 **HOMER 查信令＋远端环形 PCAP 留媒体＋voice_tools 编排与出报告**。`capture ring-start` 启动有时限和额度的多机任务；`sessions investigate` 冻结历史窗口、查 HOMER、索引、导出并生成报告。配置、恢复、ESL 和分析边界见 [2.0 操作指南](docs/capture-v2.md)。
 
 ## 开发与新增工具
 

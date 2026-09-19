@@ -10,7 +10,7 @@ import time
 
 from voice_tools import __version__
 from voice_tools.core.files import new_output, read_json, write_json
-from .service import SSH, port, remote_directory, retrieve, utc_now, validate_capture
+from .service import SSH, port, remote_directory, retrieve, utc_now, validate_capture, fragment_bpf
 from .snapshots import snapshot
 
 
@@ -43,6 +43,7 @@ def scope_bpf(addresses, sip_ports, rtp_ranges):
         filters.append("((udp or tcp) and (" + " or ".join(signaling) + "))")
     if media:
         filters.append("(udp and (" + " or ".join(media) + "))")
+    filters.append(fragment_bpf())
     return "(" + " or ".join(nets) + ") and (" + " or ".join(filters) + ")"
 
 
@@ -57,9 +58,12 @@ def inventory(path):
     for row in hosts:
         if not isinstance(row, dict) or not isinstance(row.get('host'), str):
             raise ValueError("每台主机须为包含 host 的 JSON 对象")
-        unknown = set(row) - {'name','host','ssh_port','identity','interface','addresses','sip_ports','rtp_ranges','sudo','fs_cli'}
+        unknown = set(row) - {'name','host','ssh_port','identity','interface','addresses','sip_ports','rtp_ranges','sudo','fs_cli','esl'}
         if unknown:
             raise ValueError('主机清单含未知字段：' + ', '.join(sorted(unknown)))
+        if row.get('esl') is not None:
+            from .esl import validate_config
+            validate_config(row['esl'])
         if not isinstance(row.get('fs_cli','fs_cli'),str) or not row.get('fs_cli','fs_cli').strip():
             raise ValueError('fs_cli 须为可执行文件路径')
         name = row.get("name", row.get("host", ""))

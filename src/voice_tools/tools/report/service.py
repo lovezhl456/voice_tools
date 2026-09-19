@@ -13,9 +13,14 @@ from .render import render
 
 def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), clock_rates=None,
           include_audio=False, threshold_db=-45, max_packets=250000, tshark="tshark", title="通话媒体分析报告",
-          session_exports=(), correlations=()):
+          session_exports=(), correlations=(), pcap_groups=(), rtcp_ports=(), decode_rtp=False):
     audio_paths = list(dict.fromkeys(Path(p).resolve() for p in audio_paths))
     sources = {Path(p).resolve(): {"ports": set(rtp_ports)} for p in pcap_paths}
+    for sensor, paths in pcap_groups:
+        resolved = [Path(p).resolve() for p in paths]
+        for path in resolved:
+            sources.pop(path, None)
+        sources[resolved[0]] = {'ports': set(rtp_ports), 'paths': resolved, 'sensor': sensor}
     capture_info = []
     session_info, correlation_info = [], []
     for directory in session_exports:
@@ -27,7 +32,10 @@ def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), cloc
             path = (directory / record['file']).resolve()
             if directory not in path.parents or sha256(path) != record['sha256']:
                 raise ValueError('会话导出文件路径或 SHA-256 校验失败')
-            sources[path] = {'ports': set(rtp_ports) | set(record.get('rtp_ports', []))}
+            sources[path] = {'ports': set(rtp_ports) | set(record.get('rtp_ports', [])),
+                             'sensor': record.get('sensor_id', record.get('host')),
+                             'rtcp_ports': set(record.get('rtcp_ports', [])),
+                             'mappings': record.get('media_timeline', [])}
         session_info.append(meta)
     for directory in correlations:
         meta = read_json(Path(directory) / 'correlation.json')
@@ -60,13 +68,15 @@ def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), cloc
         raise ValueError("至少提供一份录音、PCAP 或抓包目录")
     if not -100 <= threshold_db <= -1 or not 1 <= max_packets <= 1000000:
         raise ValueError("活动门限须为 -100 至 -1 dBFS，max-packets 为 1–1000000")
+    if any(not 1 <= int(p) <= 65535 for p in rtcp_ports):
+        raise ValueError('RTCP 端口须为 1–65535')
     output = new_output(output)
     output.chmod(0o700)
     data = {"schema_version": "1.0", "tool": "report", "tool_version": __version__, "title": title,
             "created_at": datetime.now(timezone.utc).isoformat(), "audio": [], "pcaps": [], "captures": capture_info,
             "sessions": session_info, "correlations": correlation_info,
             "parameters": {"threshold_db": threshold_db, "max_packets": max_packets,
-                           "clock_rates": clock_rates or {}, "include_audio": include_audio},
+                           "clock_rates": clock_rates or {}, "include_audio": include_audio, "decode_rtp": decode_rtp, "rtcp_ports": list(rtcp_ports)},
             "conclusion": "未定位根因。录音和网络指标分别提供可复核线索；需要会话、时间轴和业务事件才能建立因果关联。"}
     for index, path in enumerate(audio_paths, 1):
         item = {"path": str(path), "name": path.name}
@@ -90,17 +100,33 @@ def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), cloc
         except (ValueError, OSError) as error:
             item.update(status="error", error=str(error))
         data["audio"].append(item)
+    grouped = {}
     for path, options in sources.items():
+        key = options.get('sensor') or str(path)
+        group = grouped.setdefault(key, {'paths': [], 'ports': set(), 'rtcp_ports': set(rtcp_ports), 'mappings': []})
+        group['paths'].extend(options.get('paths', [path]))
+        group['ports'].update(options['ports'])
+        group['rtcp_ports'].update(options.get('rtcp_ports', []))
+        group['mappings'].extend(options.get('mappings', []))
+    audio_bytes = 0
+    for group_number, (sensor, options) in enumerate(grouped.items(), 1):
+        path = options['paths'][0]
         item = {"path": str(path), "name": path.name}
         try:
             item["sha256"] = sha256(path)
-            item.update(status="ok", analysis=pcap.analyze(path, options["ports"], clock_rates, max_packets, tshark))
+            item.update(status="ok", sensor=sensor, source_files=[str(p) for p in options['paths']],
+                        analysis=pcap.analyze_group(options['paths'], options['ports'], clock_rates, max_packets, tshark,
+                            options['rtcp_ports'], options['mappings'], output / 'rtp-audio' if decode_rtp else None,
+                            f'group-{group_number:03d}', 256*1048576-audio_bytes))
+            audio_bytes += item['analysis']['media']['audio_bytes']
         except (ValueError, OSError) as error:
             item.update(status="error", error=str(error))
         data["pcaps"].append(item)
     data["errors"] = sum(item["status"] == "error" for item in data["audio"] + data["pcaps"])
     data["partial"] = bool(data["errors"]
-                           or any(item.get("analysis", {}).get("packet_limit_reached") for item in data["pcaps"])
+                           or any(item.get("analysis", {}).get("packet_limit_reached")
+                                  or item.get('analysis', {}).get('truncated_packets')
+                                  or item.get('analysis', {}).get('media', {}).get('partial') for item in data["pcaps"])
                            or any(item["status"] not in ("complete", "recovered") for item in capture_info))
     data['partial'] |= any(item.get('partial') for item in session_info + correlation_info)
     write_json(output / "report.json", data)

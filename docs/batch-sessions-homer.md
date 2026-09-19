@@ -1,5 +1,7 @@
 # 多主机批量抓包、会话检索与 HOMER 联动
 
+2.0 长期环形采集、ESL 和一键排障见 [capture-v2](capture-v2.md)。本页介绍限时批次与手动检索。
+
 命令流程：**capture batch → sessions index/search → sessions correlate → sessions export → report build**。也可先用 HOMER 按号码和时间找到 Call-ID，再从已抓取的本地 PCAP 提取媒体。
 
 批量模式从命令启动后开始抓包，不要求先指定 UUID；每台主机采集明确 IP/CIDR 和端口范围内的多通电话。没有事先抓到的历史 RTP，不能用 HOMER 的 SIP 重建 PCAP 补回。单通 UUID 抓包继续使用[原指南](capture-report.md)。
@@ -22,35 +24,35 @@ voice-tools capture batch --inventory data/hosts.json \
 
 各主机并发启动，**不保证同一微秒开始**。清单保存本地开始/结束时间，PCAP 保留各捕获点的包时间；比较跨机器延迟前须确认时钟同步。工具不调整系统时钟。
 
-BPF 同时限制配置的 IP/CIDR，以及 SIP UDP/TCP 端口、RTP UDP 范围，不提供默认全网全端口抓包。SIP TLS 等加密流量无法由本地 SIP 解析器直接检索，FS 快照可补充映射。非标准 SIP 端口须在清单中列出。
+BPF 对普通包限制配置的 IP/CIDR、SIP UDP/TCP 端口和 RTP/RTCP UDP 范围；为重组还保留该地址范围内 IPv4 后续分片及 IPv6 TCP/UDP，不能在此处严格限制其端口，不提供默认全网全端口抓包。SIP TLS 等加密流量无法由本地 SIP 解析器直接检索，FS 快照可补充映射。非标准 SIP 端口须在清单中列出。
 
 ### 大小、分片与失败隔离
 
 | 参数 | 默认值与范围 |
 |---|---|
-| `--seconds` | 300 秒；1–86400 秒 |
+| `--seconds` | 300 秒；默认 dumpcap 后端 1–604800 秒，旧 tcpdump 后端 1–86400 秒 |
 | `--segment-seconds` | 60 秒；10–3600 秒 |
 | `--max-mib` | **每主机全部分片** 512 MiB；1–16384 MiB |
-| `--snaplen` | 2048；64–65535 |
+| `--snaplen` | 65535；64–65535 |
 | `--fs-snapshot-seconds` | 10 秒；5–30 秒，0 关闭 |
 | `--max-snapshot-channels` | 每轮每机最多 100 条腿；1–500 |
 
-远端使用 GNU timeout 限时、tcpdump `-G` 按时间切片、`-W` 限制分片数量，并用总包数上限保守限制总大小。**不是环形覆盖**；达到包数上限会提前退出并标记 partial。额度越大并不保证每片很小：离线索引单文件上限为 512 MiB，高流量下应缩短分片间隔。默认 2048 snaplen 可能截断大 SIP/媒体包，需完整 payload 时增大 snaplen，并相应增加额度。
+2.0 默认使用远端 Python agent＋dumpcap，按实际文件字节限额和时间旋转，不用 `-c` 推导总包数。`capture batch` 是窗口模式，达到文件数/字节预算可能提前结束并标 partial；`capture ring-start` 才循环覆盖旧片。窗口模式以 `ceil(seconds/segment_seconds)+1` 个槽位平分额度，每槽预留一个最大记录；高流量提前触发大小旋转后，可能在耗尽总额度之前先用完文件数。单片或同采集点连续组最多 2 GiB，建议按目标会话冻结短窗口。`--backend tcpdump` 保留旧算法和恢复命令。
 
-每个分片通过 SCP 取回，前后远端 SHA-256 与本地一致后才确认成功。一台机器连接、抓包或传输失败，不丢弃其他机器成功产物。远端目录保持私有，不自动删除。Ctrl-C 不等于远端抓包立即停止：正在运行的任务仍受原定 timeout 约束，本地线程可能等待其退出；需要长时间运行时请在终端保留任务并按主机清单检查回执。
+每个分片通过 SCP 取回，前后远端 SHA-256 与本地一致后才确认成功。一台机器连接、抓包或传输失败，不丢弃其他机器成功产物。远端目录保持私有，不自动删除。默认后端在 Ctrl-C 后发送停止请求，保留 job.json 以便 status/fetch；断联时仍由远端时限兜底。
 
 ```text
 batch-001/
   batch.json                 # 各机计划、执行状态、主机清单路径
-  fs-a/
-    host.json                # BPF、远端目录、分片摘要、抓包/快照警告
-    part-....pcap
-    sessions.jsonl           # 周期 FS 快照（若采样到有效 Call-ID）
-    tcpdump.log
-  fs-b/...
+  job/job.json               # 多机任务与恢复位置
+  capture/fs-a/
+    host.json                # BPF、冻结窗口、分片摘要与完整性状态
+    part-000001.pcap
+    events.jsonl             # 周期快照及可选 ESL 事件
+  capture/fs-b/...
 ```
 
-远端依赖：`ssh/scp` 对应服务、`tcpdump`、GNU `timeout`、`sha256sum`、`find`、标准 shell；快照另需 `fs_cli` 可调用当前 FS。`sudo: true` 使用非交互 sudo，不改 sudoers。
+默认远端依赖：SSH/SCP 服务、Python 3.9+、dumpcap、sha256sum、标准 shell；快照另需 fs_cli。旧 tcpdump 后端另需 GNU timeout 和 find。`sudo: true` 使用非交互 sudo，不改 sudoers。
 
 ### FreeSWITCH UUID/Call-ID 快照
 
@@ -60,11 +62,11 @@ batch-001/
 - 当前媒体双向四元组；
 - 观测时间、主机名与取样间隔。
 
-完整 channel dump 和认证字段不写入产物。单次批量 dump 有 8 秒远端预算，每条 dump 有 2 秒上限，最多 20000 条快照/主机。超出每轮腿数时轮转取样；短于采样间隔的电话可能漏掉。实际轮次还受 FS/SSH 查询耗时影响，不能把采样点当作精确接通/挂机事件。超限、查不到 Call-ID 和失败会写入 `host.json`。
+完整 channel dump 和认证字段不写入产物。每轮 UUID dump 有 8 秒预算，每条最多 2 秒。2.0 事件日志轮转保留约 16 MiB/机（另有单条记录边界），内存最多保留 20000 条腿的映射。超出每轮腿数时轮转取样；短于采样间隔的电话可能漏掉。实际轮次还受 FS/SSH 查询耗时影响，不能把采样点当作精确接通/挂机事件。超限、认证失败、断连和查询失败会记录缺口；清单与索引继续携带 partial。清单可配置 ESL 来补充短通话事件，见 [2.0 指南](capture-v2.md)。
 
-跨 B2BUA 的两条腿可能有不同 Call-ID。只有同机、相邻时间的 FS bridge UUID 映射才作为本地关联线索；号码相同不会被自动合并。
+跨 B2BUA 的两条腿可能有不同 Call-ID。同机、相邻时间的 FS bridge UUID 映射及明确的业务 correlation ID 可作为关联线索，回执保留依据；号码相同不会被自动合并。
 
-传输失败时按 `host.json` 的远端目录重试：
+默认后端用 `capture ring-status --job outputs/batch-001/job` 和 `ring-fetch` 恢复，时间窗口见清单。下面的旧命令仅适用于 `--backend tcpdump` 产物：
 
 ```bash
 voice-tools capture fetch-batch --host fs-a \
@@ -102,7 +104,7 @@ voice-tools sessions index \
   --out outputs/combined-index
 ```
 
-PCAP 索引需要本机 tshark，默认读取每片最多 100 万包，`--max-packets` 上限 500 万；超限明确保留部分状态。一份输入损坏时回滚该输入的索引行，其余继续。重新索引使用新目录，不原地修改已建索引。检索、HOMER 关联和会话导出会继续携带索引的不完整状态。
+PCAP 索引需要本机 tshark，同采集点分片还需 mergecap。批次按主机自动连续重组，裸 PCAP 仅在 `--pcap-group SENSOR FILE FILE...` 中明确归组时重组；默认读取每个连续组最多 100 万包，`--max-packets` 上限 500 万；超限明确保留部分状态。一份输入损坏时回滚该输入的索引行，其余继续。重新索引使用新目录，不原地修改已建索引。检索、HOMER 关联和会话导出会继续携带索引的不完整状态。
 
 ## 3. 复用已有 HOMER CLI 查询
 
@@ -155,9 +157,9 @@ voice-tools report build --session-export outputs/call-a-packets \
   --out outputs/call-a-report
 ```
 
-导出仍按源文件分别生成 PCAPNG，保存原始包时间、源 SHA-256、筛选表达式和候选依据；不会把多主机重复观测拼成一个虚假的网络丢包率。源 PCAP 内容改变时拒绝使用旧索引导出。
+导出按独立采集点源（或已合并的同采集点分片组）生成 PCAPNG，并保留重组所需的 IP/TCP 依赖帧，保存原始包时间、源 SHA-256、筛选表达式和候选依据；不会把多主机重复观测拼成一个虚假的网络丢包率。源 PCAP 内容改变时拒绝使用旧索引导出。
 
-媒体候选来自两类依据：SDP 声明的音频接收 IP/端口与会话时间窗；FS 快照中的双向四元组与采样窗口。相同四元组的相邻采样窗口会合并，支持长通话。**NAT、端口复用、端点变化、加密 SIP、未观测到 BYE 和时钟偏差可能带入或遗漏媒体**；这些不是确定归属证据。未看到 BYE/CANCEL 时，SDP 匹配窗口会延至源文件末尾，报告会提示风险。
+媒体候选来自 SDP 声明、FS 周期快照和 ESL 事件。2.0 记录观察到的媒体阶段、codec、显式 RTCP 端点和 rtcp-mux；re-INVITE 更新同方向媒体阶段，终止事件关闭匹配阶段。这不是完整的 SIP offer/answer 状态机，拒绝的 offer 仍可能产生候选。相同四元组的相邻采样窗口会合并，支持长通话。**NAT、端口复用、端点变化、加密 SIP、未观测到 BYE 和时钟偏差可能带入或遗漏媒体**；这些不是确定归属证据。未看到 BYE/CANCEL 时，SDP 匹配窗口会延至源文件末尾，报告会提示风险。
 
 联合报告读取导出清单自动配置各片的 RTP 端口，并显示 HOMER 查询状态、其他关联 Call-ID 和证据限制。HOMER 与导出清单的主 Call-ID 不一致时拒绝拼接。录音仍按自身时间轴分析，不自动把录音波形与 PCAP 精确对时，不据此确认根因。
 
@@ -169,4 +171,4 @@ voice-tools report build --session-export outputs/call-a-packets \
 
 新增测试使用两台模拟 SSH 主机、两通同号码并发 SIP/SDP/RTP、真实本机 tshark，以及调用原 HOMER CLI 的本机 HTTP 模拟服务。它们验证并发、分片摘要、失败隔离、FS 字段白名单、会话检索、媒体筛选、桥接 Call-ID、HOMER 部分结果保留及报告接入。没有连接生产主机或真实 HOMER 实例。
 
-2026-09-19 基于最新 `main` 的独立 PR 工作树执行 156 项测试，全部通过；其中抓包、会话检索、HOMER 联动及报告新增 41 项，批量与会话联动占 19 项。实际 CLI 的 index → search → export → report 合成链路及主机清单离线计划通过。文档链接、示例配置、schema 和 HTML 本地资源检查通过。未进行浏览器/试听验收；此前本地文件访问被浏览器 URL 策略阻止。
+1.0 历史验收：2026-09-19 基于当时 `main` 的独立 PR 工作树执行 156 项测试，全部通过；其中抓包、会话检索、HOMER 联动及报告新增 41 项，批量与会话联动占 19 项。实际 CLI 的 index → search → export → report 合成链路及主机清单离线计划通过。文档链接、示例配置、schema 和 HTML 本地资源检查通过。未进行浏览器/试听验收；此前本地文件访问被浏览器 URL 策略阻止。

@@ -8,6 +8,8 @@ def register(commands):
     index = actions.add_parser('index', help='离线建立 Call-ID/号码/UUID/主机索引')
     for option in ('pcap', 'batch', 'homer-json', 'snapshots'):
         index.add_argument('--'+option, type=Path, action='append', default=[])
+    index.add_argument('--pcap-group', nargs='+', action='append', default=[], metavar='SENSOR_OR_FILE', help='同一采集点的连续分片：名称 FILE FILE，可重复')
+    index.add_argument('--events', type=Path, action='append', default=[], help='ESL 事件 JSONL')
     index.add_argument('--sip-port', type=int, action='append', default=[], help='非标准 SIP 端口；默认含 5060')
     index.add_argument('--max-packets', type=int, default=1000000)
     index.add_argument('--tshark', default='tshark')
@@ -43,6 +45,20 @@ def register(commands):
     remote.add_argument('--out', type=Path, required=True)
     homer_options(remote)
     remote.set_defaults(run=run)
+    full = actions.add_parser('investigate', help='冻结远端窗口 → HOMER → 索引/导出 → HTML 报告，保留各步骤失败')
+    full.add_argument('--job', type=Path, required=True)
+    full.add_argument('--from', dest='start', required=True)
+    full.add_argument('--to', dest='end', required=True)
+    full.add_argument('--call-id', required=True)
+    full.add_argument('--out', type=Path, required=True)
+    full.add_argument('--audio', nargs='+', type=Path, default=[])
+    full.add_argument('--skip-homer', action='store_true')
+    full.add_argument('--include-audio', action='store_true')
+    full.add_argument('--decode-rtp', action='store_true')
+    full.add_argument('--timeout', type=int, default=600, help='每步骤最大秒数')
+    full.add_argument('--dry-run', action='store_true', help='只保存调用计划，不连接 SSH/HOMER')
+    homer_options(full)
+    full.set_defaults(run=run)
 
 
 def homer_options(cmd):
@@ -64,8 +80,10 @@ def dispatch(args):
     from . import store
     names = []
     if args.action == 'index':
+        from voice_tools.core.packets import parse_groups
         result = store.build(args.out, args.pcap, args.batch, args.homer_json, args.snapshots,
-                             list(set([5060, *args.sip_port])), args.max_packets, args.tshark)
+                             list(set([5060, *args.sip_port])), args.max_packets, args.tshark,
+                             pcap_groups=parse_groups(args.pcap_group), events=args.events)
         names = ['sessions.sqlite', 'index.json']
     elif args.action == 'search':
         result = store.search(args.index, args.call_id, args.number, args.uuid, args.host, args.start, args.end, args.limit, args.offset)
@@ -79,6 +97,12 @@ def dispatch(args):
         from .homer import correlate
         result = correlate(args.index, args.call_id, args.out, args.padding, args.profile, args.node, args.max_requests)
         names = ['correlation.json', 'homer-search.json', 'homer-trace.json']
+    elif args.action == 'investigate':
+        from .workflow import investigate
+        result = investigate(args.job, args.start, args.end, args.call_id, args.out, args.audio,
+                             args.profile, args.node, args.skip_homer, args.include_audio, args.decode_rtp,
+                             args.timeout, args.dry_run, args.max_requests)
+        names = ['investigation.json']
     else:
         from .homer import search_remote
         result = search_remote(args.out, args.start, args.end, args.caller, args.callee, args.call_id, args.profile, args.node, args.max_requests)

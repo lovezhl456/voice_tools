@@ -36,22 +36,25 @@ def value(node, name):
     return next((f.get('show', '') for f in node.iter('field') if f.get('name') == name), '')
 
 
-def sdp_endpoints(sip):
-    endpoints = []
+def sdp_media(sip):
+    result = []
     for proto in sip.iter('proto'):
         if proto.get('name') != 'sdp':
             continue
-        session_ip, current, media = None, None, []
+        session_ip, current, session_attrs, media = None, None, [], []
         for f in proto.iter('field'):
             name, show = f.get('name'), f.get('show', '')
             if name == 'sdp.media':
                 parts = show.split()
-                current = {'kind': parts[0] if parts else '', 'ip': session_ip, 'port': None}
+                current = {'kind': parts[0] if parts else '', 'ip': session_ip, 'port': 0,
+                           'protocol': parts[2] if len(parts) > 2 else '', 'payload_types': [],
+                           'codecs': {}, 'attributes': list(session_attrs), 'direction': 'sendrecv'}
+                if len(parts) > 3:
+                    current['payload_types'] = [int(x) for x in parts[3:] if x.isdigit() and 0 <= int(x) <= 127]
                 media.append(current)
             elif name == 'sdp.connection_info.address':
                 try:
-                    addr = ipaddress.ip_address(show.split('/')[0])
-                    address = str(addr) if not addr.is_unspecified else None
+                    address = str(ipaddress.ip_address(show.split('/')[0]))
                 except ValueError:
                     address = None
                 if current is None:
@@ -63,15 +66,58 @@ def sdp_endpoints(sip):
                     current['port'] = int(show)
                 except ValueError:
                     pass
-        endpoints.extend({'ip': m['ip'], 'port': m['port'], 'basis': 'sdp_advertised'} for m in media
-                         if m['kind'] == 'audio' and m['ip'] and m['port'] and 1 <= m['port'] <= 65535)
-    return endpoints
+            elif name in ('sdp.media_attr', 'sdp.session_attr'):
+                if current is None:
+                    session_attrs.append(show)
+                else:
+                    current['attributes'].append(show)
+        for item in media:
+            if item['kind'] != 'audio' or not item['ip'] or not 0 <= item['port'] <= 65535:
+                continue
+            for attr in item.pop('attributes'):
+                if attr in ('inactive', 'sendonly', 'recvonly', 'sendrecv'):
+                    item['direction'] = attr
+                if attr == 'rtcp-mux':
+                    item['rtcp_mux'] = True
+                if attr.startswith('rtpmap:'):
+                    try:
+                        pt, codec = attr[7:].split(None, 1)
+                        parts = codec.split('/')
+                        item['codecs'][pt] = {'name': parts[0].upper(), 'clock_rate': int(parts[1]),
+                                             'channels': int(parts[2]) if len(parts) > 2 else 1}
+                    except (ValueError, IndexError):
+                        pass
+                if attr.startswith('fmtp:'):
+                    parts = attr[5:].split(None, 1)
+                    if len(parts) == 2:
+                        item.setdefault('fmtp', {})[parts[0]] = parts[1][:2048]
+                if attr.startswith('ptime:'):
+                    item['ptime'] = attr[6:][:16]
+                if attr.startswith('rtcp:'):
+                    parts = attr[5:].split()
+                    try:
+                        port = int(parts[0]); addr = str(ipaddress.ip_address(parts[3])) if len(parts) >= 4 else item['ip']
+                        if 1 <= port <= 65535:
+                            item['rtcp'] = {'ip': addr, 'port': port}
+                    except (ValueError, IndexError):
+                        pass
+            if item.get('rtcp_mux'):
+                item['rtcp'] = {'ip': item['ip'], 'port': item['port']}
+            if ipaddress.ip_address(item['ip']).is_unspecified:
+                item['direction'] = 'inactive'
+            result.append(item)
+    return result
+
+
+def sdp_endpoints(sip):
+    return [{'ip': m['ip'], 'port': m['port'], 'basis': 'sdp_advertised'} for m in sdp_media(sip)
+            if m['port'] and not ipaddress.ip_address(m['ip']).is_unspecified]
 
 
 def scan(path, consume, sip_ports=(5060,), max_packets=1000000, tshark='tshark'):
     path = Path(path)
-    if not 1 <= max_packets <= 5000000 or path.stat().st_size > 512 * 1024 * 1024:
-        raise ValueError("每份索引 PCAP 最大 512 MiB，包数上限 1–5000000；请缩短抓包分片")
+    if not 1 <= max_packets <= 5000000 or path.stat().st_size > 2 * 1024 * 1024 * 1024:
+        raise ValueError("每份索引 PCAP/连续分片组最大 2 GiB，包数上限 1–5000000；请缩短抓包分片")
     base = base_command(path, tshark, sip_ports) + ['-c', str(max_packets + 1)]
     with tempfile.TemporaryDirectory(prefix='voice-session-index-') as temp:
         timeline = Path(temp) / 'times.tsv'
@@ -106,7 +152,9 @@ def scan(path, consume, sip_ports=(5060,), max_packets=1000000, tshark='tshark')
                          'status_code': value(sip, 'sip.Status-Code'), 'frame': int(value(packet, 'frame.number')),
                          'src': value(packet, 'ip.src') or value(packet, 'ipv6.src'),
                          'dst': value(packet, 'ip.dst') or value(packet, 'ipv6.dst'),
-                         'endpoints': sdp_endpoints(sip)})
+                         'endpoints': sdp_endpoints(sip), 'media': sdp_media(sip),
+                         'from_tag': value(sip, 'sip.from.tag'), 'to_tag': value(sip, 'sip.to.tag'),
+                         'cseq': value(sip, 'sip.CSeq.seq'), 'cseq_method': value(sip, 'sip.CSeq.method')})
                 summary['sip_messages'] += 1
             packet.clear()
     return summary

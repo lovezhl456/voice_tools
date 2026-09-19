@@ -47,7 +47,7 @@ def connect(index):
     try:
         db = sqlite3.connect(path.resolve().as_uri() + '?mode=ro', uri=True)
         db.row_factory = sqlite3.Row
-        if db.execute('PRAGMA user_version').fetchone()[0] != 1:
+        if db.execute('PRAGMA user_version').fetchone()[0] not in (1, 2):
             raise ValueError("不支持的会话索引版本")
         yield db
     except sqlite3.Error as error:
@@ -60,13 +60,14 @@ def connect(index):
 def initialize(path):
     db = sqlite3.connect(path)
     db.row_factory = sqlite3.Row
-    db.executescript('''PRAGMA user_version=1;
+    db.executescript('''PRAGMA user_version=2;
       CREATE TABLE sources(id INTEGER PRIMARY KEY, kind TEXT, path TEXT, host TEXT, sha256 TEXT,
                            start REAL, end REAL, metadata TEXT, status TEXT);
       CREATE TABLE observations(id INTEGER PRIMARY KEY, source_id INTEGER, call_id TEXT NOT NULL, epoch REAL,
-                                caller TEXT, callee TEXT, uuid TEXT, data TEXT);
+                                caller TEXT, callee TEXT, uuid TEXT, data TEXT, correlation_id TEXT);
       CREATE INDEX call_lookup ON observations(call_id,epoch);
       CREATE INDEX uuid_lookup ON observations(uuid);
+      CREATE INDEX correlation_lookup ON observations(correlation_id);
       CREATE INDEX number_lookup ON observations(caller,callee);
       CREATE INDEX source_lookup ON observations(source_id);
       CREATE TABLE metadata(key TEXT PRIMARY KEY,value TEXT);
@@ -79,9 +80,9 @@ def add(db, source, row):
     if not isinstance(call_id, str) or not 1 <= len(call_id) <= 1024 or any(ord(c) < 32 for c in call_id):
         raise ValueError("无效的 SIP Call-ID")
     timestamp = epoch(row['epoch']) if row.get('epoch') is not None else None
-    db.execute('INSERT INTO observations(source_id,call_id,epoch,caller,callee,uuid,data) VALUES(?,?,?,?,?,?,?)',
+    db.execute('INSERT INTO observations(source_id,call_id,epoch,caller,callee,uuid,data,correlation_id) VALUES(?,?,?,?,?,?,?,?)',
                (source, call_id, timestamp, str(row.get('caller') or '')[:256], str(row.get('callee') or '')[:256],
-                row.get('uuid'), json.dumps(row, ensure_ascii=False, allow_nan=False)))
+                row.get('uuid'), json.dumps(row, ensure_ascii=False, allow_nan=False), row.get('correlation_id')))
 
 
 def homer_rows(value):
@@ -111,9 +112,15 @@ def homer_rows(value):
                'evidence': 'homer_message'}
 
 
-def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(5060,), max_packets=1000000, tshark='tshark'):
+def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(5060,), max_packets=1000000, tshark='tshark', pcap_groups=(), events=()):
     inputs = {}
     warnings = []
+    incomplete_inputs = False
+    for sensor, paths in pcap_groups:
+        for p in paths:
+            inputs[str(Path(p).resolve())] = {'kind': 'pcap', 'host': sensor, 'ports': list(sip_ports), 'group': sensor}
+    for p in events:
+        inputs[str(Path(p).resolve())] = {'kind': 'fs', 'host': Path(p).parent.name}
     for p in pcaps:
         inputs[str(Path(p).resolve())] = {'kind': 'pcap', 'host': Path(p).parent.name, 'ports': list(sip_ports)}
     for p in homer_json:
@@ -128,21 +135,33 @@ def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(
                 raise ValueError("批量抓包清单版本不支持")
             manifests = [safe_path(root, h['manifest']) for h in meta.get('hosts', [])]
             if meta.get('status') != 'complete':
+                incomplete_inputs = True
                 warnings.append(f"批量抓包 {root.name} 状态为 {meta.get('status')}，证据可能不完整。")
         else:
             manifests = [root / 'host.json']
         for manifest in manifests:
             if not manifest.is_file():
+                incomplete_inputs = True
                 warnings.append(f"缺少主机清单：{manifest}")
                 continue
             host = read_json(manifest)
             if host.get('tool') != 'capture-batch-host' or host.get('schema_version') != '1.0':
                 raise ValueError("主机抓包清单版本不支持")
             warnings.extend(host.get('warnings', []))
+            incomplete_inputs |= host.get('status') not in ('complete', 'recovered') or bool(host.get('errors'))
+            incomplete_inputs |= bool(host.get('warnings')) and not host.get('warnings_informational', False)
             for f in host.get('files', []):
                 path = safe_path(manifest.parent, f['file'])
                 inputs[str(path)] = {'kind': 'pcap', 'host': host.get('name', host.get('host')), 'sha256': f['sha256'],
-                                     'ports': host.get('sip_ports', list(sip_ports))}
+                                     'ports': host.get('sip_ports', list(sip_ports)), 'group': str(manifest.parent),
+                                     'sensor_id': host.get('sensor_id') or str(manifest.parent)}
+            event_file = safe_path(manifest.parent, host.get('events', {}).get('file', 'events.jsonl'))
+            if event_file.is_file():
+                inputs[str(event_file)] = {'kind': 'fs', 'host': host.get('name', host.get('host')),
+                                          'sha256': host.get('events', {}).get('sha256')}
+            elif host.get('events'):
+                incomplete_inputs = True
+                warnings.append('主机事件清单存在，但映射文件缺失。')
             snapshot_file = manifest.parent / 'sessions.jsonl'
             if snapshot_file.is_file():
                 inputs[str(snapshot_file)] = {'kind': 'fs', 'host': host.get('name', host.get('host'))}
@@ -150,9 +169,32 @@ def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(
         raise ValueError("至少提供一份 PCAP、批次、FS 快照或 HOMER JSON")
     output = new_output(output)
     output.chmod(0o700)
+    from voice_tools.core.packets import merge_packets
+    groups = {}
+    for name, info in list(inputs.items()):
+        if info.get('group'):
+            groups.setdefault(info['group'], []).append((name, info))
+    for index, members in enumerate(groups.values(), 1):
+        if len(members) < 2:
+            continue
+        try:
+            for name, info in members:
+                if info.get('sha256') and sha256(name) != info['sha256']:
+                    raise ValueError('源分片摘要与清单不一致')
+            folder = output / 'pcaps'; folder.mkdir(exist_ok=True)
+            target = folder / f'{index:04d}.pcapng'
+            originals = merge_packets([name for name, _ in members], target)
+            combined = dict(members[0][1]); combined.pop('sha256', None)
+            combined.update(originals=originals, ports=sorted({p for _, i in members for p in i['ports']}))
+            for name, _ in members:
+                del inputs[name]
+            inputs[str(target.resolve())] = combined
+        except (ValueError, OSError) as error:
+            incomplete_inputs = True
+            warnings.append('分片组无法连续重组，降级为逐文件索引：' + str(error))
     db = initialize(output / 'sessions.sqlite')
     summary = {'schema_version': '1.0', 'tool': 'sessions-index', 'tool_version': __version__, 'sources': [],
-               'warnings': warnings, 'errors': 0, 'partial': bool(warnings),
+               'warnings': warnings, 'errors': 0, 'partial': bool(incomplete_inputs),
                'notice': '按精确 Call-ID 分组；它不是已确认的跨 B2BUA 业务会话。号码相同不自动合并。'}
     try:
         for name, info in inputs.items():
@@ -169,6 +211,9 @@ def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(
                     details = scan(name, lambda row: add(db, source, row), info['ports'], max_packets, tshark)
                     summary['partial'] |= details['limited']
                     details['sip_ports'] = info['ports']
+                    details['originals'] = info.get('originals', [])
+                    details['sensor_group'] = info.get('group')
+                    details['sensor_id'] = info.get('sensor_id') or info.get('group') or 'file:' + name
                 elif info['kind'] == 'homer':
                     if Path(name).stat().st_size > 128 * 1024 * 1024:
                         raise ValueError('HOMER JSON 超过 128 MiB，请缩短查询窗口')
@@ -183,7 +228,16 @@ def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(
                             row = json.loads(line)
                             if not isinstance(row,dict) or row.get('schema_version') != '1.0':
                                 raise ValueError("FS 快照版本无效")
-                            add(db, source, {**row, 'epoch': epoch(row['observed_at']), 'evidence': 'fs_snapshot'})
+                            if row.get('evidence') == 'fs_event_gap':
+                                warnings.append('FS 事件缺口：' + str(row.get('reason', 'unknown'))[:256])
+                                summary['partial'] = True
+                                continue
+                            if row.get('evidence') == 'fs_event_status':
+                                continue
+                            if not row.get('call_id'):
+                                summary['partial'] = True
+                                continue
+                            add(db, source, {**row, 'epoch': epoch(row['observed_at']), 'evidence': row.get('evidence', 'fs_snapshot')})
                 db.execute('UPDATE sources SET sha256=?,start=?,end=?,metadata=?,status=? WHERE id=?',
                            (digest, details.get('first_epoch'), details.get('last_epoch'), json.dumps(details), 'ok', source))
                 db.execute('RELEASE source_data')
@@ -245,9 +299,13 @@ def show(index, call_id):
         rows = db.execute('SELECT o.*,s.kind,s.host,s.path,s.sha256,s.start,s.end,s.metadata FROM observations o '
                           'JOIN sources s ON s.id=o.source_id WHERE o.call_id=? ORDER BY o.epoch', (call_id,)).fetchall()
         related = set()
+        correlations = set()
         status = json.loads(db.execute("SELECT value FROM metadata WHERE key='index_status'").fetchone()[0])
         for row in rows:
             data = json.loads(row['data'])
+            if 'correlation_id' in row.keys() and row['correlation_id']:
+                peers = db.execute('SELECT DISTINCT o.call_id,o.uuid,s.host FROM observations o JOIN sources s ON s.id=o.source_id WHERE o.correlation_id=? AND o.call_id<>? LIMIT 1000', (row['correlation_id'], call_id)).fetchall()
+                correlations.update((p['call_id'], p['uuid'], p['host']) for p in peers)
             if not data.get('peer_uuid') or row['epoch'] is None:
                 continue
             peers = db.execute('SELECT DISTINCT o.call_id,o.uuid,s.host FROM observations o JOIN sources s ON s.id=o.source_id '
@@ -256,8 +314,14 @@ def show(index, call_id):
             related.update((p['call_id'],p['uuid'],p['host']) for p in peers)
     if not rows:
         raise ValueError("索引中没有这个精确 Call-ID")
+    from .media import timeline
+    decoded = [{**dict(row), 'data': json.loads(row['data']), 'metadata': json.loads(row['metadata'] or '{}')} for row in rows]
     return {'call_id': call_id, 'index_status': status, 'partial': status['partial'],
+            'media_timeline': timeline(decoded),
+            'dialogs': sorted({(r['data'].get('from_tag', ''), r['data'].get('to_tag', '')) for r in decoded if r['kind'] == 'pcap'}),
             'related_legs': [{'call_id': cid, 'uuid': uuid, 'host': host, 'basis': 'fs_bridge_snapshot'}
-                                                for cid,uuid,host in sorted(related)],
+                                                for cid,uuid,host in sorted(related, key=str)] +
+                            [{'call_id': cid, 'uuid': uid, 'host': host, 'basis': 'explicit_correlation_id'}
+                             for cid,uid,host in sorted(correlations - related, key=str)],
             'observations': [{**dict(row), 'data': json.loads(row['data']),
                                                'metadata': json.loads(row['metadata'] or '{}')} for row in rows]}

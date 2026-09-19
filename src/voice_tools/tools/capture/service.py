@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import shlex
 import subprocess
+import time
 from urllib.parse import unquote
 from uuid import UUID
 
@@ -39,7 +40,20 @@ def bpf_for(flows):
         a, p, b, q = (f[k] for k in ("local_ip", "local_port", "remote_ip", "remote_port"))
         expressions.append(f"((src host {a} and src port {p} and dst host {b} and dst port {q}) "
                            f"or (src host {b} and src port {q} and dst host {a} and dst port {p}))")
-    return "udp and (" + " or ".join(dict.fromkeys(expressions)) + ")"
+    exact = "udp and (" + " or ".join(dict.fromkeys(expressions)) + ")"
+    fragments = []
+    for raw in flows:
+        f = flow(**raw)
+        a, b = f['local_ip'], f['remote_ip']
+        pair = f"((src host {a} and dst host {b}) or (src host {b} and dst host {a}))"
+        fragments.append(f"({pair} and {fragment_bpf()})")
+    return "(" + exact + ") or (" + " or ".join(dict.fromkeys(fragments)) + ")"
+
+
+def fragment_bpf():
+    # Noninitial fragments have no ports. IPv6 extension chains cannot reliably
+    # use libpcap port primitives: admit scoped TCP/UDP and filter after reassembly.
+    return "((ip and (ip proto 6 or ip proto 17) and (ip[6:2] & 0x1fff != 0)) or (ip6 protochain 6 or ip6 protochain 17))"
 
 
 class SSH:
@@ -131,6 +145,16 @@ def capture_argv(remote_dir, user, bpf, interface, seconds, packet_limit, snaple
     return (["sudo", "-n"] if sudo else []) + argv
 
 
+def dumpcap_argv(remote_dir, bpf, interface, seconds, max_mib, snaplen, sudo=False):
+    # dumpcap uses decimal kB; reserve one maximum-sized record for its boundary.
+    kilobytes = (max_mib * 1048576 - snaplen - 512) // 1000
+    argv = ['timeout', '--signal=INT', '--kill-after=5s', f'{seconds + 5}s',
+            'dumpcap', '-q', '-P', '-i', interface, '-f', bpf, '-s', str(snaplen),
+            '-a', f'duration:{seconds}', '-a', f'filesize:{kilobytes}',
+            '-w', remote_dir + '/session.pcap']
+    return (['sudo', '-n'] if sudo else []) + argv
+
+
 def remote_directory(value):
     if not re.fullmatch(r"/tmp/voice-tools-[A-Za-z0-9]{6,32}", value):
         raise ValueError("远端目录须为本工具创建的 /tmp/voice-tools-<随机字符>")
@@ -154,18 +178,24 @@ def retrieve(ssh, remote_dir, output, filename="session.pcap"):
         header = stream.read(24)
     if len(header) < 24 or header[:4] not in (b"\xd4\xc3\xb2\xa1", b"\xa1\xb2\xc3\xd4", b"\x4d\x3c\xb2\xa1", b"\xa1\xb2\x3c\x4d"):
         raise ValueError("取回的文件不是有效的经典 PCAP 文件头；保留 .part 供检查")
+    from .remote import bounds
+    details = bounds(temp)
     target = output / filename
     temp.replace(target)
     target.chmod(0o600)
     return {"file": target.name, "sha256": before, "bytes": target.stat().st_size,
-            "has_packet_data": target.stat().st_size > 24}
+            "has_packet_data": details['packets'] > 0, 'packets': details['packets'],
+            'truncated_packets': details['truncated_packets']}
 
 
 def start(ssh, output, *, uuid=None, manual_flows=None, fs_cli="fs_cli", include_peer=True,
-          interface="any", seconds=60, max_mib=64, snaplen=2048, sudo=False, dry_run=False):
+          interface="any", seconds=60, max_mib=64, snaplen=2048, sudo=False, dry_run=False, backend='tcpdump'):
+    if backend not in ('tcpdump', 'dumpcap'):
+        raise ValueError('backend 须为 dumpcap 或 tcpdump')
     limit = validate_capture(seconds, max_mib, snaplen, interface)
     warnings = ["端点为查询时的快照；不跟随 re-INVITE、NAT 重绑定或新桥接腿。",
-                "仅抓所列 UDP 媒体端点；不自动包含 SIP、独立 RTCP 端口或其他主机。"]
+                "不自动包含 SIP、独立 RTCP 端口或其他主机。",
+                "为重组保留受限地址间的后续 IPv4 分片及 IPv6 TCP/UDP；这些包在抓取时无法严格按端口筛选。"]
     if uuid:
         flows, extra = discover(ssh, uuid, fs_cli, include_peer)
         warnings.extend(extra)
@@ -178,6 +208,7 @@ def start(ssh, output, *, uuid=None, manual_flows=None, fs_cli="fs_cli", include
                 "created_at": utc_now(), "host": ssh.host, "ssh_port": ssh.port,
                 "flows": flows, "bpf": bpf, "interface": interface, "seconds": seconds,
                 "max_mib": max_mib, "snaplen": snaplen, "packet_limit": limit,
+                "backend": backend, "size_policy": 'actual_file_bytes' if backend == 'dumpcap' else 'worst_case_packet_count',
                 "warnings": warnings, "status": "planned"}
     manifest_path = output / "capture.json"
     write_json(manifest_path, manifest)
@@ -194,8 +225,12 @@ def start(ssh, output, *, uuid=None, manual_flows=None, fs_cli="fs_cli", include
             raise ValueError("远端用户名格式不受支持")
         manifest.update(remote_dir=remote_dir, status="capturing", started_at=utc_now())
         write_json(manifest_path, manifest)
-        result = ssh.run(capture_argv(remote_dir, user, bpf, interface, seconds, limit, snaplen, sudo),
+        started = time.monotonic()
+        argv = (dumpcap_argv(remote_dir, bpf, interface, seconds, max_mib, snaplen, sudo) if backend == 'dumpcap'
+                else capture_argv(remote_dir, user, bpf, interface, seconds, limit, snaplen, sudo))
+        result = ssh.run(argv,
                          timeout=seconds + 40)
+        elapsed = time.monotonic() - started
         (output / "tcpdump.log").write_text(result.stderr, encoding="utf-8")
         manifest.update(capture_exit_code=result.returncode, finished_at=utc_now())
         manifest["tcpdump_stats"] = {key: int(match.group(1)) if match else None
@@ -212,6 +247,19 @@ def start(ssh, output, *, uuid=None, manual_flows=None, fs_cli="fs_cli", include
             if manifest["pcap"]["has_packet_data"]:
                 manifest["status"] = "partial"
             warnings.append("tcpdump 达到包数上限或提前退出；抓包时长可能短于请求时长。")
+        if backend == 'dumpcap':
+            from .remote import capture_statistics
+            manifest['capture_health'] = capture_statistics(result.stderr)
+            manifest['elapsed_seconds'] = elapsed
+            manifest['status'] = ('complete' if result.returncode == 0 and elapsed >= seconds - .5
+                                  else 'partial') if manifest['pcap']['has_packet_data'] else 'no_packets'
+            warnings[:] = [w for w in warnings if not w.startswith('tcpdump 达到包数')]
+            if manifest['status'] == 'partial':
+                warnings.append('dumpcap 提前退出、达到文件额度或异常结束，未覆盖全部请求时长。')
+        if manifest['pcap']['truncated_packets'] or manifest['tcpdump_stats']['dropped_by_kernel'] or any(
+                manifest.get('capture_health', {}).get(key) for key in ('kernel_dropped_packets', 'interface_dropped_packets')):
+            manifest['status'] = 'partial'
+            warnings.append('抓包包含截断包或采集点报告了丢弃，完整性受限。')
         if result.returncode not in (0, 124):
             warnings.append("远端抓包异常退出；已取回文件，但须检查 tcpdump.log 和 PCAP 完整性。")
     except KeyboardInterrupt as error:
@@ -236,6 +284,8 @@ def fetch(ssh, remote_dir, output):
     try:
         manifest["pcap"] = retrieve(ssh, remote_dir, output)
         manifest["status"] = "recovered" if manifest["pcap"]["has_packet_data"] else "no_packets"
+        if manifest['pcap']['truncated_packets']:
+            manifest['status'] = 'partial'
     except (ValueError, OSError) as error:
         manifest.update(status="failed", error=str(error))
         raise

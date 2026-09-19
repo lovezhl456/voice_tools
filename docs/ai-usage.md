@@ -1,6 +1,6 @@
 # voice_tools · 大模型 / Agent 接入协议
 
-Version 0.2.0. The CLI is the primary interface. Use a local subprocess with an argv array; no MCP server is required. Audio/QA are offline CPU tools. HOMER online commands contact only the configured instance; offline schema and analyze --input need no credentials.
+Version 2.0.0. The CLI is the primary interface. Use a local subprocess with an argv array; no MCP server is required. Audio/QA are offline CPU tools. HOMER online commands contact only the configured instance; offline schema and analyze --input need no credentials.
 
 ## Discovery
 
@@ -33,7 +33,7 @@ Audio/QA emit one JSON object on stdout, including handled errors. No progress p
 
 ```json
 {
-  "schema_version": "1.0", "tool_version": "0.2.0",
+  "schema_version": "1.0", "tool_version": "2.0.0",
   "tool": "qa", "action": "analyze", "ok": true,
   "exit_code": 0, "status": "completed",
   "summary": {"files": 20, "errors": 0, "candidates": 11},
@@ -112,4 +112,10 @@ A removed candidate is not necessarily an improvement: inspect human decisions, 
 
 ## Bounds
 
-Single file: >0 and <=3600 s, analysis WAV 8–48 kHz, float32 sample array <=512 MiB (not total RSS). FFmpeg timeout 120 seconds. Serial batch with per-file isolation; no resume/cache/GPU is promised in 0.2. Reports can contain input recordings, so preserve caller data boundaries.
+Single file: >0 and <=3600 s, analysis WAV 8–48 kHz, float32 sample array <=512 MiB (not total RSS). FFmpeg timeout 120 seconds. Serial batch with per-file isolation; no audio batch resume/cache/GPU is promised. Reports can contain input recordings, so preserve caller data boundaries.
+
+## Capture 2.0
+
+Use `capture ring-start/status/fetch/stop/release` for bounded remote ring jobs. Use `sessions investigate` for freeze → HOMER search → index → export → correlation → report; failure/partial results remain in investigation.json and per-step logs. All timestamps must contain a timezone. `--dry-run` is offline for ring/batch/investigate; UUID `capture start --dry-run` still queries FS over SSH.
+
+Do not merge arbitrary PCAPs across sensors. Use explicit `--pcap-group SENSOR FILE FILE...` or known host manifests. `--decode-rtp` writes optional G.711 payload/timestamp WAVs; unsupported/SRTP packets are not decoded. SR/RR/XR values are endpoint reports, and capture-point RTT estimates are not one-way latency. A complete pipeline does not certify capture completeness or a root cause. See [capture-v2](capture-v2.md) for quotas, ESL credentials and recovery.

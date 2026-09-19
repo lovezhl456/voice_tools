@@ -22,9 +22,10 @@ def register(commands):
             cmd.add_argument("--no-peer", action="store_true")
             cmd.add_argument("--interface", default="any")
             cmd.add_argument("--seconds", type=int, default=60)
-            cmd.add_argument("--max-mib", type=int, default=64, help="按 snaplen 推导包数上限，保守限制文件大小")
-            cmd.add_argument("--snaplen", type=int, default=2048)
-            cmd.add_argument("--sudo", action="store_true", help="使用 sudo -n 执行远端 timeout/tcpdump")
+            cmd.add_argument("--max-mib", type=int, default=64, help="文件大小额度；dumpcap 使用实际字节，tcpdump 使用保守包数")
+            cmd.add_argument("--snaplen", type=int, default=65535)
+            cmd.add_argument('--backend', choices=('dumpcap', 'tcpdump'), default='dumpcap', help='dumpcap 按文件字节限额；tcpdump 保留旧版保守包数上限')
+            cmd.add_argument("--sudo", action="store_true", help="使用 sudo -n 执行远端限时抓包")
             cmd.add_argument("--dry-run", action="store_true", help="仅查询端点和保存计划；UUID 模式仍有只读 SSH 查询")
         cmd.set_defaults(run=run)
     batch = actions.add_parser('batch', help='按主机清单并发抓取一段时间内的 SIP/RTP，分片取回')
@@ -32,7 +33,8 @@ def register(commands):
     batch.add_argument('--seconds', type=int, default=300)
     batch.add_argument('--segment-seconds', type=int, default=60)
     batch.add_argument('--max-mib', type=int, default=512, help='每主机全部分片的保守总额度')
-    batch.add_argument('--snaplen', type=int, default=2048)
+    batch.add_argument('--snaplen', type=int, default=65535)
+    batch.add_argument('--backend', choices=('dumpcap', 'tcpdump'), default='dumpcap')
     batch.add_argument('--fs-snapshot-seconds', type=int, default=10, help='0 关闭，5–30 秒；默认启用 UUID/Call-ID 取样')
     batch.add_argument('--max-snapshot-channels', type=int, default=100)
     batch.add_argument('--dry-run', action='store_true', help='离线生成各机 BPF 与计划，不连接主机')
@@ -45,6 +47,8 @@ def register(commands):
     recover.add_argument('--remote-dir', required=True)
     recover.add_argument('--out', type=Path, required=True)
     recover.set_defaults(run=run_batch)
+    from .ring_cli import register as register_ring
+    register_ring(actions)
 
 
 def run_batch(args):
@@ -52,6 +56,8 @@ def run_batch(args):
     from .service import SSH
     from voice_tools.core.command import artifacts, emit_result
     if args.action == 'batch':
+        if args.backend == 'dumpcap':
+            from .ring import run_window as collect
         result = collect(args.inventory, args.out, args.seconds, args.segment_seconds, args.max_mib, args.snaplen,
                          args.fs_snapshot_seconds, args.max_snapshot_channels, args.dry_run)
         name = 'batch.json'
@@ -71,7 +77,7 @@ def run(args):
         flows = [dict(zip(("local_ip", "local_port", "remote_ip", "remote_port"), item)) for item in args.flow or []]
         result = start(ssh, args.out, uuid=args.uuid, manual_flows=flows, fs_cli=args.fs_cli,
                        include_peer=not args.no_peer, interface=args.interface, seconds=args.seconds,
-                       max_mib=args.max_mib, snaplen=args.snaplen, sudo=args.sudo, dry_run=args.dry_run)
+                       max_mib=args.max_mib, snaplen=args.snaplen, sudo=args.sudo, dry_run=args.dry_run, backend=args.backend)
     from voice_tools.core.command import artifacts, emit_result
     names = ["capture.json"] + (["session.pcap"] if "pcap" in result else [])
     return emit_result(args, result, json.dumps(result, ensure_ascii=False, indent=2),
