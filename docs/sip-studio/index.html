@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>SIP Case Studio · 拨测工作台</title><link rel="stylesheet" href="styles.css"><link rel="icon" href="data:,"></head>
+<body>
+<div class="shell">
+  <nav class="rail" aria-label="工作台导航"><a class="brand" href="./" aria-label="SIP Case Studio 首页">v<span>•</span></a><div class="rail-links"><button data-page="editor" class="active"><span>▤</span>用例</button><button data-page="assets"><span>≋</span>素材</button><button data-page="envs"><span>⌘</span>环境</button><button data-page="runs"><span>◷</span>记录</button></div><a class="rail-bottom" href="design.html" title="设计说明">?<small>设计</small></a></nav>
+  <div class="main-shell"><header class="topbar"><div><span class="wordmark">SIP Case Studio</span><span class="edition">本地原型</span><div class="top-sub">VOICE TOOLS / 拨测工作台</div></div><div class="top-status"><span class="status-dot"></span><span id="save-state">保存在本浏览器</span><a href="/voice-tools/">工具总览 ↗</a></div></header><main id="workspace"></main></div>
+</div>
+<dialog id="modal"><div id="modal-content"></div></dialog><div id="toast" role="status" aria-live="polite"></div>
+<input id="case-file" type="file" accept=".json,application/json" hidden><input id="asset-file" type="file" accept=".wav,.json,audio/wav,application/json" hidden>
+<script src="core.js"></script><script src="app.js"></script>
+</body></html>
