@@ -136,7 +136,7 @@ voice-tools --json sip run path/to/scenario.json --out outputs/sip-call-002
 
 **`tx_source.wav` 不是真实出站 RTP 录音，也不能证明对端收到声音。** 两个 WAV 的对齐是调度时间估计，不承诺逐采样一致。带外 DTMF 保存在事件中，不合成人工按键音混入 WAV。不要直接把这两个文件称为采样同步的真实双轨录音，也不要用复制单声道的方式补轨。
 
-录音与播放同时进行；失败和中断仍尽量保留现有录音及事件。正常成功表示既定动作完成，`business_assertions=not_evaluated` 表示未判断 IVR／机器人回答是否正确。
+录音与播放同时进行；失败和中断仍尽量保留现有录音及事件。未配置断言时，正常成功表示既定动作完成，`business_assertions=not_evaluated` 表示未判断 IVR／机器人回答是否正确。
 
 退出码：`0` 完成／离线计划成功；`2` 输入、配置或运行所需依赖有问题；`3` 呼叫／回放／录音未完整完成，或 `doctor` 发现 PJSUA2 不可用。先看 `result.json` 的错误和最后完成步骤。不要因 SIP 200 OK 就认定业务成功。
 
@@ -199,3 +199,7 @@ VOICE_TOOLS_SIP_LOOPBACK=1 python -m unittest tests.sip.test_loopback -v
 默认单元测试跳过需要网络和原生库的回环项。显式开启后实际检查 UDP 媒体、按键、录音、Digest、提前媒体、忙线、对端挂断和导入 PCAP 的按键去重；不是只 mock SDK。结果不替代真实网关／NAT／运营商互通验收。
 
 修改动作或字段时同步更新 [Agent 协议](sip-ai.md)、示例、测试，并从实际 CLI 重新生成 `docs/cli-schema.json`。保持工具边界：`tools/sip` 可以使用公共 `core`，不直接导入其他工具。
+
+## 结构化断言
+
+0.8.1 支持应答码、接收 RTP、最小有效音频及预期 DTMF／音调。配置、三态结果与退出码见 [SIP 断言](sip-assertions.md)。使用 `examples/sip/assertions.json` 可离线校验及预演。

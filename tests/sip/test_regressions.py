@@ -24,7 +24,9 @@ class InputBoundaries(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / 'scenario.json'
             for update in ({'steps': [{'action': []}]}, {'steps': [{'action': {}}]},
-                           {'network': {'bind_address': True}}, {'max_call_s': 10 ** 400}):
+                           {'network': {'bind_address': True}}, {'max_call_s': 10 ** 400},
+                           {'assertions': {}}, {'assertions': [{'type': 'received_rtp', 'min_packets': True}]},
+                           {'assertions': [{'type': 'dtmf', 'digits': 'X'}]}):
                 with self.subTest(update=update):
                     write_json(path, {**template(), **update})
                     p = subprocess.run([sys.executable, '-m', 'voice_tools', '--json', 'sip', 'validate', str(path)], capture_output=True, text=True)

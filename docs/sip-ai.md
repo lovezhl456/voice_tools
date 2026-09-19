@@ -84,7 +84,7 @@ Use `pcap-inspect` before selecting `--stream`. IDs identify src IP/port, dst IP
 
 ## Runtime / artifact semantics
 
-`result.json.status`: `planned`, `completed`, `failed`, or `interrupted`. `business_assertions=not_evaluated` deliberately separates procedure completion from IVR semantic correctness.
+`result.json.status`: `planned`, `completed`, `failed`, or `interrupted`. `execution_status` preserves the pre-assertion outcome. Optional top-level scenario `assertions` evaluate response_code, received_rtp, effective_audio, dtmf and tone. Any failed or insufficient_evidence item prevents success (exit 3); `assertions.json` mirrors result.assertions. `business_assertions=not_evaluated` still denotes untested IVR semantic correctness. See [assertion contract](sip-assertions.md) and [example](../examples/sip/assertions.json).
 
 - `rx.wav`: actual received decoded audio, including PJSUA jitter-buffer effects. Early media only when enabled. Recording is continuous during local playback and waits.
 - `tx_source.wav`: reconstruction of local source files using actual playback-start/stop scheduler events. NOT captured RTP, NOT guaranteed remotely delivered, NOT sample-synchronized duplex recording. No fabricated second channel. Out-of-band DTMF is in events, not inserted as tones.

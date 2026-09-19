@@ -34,6 +34,7 @@ def serve(directory, mode="answer", duration=12):
     next_audio = None
     seq = stamp = 0
     incoming_events = set()
+    echoed_events = {}
     source_addr = None
     invite_headers = None
     deferred_answer = None
@@ -67,9 +68,10 @@ def serve(directory, mode="answer", duration=12):
             if deferred_answer and now >= deferred_answer:
                 response(invite_headers, source_addr, 200, "OK", body)
                 report["answered"] = True; deferred_answer = None
-            if remote_rtp and next_audio is not None and now >= next_audio:
+            if remote_rtp and next_audio is not None and now >= next_audio and mode != "no_rtp":
                 # Known non-zero PCMA waveform, independent of production decoder.
-                transmit(rtp(seq, stamp, b"\xaa" * 80 + b"\x2a" * 80, 8, 4321), remote_rtp, current_media)
+                payload = b"\xd5" * 160 if mode == "silence" else b"\xaa" * 80 + b"\x2a" * 80
+                transmit(rtp(seq, stamp, payload, 8, 4321), remote_rtp, current_media)
                 seq, stamp, next_audio = seq + 1, stamp + 160, next_audio + .02
             if mode == "reinvite" and media_start and now - media_start >= .35 and not reinvite_sent:
                 h = invite_headers
@@ -99,6 +101,10 @@ def serve(directory, mode="answer", duration=12):
                         key = (ssrc, stamp_rx, payload[0])
                         if key not in incoming_events:
                             incoming_events.add(key); report["dtmf"].append("0123456789*#ABCD"[payload[0]])
+                        if mode == "echo_dtmf" and remote_rtp:
+                            event_stamp = echoed_events.setdefault(key, stamp)
+                            transmit(rtp(seq, event_stamp, payload, 101, 4321), remote_rtp, current_media)
+                            seq += 1
                     elif pt in (0, 8):
                         report["audio_packets"] += 1
                         report["non_silent_packets"] += int(any(b not in (0xd5, 0x55, 0xff, 0x7f) for b in payload))
@@ -171,7 +177,7 @@ def serve(directory, mode="answer", duration=12):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
-    parser.add_argument("--mode", default="answer", choices=("answer", "auth", "early", "reject", "drop", "hangup", "register", "register_auth", "reinvite"))
+    parser.add_argument("--mode", default="answer", choices=("answer", "auth", "early", "reject", "drop", "hangup", "register", "register_auth", "reinvite", "silence", "no_rtp", "echo_dtmf"))
     parser.add_argument("--duration", type=float, default=12)
     args = parser.parse_args()
     serve(args.out, args.mode, args.duration)

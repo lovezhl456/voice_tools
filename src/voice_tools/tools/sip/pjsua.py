@@ -1,6 +1,7 @@
 """Optional native adapter. Only imported inside the isolated SIP worker."""
 import gc
 import os
+import re
 
 import pjsua2 as pj
 
@@ -16,12 +17,14 @@ class Call(pj.Call):
         try:
             info = self.getInfo()
             owner = self.owner
+            owner.observe_response(prm.e)
             owner.call_id = info.callIdString
             owner.last_code, owner.last_reason = info.lastStatusCode, info.lastReason
             owner.emit("call_state", state=info.stateText, sip_code=info.lastStatusCode)
             owner.connected = info.state == pj.PJSIP_INV_STATE_CONFIRMED
             owner.disconnected = info.state == pj.PJSIP_INV_STATE_DISCONNECTED
             if owner.connected:
+                owner.ever_connected = True
                 owner.attach_media()
         except Exception as exc:
             self.owner.failure = str(exc)
@@ -33,7 +36,14 @@ class Call(pj.Call):
             self.owner.failure = str(exc)
 
     def onDtmfDigit(self, prm):
-        self.owner.emit("dtmf_received", digit=prm.digit)
+        self.owner.received_dtmf += prm.digit
+        self.owner.emit("dtmf_received", digit=prm.digit, method=prm.method)
+
+    def onCallTsxState(self, prm):
+        self.owner.observe_response(prm.e)
+
+    def onStreamCreated(self, prm):
+        self.owner.stream_generations += 1
 
 
 class Player(pj.AudioMediaPlayer):
@@ -75,6 +85,12 @@ class Backend:
         self.rejected_calls = []
         self.codec = None
         self.closed = False
+        self.ever_connected = False
+        self.invite_final_code = None
+        self.received_dtmf = ""
+        self.rx_rtp_packets = None
+        self.rtp_final_sample = False
+        self.stream_generations = 0
         try:
             self._initialize()
         except BaseException:
@@ -191,6 +207,48 @@ class Backend:
 
     def poll(self, milliseconds):
         self.ep.libHandleEvents(milliseconds)
+        self.sample_rtp()
+
+    def observe_response(self, event):
+        # Received INVITE responses only: no REGISTER/INFO/BYE or local 408/487.
+        if self.ever_connected or self.closed:
+            return
+        if event.type == pj.PJSIP_EVENT_TSX_STATE:
+            state = event.body.tsxState
+            if state.type != pj.PJSIP_EVENT_RX_MSG:
+                return
+            message = state.src.rdata.wholeMsg
+        elif event.type == pj.PJSIP_EVENT_RX_MSG:
+            message = event.body.rxMsg.rdata.wholeMsg
+        else:
+            return
+        header = message.split("\r\n\r\n", 1)[0]
+        code = re.match(r"SIP/2\.0 (\d{3})\b", header)
+        if code and re.search(r"(?im)^CSeq:\s*\d+\s+INVITE\s*$", header):
+            value = int(code[1])
+            if value >= 200:
+                self.invite_final_code = value
+                self.emit("invite_response", sip_code=value, source="received_sip_message")
+
+    def sample_rtp(self):
+        if not self.call or self.disconnected:
+            return False
+        try:
+            # Keep SWIG owners alive while reading their nested/vector members.
+            info = self.call.getInfo()
+            counts = []
+            for media in info.media:
+                if media.type == pj.PJMEDIA_TYPE_AUDIO and media.status == pj.PJSUA_CALL_MEDIA_ACTIVE:
+                    stats = self.call.getStreamStat(media.index)
+                    counts.append(int(stats.rtcp.rxStat.pkt))
+        except pj.Error as exc:
+            self.rtp_stats_error = str(exc)
+            return False
+        if not counts:
+            return False
+        # Max remains a conservative lower bound even if re-INVITE resets counters.
+        self.rx_rtp_packets = max(self.rx_rtp_packets or 0, sum(counts))
+        return True
 
     def play(self, filename):
         self.stop_playback()
@@ -219,11 +277,18 @@ class Backend:
 
     def hangup(self):
         if self.call and not self.disconnected:
+            self.rtp_final_sample = self.sample_rtp() and self.stream_generations <= 1
             self.call.hangup(pj.CallOpParam())
 
     def details(self):
+        self.sample_rtp()
         return {"call_id": self.call_id, "last_sip_code": self.last_code, "last_reason": self.last_reason,
-                "codec_negotiated": self.codec, "connected": self.connected}
+                "codec_negotiated": self.codec, "connected": self.connected,
+                "assertion_evidence": {"invite_final_code": self.invite_final_code,
+                    "received_dtmf": self.received_dtmf,
+                    "rx_rtp_packets_lower_bound": self.rx_rtp_packets,
+                    "rtp_final_sample": self.rtp_final_sample,
+                    "rtp_stats_error": getattr(self, "rtp_stats_error", None)}}
 
     def close(self):
         if self.closed:

@@ -105,7 +105,9 @@ def media_bundle(path):
 def load_scenario(path):
     path = Path(path).resolve()
     source = read_json(path)
-    object_fields(source, {"schema_version", "target_uri", "account", "network", "codec", "connect_timeout_s", "max_call_s", "record_early", "steps"}, "scenario")
+    object_fields(source, {"schema_version", "target_uri", "account", "network", "codec", "connect_timeout_s", "max_call_s", "record_early", "steps", "assertions"}, "scenario")
+    from .assertions import validate_assertions
+    assertions = validate_assertions(source.get("assertions", []))
     if source.get("schema_version") != VERSION:
         raise ValueError("scenario.schema_version 必须为 1.0")
     account = dict(object_fields(source.get("account", {}), {"id_uri", "registrar_uri", "proxy_uri", "auth"}, "account"))
@@ -175,7 +177,8 @@ def load_scenario(path):
     return {"schema_version": VERSION, "scenario_file": str(path), "scenario_sha256": sha256(path),
             "target_uri": sip_uri(source.get("target_uri")), "account": account, "network": net, "codec": codec,
             "connect_timeout_s": connect, "max_call_s": maximum, "record_early": early, "steps": resolved,
-            "planned_duration_s": total, "recording": {"rx": "received decoded PCM", "tx_source": "scheduled local source timeline; not proof of remote reception"}}
+            "planned_duration_s": total, "assertions": assertions,
+            "recording": {"rx": "received decoded PCM", "tx_source": "scheduled local source timeline; not proof of remote reception"}}
 
 
 def template(media=None):

@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "target_uri": "sip:test@example.invalid:5060",
+  "steps": [{"action": "wait", "seconds": 3}, {"action": "hangup"}],
+  "assertions": [
+    {"id": "answer", "type": "response_code", "codes": [200]},
+    {"id": "rtp", "type": "received_rtp", "min_packets": 10},
+    {"id": "audio", "type": "effective_audio", "min_duration_s": 0.5, "threshold_dbfs": -40}
+  ]
+}
