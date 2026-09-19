@@ -28,7 +28,7 @@ def discover(inputs):
     return sorted(paths)
 
 
-def analyze_batch(inputs, output, config=None, include_audio=False, use_event_channel=True):
+def analyze_batch(inputs, output, config=None, include_audio=False, use_event_channel=True, hide_paths=False):
     config = config or Config()
     config.validate()
     paths = discover(inputs)
@@ -42,19 +42,38 @@ def analyze_batch(inputs, output, config=None, include_audio=False, use_event_ch
             metadata = read_json(event_path) if event_path.exists() else {}
             if not isinstance(metadata, dict):
                 raise ValueError("事件文件必须为 JSON 对象")
+            provenance_path = path.with_suffix(".provenance.json")
+            if provenance_path.exists():
+                provenance = read_json(provenance_path)
+                if not isinstance(provenance, dict) or provenance.get("output_sha256") != record["audio_sha256"]:
+                    raise ValueError("格式准备溯源与录音摘要不一致")
+                mapping = provenance.get("time_mapping")
+                if not isinstance(mapping, dict) or type(mapping.get("verified")) is not bool:
+                    raise ValueError("格式准备 time_mapping 缺少布尔 verified 状态")
+                record["preparation"] = provenance
+                if not mapping["verified"] and metadata:
+                    from .review import timestamp
+                    alignment = metadata.get("alignment", {})
+                    if (not isinstance(alignment, dict) or alignment.get("audio_sha256") != record["audio_sha256"]
+                            or not isinstance(alignment.get("reviewer"), str) or not alignment["reviewer"].strip()):
+                        raise ValueError("转换时间映射未核实；事件需人工对齐并填写 alignment 的录音摘要、复核人与含时区时间")
+                    timestamp(alignment.get("reviewed_at"))
             if event_path.exists():
                 record["events_sha256"] = sha256(event_path)
                 record["events"] = metadata
             identity = record["audio_sha256"] + ":" + record.get("events_sha256", "none")
             record["sample_id"] = hashlib.sha256(identity.encode()).hexdigest()
             effective = replace(config, system_channel=metadata.get("system_channel", config.system_channel)) if use_event_channel else config
-            record["result"] = analyze(read_wav(path), metadata, effective)
+            audio = read_wav(path)
+            record["result"] = analyze(audio, metadata, effective)
             if include_audio:
                 target = output / "audio" / (record["audio_sha256"] + ".wav")
                 target.parent.mkdir(exist_ok=True)
                 if not target.exists():
                     shutil.copyfile(path, target)
                 record["audio_copy"] = str(target.relative_to(output))
+            from .workbench import add_previews
+            add_previews(output, record, audio, include_audio)
         except (ValueError, OSError) as error:
             record.pop("result", None)
             record["error"] = str(error)
@@ -63,6 +82,6 @@ def analyze_batch(inputs, output, config=None, include_audio=False, use_event_ch
                "created_at": datetime.now(timezone.utc).isoformat(),
                "files": len(records), "errors": sum("error" in record for record in records),
                "candidates": sum(record.get("result", {}).get("candidate_count", 0) for record in records)}
-    render_report(output, records, summary)
+    render_report(output, records, summary, hide_paths)
     write_json(output / "run.json", summary)
     return summary

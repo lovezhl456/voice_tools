@@ -6,9 +6,8 @@ import math
 from pathlib import Path
 import re
 
-from voice_tools.core.files import read_json, write_json
-from .detector import CANDIDATES
-from .reports import LABELS, REVIEW_FIELDS
+from voice_tools.core.files import read_json, sha256, write_json
+from .reports import LABELS, REVIEW_FIELDS, EXTRA_REVIEW_FIELDS
 
 DECISIONS = {"missing", "delayed", "audible", "exclude", "uncertain"}
 
@@ -43,7 +42,8 @@ def result_index(path):
                 if item["observed_until_s"] < item["at_s"]:
                     raise ValueError("结果中的机会时间倒置")
                 key = (record["sample_id"], item["id"])
-                value = {"audio_sha256": record["audio_sha256"], **item}
+                value = {**item, "audio_sha256": record["audio_sha256"],
+                         "timeout_s": record["result"].get("config", {}).get("timeout_s")}
                 if key in index and index[key] != value:
                     raise ValueError("同一样本/应答机会出现相互冲突的结果")
                 index[key] = value
@@ -74,12 +74,65 @@ def check_window(label, predicted):
     if label["audio_sha256"] != predicted["audio_sha256"]:
         raise ValueError("标签的录音摘要与结果不一致")
     for key in ("at_s", "observed_until_s"):
+        if isinstance(label[key], bool):
+            raise ValueError("标签窗口不能是布尔值")
         try:
             value = float(label[key])
         except (TypeError, ValueError) as error:
             raise ValueError(f"标签 {key} 必须是有效时间") from error
         if not math.isfinite(value) or abs(value - predicted[key]) > 1e-6:
             raise ValueError("标签窗口与结果不一致；请使用固定事件文件对齐后再评估")
+
+
+def extra_fields(row):
+    extra = {}
+    for field in EXTRA_REVIEW_FIELDS:
+        value = row.get(field)
+        if value is None or value == "":
+            continue
+        if field in ("first_audible_s", "deadline_s"):
+            try:
+                number = float(value)
+            except (ValueError, TypeError) as error:
+                raise ValueError(f"{field} 须为有限数值") from error
+            if isinstance(value, bool) or not math.isfinite(number) or number < 0 or (field == "deadline_s" and number <= 0):
+                raise ValueError(f"{field} 须为有效正时间")
+            extra[field] = number
+        elif field == "expected_response":
+            if value not in (True, False, "true", "false") or type(value) not in (str, bool):
+                raise ValueError("expected_response 须为 true/false")
+            extra[field] = value is True or value == "true"
+        else:
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f"{field} 须为非空字符串")
+            extra[field] = value.strip()
+    if "first_audible_s" in extra:
+        if not float(row["at_s"]) <= extra["first_audible_s"] < float(row["observed_until_s"]):
+            raise ValueError("首次可听回答须在标注窗口内")
+        if row["decision"] == "missing":
+            raise ValueError("缺失回答标签不能同时记录可听回答时间")
+    if "deadline_s" in extra and not extra.get("policy_id"):
+        raise ValueError("应答时限须同时记录 policy_id")
+    if "first_audible_s" in extra and "deadline_s" in extra and row["decision"] in ("audible", "delayed"):
+        delayed = extra["first_audible_s"] - float(row["at_s"]) + 1e-8 >= extra["deadline_s"]
+        if (row["decision"] == "delayed") != delayed:
+            raise ValueError("回答时间与人工迟答标签/时限不一致")
+    if extra.get("expected_response") is False and row["decision"] not in ("exclude", "uncertain"):
+        raise ValueError("无需应答不能标为缺失、迟答或有效回答")
+    if extra.get("split") not in (None, "calibration", "validation") or (extra.get("split") and not extra.get("group_id")):
+        raise ValueError("样本集合须为 calibration/validation 并提供 group_id")
+    return extra
+
+
+def validate_splits(labels):
+    assignments = {}
+    for label in labels:
+        if not label.get("split"):
+            continue
+        for key in (("group", label["group_id"]), ("audio", label["audio_sha256"])):
+            if key in assignments and assignments[key] != label["split"]:
+                raise ValueError("同一来源分组或录音不能跨校准集和留出验证集")
+            assignments[key] = label["split"]
 
 
 def promote(review_path, results_path, output, dataset_kind):
@@ -97,7 +150,7 @@ def promote(review_path, results_path, output, dataset_kind):
                    for k, v in row.items() if k is not None and v is not None}
             decision = row.get("decision", "").strip()
             if not decision:
-                if any(row.get(k, "").strip() for k in ("reviewer", "reviewed_at", "notes")):
+                if any(row.get(k, "").strip() for k in ("reviewer", "reviewed_at", "notes", *EXTRA_REVIEW_FIELDS)):
                     raise ValueError("存在已填写复核信息但缺少 decision 的半成品标签")
                 continue
             if decision not in DECISIONS or not row.get("reviewer", "").strip():
@@ -112,10 +165,12 @@ def promote(review_path, results_path, output, dataset_kind):
                            "audio_sha256": row["audio_sha256"],
                            "at_s": float(row["at_s"]), "observed_until_s": float(row["observed_until_s"]),
                            "decision": decision, "reviewer": row["reviewer"].strip(),
-                           "reviewed_at": reviewed_at, "notes": row.get("notes", "")})
+                           "reviewed_at": reviewed_at, "notes": row.get("notes", ""), **extra_fields(row)})
     if not labels:
         raise ValueError("没有人工复核标签；不能把空白或自动结果晋升为黄金集")
-    golden = {"schema_version": "1.0", "label_source": "human_review", "dataset_kind": dataset_kind,
+    validate_splits(labels)
+    golden = {"schema_version": "1.1", "label_source": "human_review", "dataset_kind": dataset_kind,
+              "source_results_sha256": sha256(results_path),
               "created_at": datetime.now(timezone.utc).isoformat(), "labels": labels}
     write_json(new_file(output), golden)
     return golden
@@ -123,13 +178,12 @@ def promote(review_path, results_path, output, dataset_kind):
 
 def evaluate(golden_path, results_path):
     golden, index = read_json(golden_path), result_index(results_path)
-    if not isinstance(golden, dict) or golden.get("schema_version") != "1.0" or golden.get("label_source") != "human_review":
-        raise ValueError("仅接受人工复核黄金集 schema 1.0")
+    if not isinstance(golden, dict) or golden.get("schema_version") not in ("1.0", "1.1") or golden.get("label_source") != "human_review":
+        raise ValueError("仅接受人工复核黄金集 schema 1.0/1.1")
     if golden.get("dataset_kind") not in ("synthetic", "real"):
         raise ValueError("黄金集必须声明 synthetic / real")
     if not isinstance(golden.get("labels"), list) or not golden["labels"]:
         raise ValueError("黄金集标签为空或无效")
-    counts = {"tp": 0, "fp": 0, "fn": 0, "tn": 0, "excluded_or_uncertain": 0}
     seen = set()
     for label in golden["labels"]:
         if not isinstance(label, dict) or not {"sample_id", "opportunity_id", "audio_sha256", "at_s", "observed_until_s", "decision", "reviewer", "reviewed_at"} <= label.keys():
@@ -145,17 +199,13 @@ def evaluate(golden_path, results_path):
             raise ValueError("黄金标签不是有效的人工复核记录")
         timestamp(label["reviewed_at"])
         check_window(label, index[key])
-        if decision in ("uncertain", "exclude"):
-            counts["excluded_or_uncertain"] += 1
-            continue
-        positive = decision in ("missing", "delayed")
-        predicted = index[key]["status"] in CANDIDATES
-        counts["tp" if positive and predicted else "fn" if positive else "fp" if predicted else "tn"] += 1
-    evaluated = sum(counts[k] for k in ("tp", "fp", "fn", "tn"))
-    if not evaluated:
+        extra = extra_fields(label)
+        if "deadline_s" in extra and index[key].get("timeout_s") != extra["deadline_s"]:
+            raise ValueError("黄金标签与检测结果的应答时限不一致")
+    validate_splits(golden["labels"])
+    from .metrics import detailed_metrics
+    metrics = detailed_metrics(golden["labels"], index)
+    if not metrics["evaluated"] and not metrics["abstained"]:
         raise ValueError("没有可计分的明确标签，无法计算指标")
-    tp, fp, fn = counts["tp"], counts["fp"], counts["fn"]
-    return {"schema_version": "1.0", "dataset_kind": golden["dataset_kind"], "evaluated": evaluated,
-            "counts": counts, "precision": tp / (tp + fp) if tp + fp else None,
-            "recall": tp / (tp + fn) if tp + fn else None,
-            "notice": "仅衡量该人工标签集上的候选检出；synthetic 不能代表真实语音准确率。"}
+    return {"schema_version": "1.1", "dataset_kind": golden["dataset_kind"], **metrics,
+            "notice": "仅衡量当前人工标签集；synthetic 不代表真实准确率。观察不足/证据不足/算法排除单列为无法判定，不算通过。Wilson 区间按机会计算，相关通话应按组独立验证。"}

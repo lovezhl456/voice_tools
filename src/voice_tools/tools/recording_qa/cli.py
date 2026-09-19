@@ -1,5 +1,6 @@
 """仅注册参数；按命令延迟导入检测依赖。"""
 from pathlib import Path
+from voice_tools.core.command import artifacts, emit_result
 
 
 def register(commands):
@@ -23,6 +24,7 @@ def register(commands):
     analyze.add_argument("--ai-start", type=float, help="已知 AI 接管时间；事件文件优先")
     analyze.add_argument("--backend", choices=("energy", "webrtcvad"), default="energy")
     analyze.add_argument("--include-audio", action="store_true", help="复制原录音到本地报告中供试听，注意报告包含音频")
+    analyze.add_argument("--hide-paths", action="store_true", help="HTML 隐藏本机绝对路径；JSONL 仍保留完整溯源")
     analyze.add_argument("--fail-on-findings", action="store_true", help="发现候选时退出码为 1")
     analyze.set_defaults(run=run_analyze)
 
@@ -39,11 +41,24 @@ def register(commands):
     evaluate.add_argument("--out", type=Path, required=True)
     evaluate.set_defaults(run=run_evaluate)
 
+    freeze = actions.add_parser("freeze", help="冻结当前时间轴供人工核对（不会生成黄金标签）")
+    freeze.add_argument("--results", type=Path, required=True)
+    freeze.add_argument("--out", type=Path, required=True)
+    freeze.set_defaults(run=run_freeze)
+
+    compare = actions.add_parser("compare", help="在同一固定时间轴和黄金集上比较两个版本")
+    compare.add_argument("--baseline", type=Path, required=True)
+    compare.add_argument("--candidate", type=Path, required=True)
+    compare.add_argument("--golden", type=Path, required=True)
+    compare.add_argument("--out", type=Path, required=True)
+    compare.set_defaults(run=run_compare)
+
 
 def run_generate(args):
     from .scenarios import generate
     manifest = generate(args.out, args.sample_rate, args.seed)
-    print(f"已生成 {len(manifest['cases'])} 个合成场景：{args.out}（未作为黄金集）")
+    return emit_result(args, {"cases": len(manifest["cases"]), "dataset_kind": "synthetic"},
+                       f"已生成 {len(manifest['cases'])} 个合成场景：{args.out}（未作为黄金集）", artifacts(args.out, "manifest.json"))
 
 
 def run_analyze(args):
@@ -53,15 +68,17 @@ def run_analyze(args):
                     minimum_s=args.minimum_active, join_gap_s=args.join_gap,
                     system_channel=1 if args.system_channel is None else args.system_channel,
                     channel_verified=args.channels_verified, ai_start_s=args.ai_start, backend=args.backend)
-    summary = analyze_batch(args.inputs, args.out, config, args.include_audio, args.system_channel is None)
-    print(f"已处理 {summary['files']} 个文件，候选 {summary['candidates']} 个，错误 {summary['errors']} 个。报告：{args.out / 'report.html'}")
-    return 3 if summary["errors"] else 1 if args.fail_on_findings and summary["candidates"] else 0
+    summary = analyze_batch(args.inputs, args.out, config, args.include_audio, args.system_channel is None, args.hide_paths)
+    code = 3 if summary["errors"] else 1 if args.fail_on_findings and summary["candidates"] else 0
+    return emit_result(args, summary, f"已处理 {summary['files']} 个文件，候选 {summary['candidates']} 个，错误 {summary['errors']} 个。报告：{args.out / 'report.html'}",
+                       artifacts(args.out, "results.jsonl", "run.json", "report.html", "review.html", "summary.csv", "review.csv"), code)
 
 
 def run_promote(args):
     from .review import promote
     result = promote(args.review, args.results, args.out, args.dataset_kind)
-    print(f"已保存 {len(result['labels'])} 条人工复核标签：{args.out}")
+    return emit_result(args, {"labels": len(result["labels"]), "dataset_kind": result["dataset_kind"]},
+                       f"已保存 {len(result['labels'])} 条人工复核标签：{args.out}", {"golden": args.out})
 
 
 def run_evaluate(args):
@@ -69,4 +86,18 @@ def run_evaluate(args):
     from .review import evaluate, new_file
     result = evaluate(args.golden, args.results)
     write_json(new_file(args.out), result)
-    print(f"已评估 {result['evaluated']} 条标签；precision={result['precision']}，recall={result['recall']}。{args.out}")
+    return emit_result(args, result, f"已评估 {result['evaluated']} 条标签；precision={result['precision']}，recall={result['recall']}。{args.out}", {"metrics": args.out})
+
+
+def run_freeze(args):
+    from .dataset import freeze
+    result = freeze(args.results, args.out)
+    return emit_result(args, {"recordings": len(result["recordings"]), "notice": result["notice"]},
+                       f"已冻结 {len(result['recordings'])} 个录音的时间轴，请人工核对事件后重新分析和标注：{args.out}", artifacts(args.out, "manifest.json"))
+
+
+def run_compare(args):
+    from .compare import compare
+    result = compare(args.baseline, args.candidate, args.golden, args.out)
+    return emit_result(args, {"changes": len(result["changes"]), "baseline": result["baseline"], "candidate": result["candidate"]},
+                       f"对比完成，{len(result['changes'])} 个机会有变化：{args.out / 'report.html'}", artifacts(args.out, "report.html", "comparison.json"))
