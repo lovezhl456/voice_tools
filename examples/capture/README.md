@@ -11,3 +11,5 @@ voice-tools capture start --host example-fs \
 ```
 
 此命令只生成 `capture.json`，不连接网络。离线报告的合成 RTP/WAV 构造器位于 `tests/report/fixtures.py`；不在仓库保存真实录音或 PCAP。
+
+2.0 环形/ESL 示例见 [hosts.esl.example.json](hosts.esl.example.json) 和 [完整操作指南](../../docs/capture-v2.md)。密码仅存远端 file/env；示例不包含密码。可先运行 `voice-tools capture ring-start --inventory examples/capture/hosts.esl.example.json --dry-run --out outputs/ring-plan` 离线检查。

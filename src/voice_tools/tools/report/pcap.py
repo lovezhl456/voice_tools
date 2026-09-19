@@ -17,6 +17,7 @@ class RTPStream:
     def __init__(self, key, clocks):
         self.key, self.clocks = key, clocks
         self.payload_types = set()
+        self.observed_rates = set()
         self.previous_rate = None
         self.count = self.duplicates = self.reordered = self.resets = 0
         self.start = self.end = self.previous_time = self.previous_stamp = None
@@ -42,6 +43,7 @@ class RTPStream:
         self.count += 1
         self.payload_types.add(pt)
         rate = self.clocks.get(pt)
+        self.observed_rates.add(rate)
         bucket = max(0, int(time - self.start))
         if bucket < 86400:
             self.timeline[bucket] = self.timeline.get(bucket, 0) + 1
@@ -78,7 +80,7 @@ class RTPStream:
             missing += self.high - self.low + 1 - len(self.seen)
             unique += len(self.seen)
         src, sport, dst, dport, ssrc = self.key
-        rates = {self.clocks.get(pt) for pt in self.payload_types}
+        rates = self.observed_rates
         rate = next(iter(rates)) if len(rates) == 1 and None not in rates else None
         return {"src": src, "src_port": sport, "dst": dst, "dst_port": dport, "ssrc": ssrc,
                 "payload_types": sorted(self.payload_types), "clock_rate": rate, "packets": self.count,
@@ -92,7 +94,7 @@ class RTPStream:
                 "packets_per_second": [[k, v] for k, v in sorted(self.timeline.items())]}
 
 
-def analyze_rows(rows, clock_rates=None, max_packets=250000):
+def analyze_rows(rows, clock_rates=None, max_packets=250000, media_mappings=()):
     clocks = {**STATIC_CLOCKS, **(clock_rates or {})}
     streams = {}
     count = truncated = negative_time = 0
@@ -121,20 +123,27 @@ def analyze_rows(rows, clock_rates=None, max_packets=250000):
             if len(streams) >= 1000:
                 raise ValueError("RTP 流超过 1000 条，请先按会话拆分 PCAP")
             streams[key] = RTPStream(key, clocks)
+        if media_mappings:
+            from .media import codec_for
+            codec, encrypted = codec_for({'pt': int(pt)}, key[0], key[1], key[2], key[3], when, media_mappings)
+            if codec.get('name') != 'unknown' and codec.get('clock_rate'):
+                streams[key].clocks = {**streams[key].clocks, int(pt): codec['clock_rate']}
+            else:
+                streams[key].clocks = {**streams[key].clocks, int(pt): clocks.get(int(pt))}
         streams[key].add(when, int(seq), int(stamp), int(pt))
     return {"packets_examined": count, "truncated_packets": truncated, "packet_limit_reached": limited,
             "out_of_order_capture_timestamps": negative_time, "first_epoch": first, "last_epoch": last,
             "streams": [stream.result() for stream in streams.values()]}
 
 
-def analyze(path, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="tshark"):
+def analyze(path, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="tshark", media_mappings=()):
     if not 1 <= max_packets <= 1000000:
         raise ValueError("max-packets 须为 1–1000000")
     executable = shutil.which(tshark)
     if not executable:
         raise ValueError("PCAP 分析需要本机 tshark（Wireshark CLI）；录音分析不需要它")
-    if Path(path).stat().st_size > 512 * 1024 * 1024:
-        raise ValueError("单份 PCAP 超过 512 MiB，请先分段")
+    if Path(path).stat().st_size > 2 * 1024 * 1024 * 1024:
+        raise ValueError("单份 PCAP/连续分片组超过 2 GiB，请缩小窗口")
     args = [executable, "-n", "-r", str(path), "-c", str(max_packets + 1)]
     for port in sorted(set(rtp_ports)):
         if not 1 <= port <= 65535:
@@ -155,7 +164,7 @@ def analyze(path, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="ts
         if result.returncode:
             raise ValueError(f"tshark 无法完整读取 PCAP ({result.returncode})：{warnings}")
         with table.open(encoding="utf-8") as stream:
-            data = analyze_rows(csv.reader(stream, delimiter="\t", quoting=csv.QUOTE_NONE), clock_rates, max_packets)
+            data = analyze_rows(csv.reader(stream, delimiter="\t", quoting=csv.QUOTE_NONE), clock_rates, max_packets, media_mappings)
     data["tshark_warnings"] = warnings
     data["decode_as_ports"] = sorted(set(rtp_ports))
     data["warnings"] = ["序号缺口是抓包点的缺失候选，可能来自网络、抓包丢弃、过滤或截断；不能直接等同网络丢包率。",
@@ -168,3 +177,36 @@ def analyze(path, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="ts
     if data["out_of_order_capture_timestamps"]:
         data["warnings"].append("抓包时间戳发生倒退，时序和抖动指标须谨慎解释。")
     return data
+
+
+def analyze_group(paths, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="tshark",
+                  rtcp_ports=(), mappings=(), audio_output=None, prefix='rtp', audio_budget=256*1048576):
+    from voice_tools.core.packets import merge_packets
+    from .media import analyze as analyze_media
+    with tempfile.TemporaryDirectory(prefix='voice-group-') as folder:
+        if len(paths) > 1:
+            path = Path(folder) / 'continuous.pcapng'
+            originals = merge_packets(paths, path)
+        else:
+            path = paths[0]; originals = []
+        result = analyze(path, rtp_ports, clock_rates, max_packets, tshark, mappings)
+        clocks = {}
+        ambiguous = set()
+        for stream in result['streams']:
+            ssrc = int(stream['ssrc'], 0)
+            rate = stream['clock_rate']
+            if ssrc in clocks and clocks[ssrc] != rate:
+                ambiguous.add(ssrc)
+            clocks[ssrc] = rate
+        for ssrc in ambiguous:
+            clocks.pop(ssrc, None)
+        media = analyze_media(path, rtp_ports, rtcp_ports, mappings, audio_output, prefix, max_packets, tshark,
+                              audio_budget, clocks)
+        result.update(media=media, original_sources=originals, continuous=len(paths) > 1)
+        if len(paths) > 1:
+            result['warnings'] = [w for w in result['warnings'] if not w.startswith('各 PCAP 独立统计')]
+            result['warnings'].append('本组按明确的同一采集点连续分析；保留源文件摘要，不进行跨采集点合并。')
+        if audio_output is not None:
+            result['warnings'] = [w for w in result['warnings'] if not w.startswith('未自动解密 SRTP')]
+            result['warnings'].append('按明文 RTP 假设重建 G.711；不解密 SRTP，不模拟终端播放。')
+        return result

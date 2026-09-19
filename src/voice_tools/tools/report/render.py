@@ -1,5 +1,6 @@
 """无需在线资源的可移动报告；外部文本全部转义。"""
 import html
+from datetime import datetime, timezone
 
 
 def esc(value):
@@ -8,6 +9,10 @@ def esc(value):
 
 def number(value, suffix=""):
     return "未知" if value is None else f"{value:.2f}{suffix}"
+
+
+def timestamp(value):
+    return '未观测到结束' if value is None else datetime.fromtimestamp(value, timezone.utc).isoformat()
 
 
 def table(headers, rows):
@@ -98,13 +103,55 @@ def render(data):
                     [number(stream['duration_s'], ' 秒'), number(stream['max_interarrival_ms'], ' ms'),
                      number(stream['jitter_last_ms'], ' ms'), number(stream['jitter_max_ms'], ' ms')]])
                 body += packet_svg(stream) + '</section>'
+            media = analysis.get('media', {})
+            if analysis.get('continuous'):
+                body += '<p class="notice">同一采集点的连续分片已重组；跨文件保持 RTP/SIP 解析状态。</p>'
+            if media.get('rtcp'):
+                blocks = [(packet, block) for packet in media['rtcp'] for block in packet.get('report_blocks', [])]
+                body += '<h4>RTCP 端点报告</h4>' + bullets(media.get('warnings', []))
+                body += table(['报告方', '被报告 SSRC', '区间丢包比例', '累计丢包', 'jitter（RTP 单位）', 'jitter ms', '抓包点 RTT 估算 ms'], [
+                    [packet['src'], block['ssrc'], number(block['fraction_lost']*100, '%'), block['cumulative_lost'],
+                     block['jitter_timestamp_units'], number(block.get('jitter_ms')), number(block.get('capture_point_rtt_estimate_ms'))]
+                    for packet, block in blocks[:100]])
+                senders = [p for p in media['rtcp'] if p['packet_type'] == 200]
+                if senders:
+                    body += table(['SR 报告方', '发送 SSRC', '发送包数', '发送字节数', 'RTP 时间戳'], [
+                        [p['src'], p['sender_ssrc'], p['sender_packet_count'], p['sender_octet_count'], p['rtp_timestamp']]
+                        for p in senders[:100]])
+                xr = [(p, x) for p in media['rtcp'] for x in p.get('xr_blocks', []) if 'ssrc' in x]
+                if xr:
+                    body += table(['XR 报告方', 'SSRC', 'loss 比例', 'discard 比例', '端点 RTT ms', '端点 MOS-LQ', '端点 MOS-CQ'], [
+                        [p['src'], x['ssrc'], number(x['loss_rate']*100, '%'), number(x['discard_rate']*100, '%'),
+                         x['round_trip_delay_ms'], number(x['endpoint_mos_lq']), number(x['endpoint_mos_cq'])]
+                        for p, x in xr[:100]])
+                body += f'<p class="muted">共 {len(media["rtcp"])} 个 RTCP 子包，各表最多显示 100 行；完整字段保存在 report.json。</p>'
+            for audio in media.get('rtp_audio', []):
+                body += f'<section><h4>RTP 音频重建 · SSRC {esc(audio["ssrc"])} · {esc(audio["status"])}</h4>'
+                body += bullets(audio.get('warnings', []))
+                if audio.get('reason'):
+                    body += f'<p class="notice">{esc(audio["reason"])}</p>'
+                for artifact in audio['files']:
+                    body += f'<p>{esc(artifact["mode"])} · {number(artifact["duration_s"], " 秒")}</p>'
+                    body += f'<audio controls preload="metadata" src="{esc(artifact["playback"])}"></audio>'
+                body += '</section>'
             if analysis['tshark_warnings']:
                 body += f'<details><summary>tshark 提示</summary><pre>{esc(analysis["tshark_warnings"])}</pre></details>'
         body += f'<details><summary>输入与校验信息</summary><p class="mono">{esc(item["path"])}</p><p class="mono">SHA-256 {esc(item.get("sha256", "未知"))}</p></details>'
         pcaps.append('<article>' + body + '</article>')
     captures = ''
     for item in data.get('sessions', []):
-        captures += f'<article><h3>会话 · {esc(item["call_id"])}</h3>{bullets(item.get("warnings", []))}</article>'
+        captures += f'<article><h3>会话 · {esc(item["call_id"])}</h3>{bullets(item.get("warnings", []))}'
+        stages = []
+        for file in item.get('files', []):
+            for stage in file.get('media_timeline', []):
+                if stage not in stages:
+                    stages.append(stage)
+        if stages:
+            captures += '<h4>已观察媒体阶段（候选关联）</h4>'
+            captures += table(['采集主机', '依据', '开始 UTC', '结束 UTC', '媒体端点'], [
+                [s['host'], s['basis'], timestamp(s['from_epoch']), timestamp(s['until_epoch']),
+                 s.get('flow') or s.get('media')] for s in stages[:100]])
+        captures += '</article>'
     for item in data.get('correlations', []):
         captures += (f'<article><h3>HOMER 关联 · {esc(item["call_id"])}</h3>'
                      f'<p>本地观测 {esc(item["local_observations"])} 条；HOMER search 状态 {esc(item["search"]["status"])}，'
