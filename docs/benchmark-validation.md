@@ -36,7 +36,7 @@ python -m unittest tests.benchmark.test_analysis tests.benchmark.test_delivery t
 
 使用 `code-readability` Skill 复查相对最新主线的差异及任务状态、批次输出、机器封套调用点；校验入口与汇总职责分开，补上崩溃退出码与有效超限回执的区别，未发现本轮范围内待处理的可读性问题。`git diff --check` 通过。
 
-日志保存于本机 `/Users/zzl/Documents/xcode/voice-benchmark-implementation-2026-09-20/`：`pr25-review-related-tests.log`、`pr25-review-docker-build.log`、`pr25-review-linux-tests.log`。本轮没有修改页面或原生媒体链路，未重复浏览器／原生回环验收，也未新增真实中文电话验收。
+日志保存在本机独立验收目录（以下以 `<local-audit-dir>/` 代称）：`pr25-review-related-tests.log`、`pr25-review-docker-build.log`、`pr25-review-linux-tests.log`。本轮没有修改页面或原生媒体链路，未重复浏览器／原生回环验收，也未新增真实中文电话验收。
 
 ## 明确覆盖的反例
 
@@ -74,7 +74,7 @@ python scripts/benchmark_validate.py --out outputs/benchmark-export-validation -
 
 页面没有浏览器拨号或上传录音功能。普通 Python 静态服务器不支持 Range，初次试听检查发现不能按时间跳转；改用仅监听 127.0.0.1 的 Range 静态服务器后通过，并在使用说明记录该部署要求。工具禁止 `file://` 导航，故本次浏览器验收通过 HTTP 完成，不宣称实际验证了双击 HTML 打开。
 
-日志与截图保存在本机 `/Users/zzl/Documents/xcode/voice-benchmark-implementation-2026-09-20/`，包括 `full-tests-final.log`、`benchmark-final-offline.log`、`native-final.log`、`native-timing-final.log`、`linux-installed-tests.log`、`mobile-export-validation.log`、`linux-migration-final.log`、`desktop-editor.png`、`mobile-review.png`。这些可重建的合成录音与长日志未提交仓库。
+日志与截图保存在上述本机验收目录，包括 `full-tests-final.log`、`benchmark-final-offline.log`、`native-final.log`、`native-timing-final.log`、`linux-installed-tests.log`、`mobile-export-validation.log`、`linux-migration-final.log`、`desktop-editor.png`、`mobile-review.png`。这些可重建的合成录音与长日志未提交仓库。
 
 ## Docker 与版本
 
