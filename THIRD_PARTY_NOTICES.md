@@ -8,7 +8,7 @@
 
 | 组件 | 版本 / 范围 | 许可 | 保留方式与来源 |
 | --- | --- | --- | --- |
-| wavesurfer.js | 7.12.12，含 regions、timeline 插件 | BSD-3-Clause | 完整版权及许可保存在 `src/voice_tools/tools/recording_qa/vendor/wavesurfer.LICENSE.txt`；同目录 `manifest.json` 记录来源与摘要；[上游](https://github.com/katspaugh/wavesurfer.js/tree/7.12.12) |
+| wavesurfer.js | 7.12.12，含 regions、timeline 插件 | BSD-3-Clause | 完整版权及许可保存在 `src/voice_tools/core/review/vendor/wavesurfer.LICENSE.txt`；同目录 `manifest.json` 记录来源与摘要；[上游](https://github.com/katspaugh/wavesurfer.js/tree/7.12.12) |
 
 wavesurfer.js 的版权归原权利人所有；分发源码或二进制时保留其许可声明，不得擅自使用权利人名称为产品背书。其许可文件保留在 Python 包内，并随发行包的许可资料一同分发。
 
@@ -52,3 +52,7 @@ wavesurfer.js 的版权归原权利人所有；分发源码或二进制时保留
 ## 维护与交付
 
 增删、升级、复制第三方组件或改变镜像打包方式时同步更新清单。分发本项目时保留根目录 `LICENSE`、本清单及内嵌 wavesurfer.js 许可；分发依赖、模型或镜像时另外保留其对应许可和版权资料，并履行实际适用的义务。仅提供一份许可清单或上游链接不能替代 GPL 等协议要求的对应源码交付。
+
+## hiccup 问题定义参考
+
+参考 https://github.com/AhmadIbrahiim/hiccup/tree/260c92e867203f192dd8d5c37879b4e624ec3f11 对输出中途停顿的分类。gaps 独立实现；未复制其源码、测试或页面，不作为运行依赖。新增自有实现沿用本仓库 Apache-2.0；共享 WaveSurfer 资源及 BSD 许可证位于 `src/voice_tools/core/review/vendor/`。

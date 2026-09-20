@@ -6,7 +6,7 @@ import time
 import json
 
 from voice_tools import __version__
-from voice_tools.core.files import new_output, write_json
+from voice_tools.core.files import read_json, new_output, write_json
 from .backend import SCORE_NAMES, Scorer, doctor
 from . import weights
 
@@ -66,7 +66,7 @@ def _evaluate_channel_segment(samples, rate, scorer, *, min_seconds, min_rms_dbf
 
 
 def analyze(inputs, output, model_dir=None, channel=None, segment_seconds=10.0,
-            min_seconds=1.0, min_rms_dbfs=-60.0, threads=2, scorer_factory=Scorer):
+            min_seconds=1.0, min_rms_dbfs=-60.0, threads=2, scorer_factory=Scorer, provenance=False):
     if channel not in (None, "left", "right", "both"):
         raise ValueError("声道只能选择 left/right/both")
     if not math.isfinite(segment_seconds) or not 1 <= segment_seconds <= 20:
@@ -78,6 +78,11 @@ def analyze(inputs, output, model_dir=None, channel=None, segment_seconds=10.0,
     if not 1 <= threads <= 64:
         raise ValueError("--threads 须在 1～64 之间")
     files = collect_inputs(inputs)
+    provenance_files = []
+    if provenance:
+        from voice_tools.core.files import sha256
+        for path in files:
+            provenance_files.append({"file": str(path), "sha256": sha256(path)})
     output = Path(output)
     if output.exists() and (not output.is_dir() or any(output.iterdir())):
         raise ValueError(f"输出目录必须不存在或为空：{output}")
@@ -150,4 +155,15 @@ def analyze(inputs, output, model_dir=None, channel=None, segment_seconds=10.0,
                      "min_rms_dbfs": min_rms_dbfs, "threads": threads},
         "limitations": ["RMS 门槛不是语音识别/VAD；噪声或音调也可能通过。", "分数是听感预测，不是人工 MOS 或故障根因。",
                         "原始响度与采样率保持不变；左右声道角色须由实际录制配置确认。"]})
+    if provenance:
+        for source in provenance_files:
+            source["unchanged"] = Path(source["file"]).is_file() and sha256(source["file"]) == source["sha256"]
+        write_json(output / "provenance.json", {"schema_version": "1.0", "kind": "nisqa_provenance",
+            "results": "results.jsonl", "results_sha256": sha256(output / "results.jsonl"), "sources": provenance_files})
+        if not all(source["unchanged"] for source in provenance_files):
+            summary["errors"] += 1
+            exit_code = 3
+            run = read_json(output / "run.json")
+            run.update(summary=summary, exit_code=exit_code)
+            write_json(output / "run.json", run)
     return summary, exit_code

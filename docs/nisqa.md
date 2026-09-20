@@ -167,3 +167,7 @@ python -m unittest tests.nisqa.test_real_model -v
 Linux 可把隔离环境或容器、已校验权重和 CLI 放在批量任务中；不需要先包装 HTTP 服务。一次 CLI 处理整批文件，在进程中只加载一个模型。多进程会分别加载运行库和权重，不应无限并发。原始录音常比模型更占磁盘，16 kHz/16-bit/单声道 PCM 约 115.2 MB/小时。
 
 如部署后有失败，先看 `nisqa doctor`、退出码及 `results.jsonl` 的 reason，不要静默混音、补零或改分数。已有 `qa` 的无声、应答时序等规则继续独立使用。
+
+## 可选评分溯源与间隙关联
+
+`voice-tools nisqa analyze call.wav --channel right --provenance --out outputs/nisqa` 额外写 provenance.json，记录源音频评分前后的一致性及结果摘要；原 results.jsonl/results.csv 列和分段规则不变。不启用时沿用默认行为。gaps 只读取已完成的分段结果，按同一源录音、声道和区间匹配；旧结果可显式降级为未验证旁证，不产生间隙音质分。见 [关联合同](output-gaps-contract.md)。

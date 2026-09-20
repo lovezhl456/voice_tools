@@ -9,6 +9,7 @@ def register(commands):
     cmd.add_argument("--pcap", type=Path, nargs="+", action="extend", default=[], help="PCAP/PCAPNG，可重复")
     cmd.add_argument('--pcap-group', nargs='+', action='append', default=[], metavar='SENSOR_OR_FILE', help='同一采集点的连续分片：名称 FILE FILE，可重复')
     cmd.add_argument('--rtcp-port', type=int, action='append', default=[], help='明确的 RTCP 端口，可重复；不猜测 RTP+1')
+    cmd.add_argument('--rtp-timeline', action='store_true', help='可选导出无载荷 RTP 头时序，8 MiB 分片')
     cmd.add_argument('--decode-rtp', action='store_true', help='重建明文 G.711 的 payload/timestamp WAV；不解密 SRTP')
     cmd.add_argument("--capture", type=Path, action="append", default=[], help="本工具抓包目录，自动读取端口及校验 SHA-256")
     cmd.add_argument('--session-export', type=Path, action='append', default=[], help='sessions export 目录，读取候选媒体与端口信息')
@@ -39,7 +40,7 @@ def run(args):
     result = build(args.out, args.audio, args.pcap, args.capture, args.rtp_port, rates,
                    args.include_audio, args.threshold_db, args.max_packets, args.tshark, args.title,
                    session_exports=args.session_export, correlations=args.correlation,
-                   pcap_groups=parse_groups(args.pcap_group), rtcp_ports=args.rtcp_port, decode_rtp=args.decode_rtp)
+                   pcap_groups=parse_groups(args.pcap_group), rtcp_ports=args.rtcp_port, decode_rtp=args.decode_rtp, rtp_timeline=args.rtp_timeline)
     from voice_tools.core.command import artifacts, emit_result
     summary = {"audio": len(result["audio"]), "pcaps": len(result["pcaps"]), "errors": result["errors"], "partial": result["partial"]}
     return emit_result(args, summary,

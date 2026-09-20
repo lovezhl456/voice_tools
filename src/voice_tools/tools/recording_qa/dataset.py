@@ -54,6 +54,8 @@ def freeze(results_path, output):
                   "timeline_origin": "analysis_snapshot", "timeline_reviewed": False}
         if result["ai_start_s"] is not None:
             events["ai_start_s"] = result["ai_start_s"]
+        if "output_events" in original:
+            events["output_events"] = original["output_events"]
         if "alignment" in original:
             events["alignment"] = original["alignment"]
         originals = {op["id"]: op for op in original.get("opportunities", [])}

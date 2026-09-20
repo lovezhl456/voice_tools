@@ -192,7 +192,7 @@ def classify(tool, action, code, payload):
     if code == 0:
         if tool == 'capture' and action == 'ring-start': return 'remote_running'
         return 'completed'
-    if code == 1 and tool == 'qa': return 'findings'
+    if code == 1 and tool in ('qa', 'gaps'): return 'findings'
     if code == 1 and tool == 'nisqa': return 'insufficient_evidence'
     if code == 6 and tool == 'homer': return 'partial'
     if code == 3 and tool == 'sip':

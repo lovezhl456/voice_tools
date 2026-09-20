@@ -102,3 +102,7 @@ VAD、降噪等重依赖放在可选 extra 中，并在使用时导入。`--help
 ## ViSQOL 可选后端
 
 `tools/visqol` 独立维护 doctor/score/batch；仅依赖公共 audio/core，不导入其他工具。原生 ViSQOL 作为可选本地子进程，安装步骤在 `scripts/install_visqol.py`，不进入主包依赖。输入快照、官方 JSON、命令参数、二进制/模型校验值和逐对失败状态组成可追溯记录；顶层 CLI 的 JSON 协议保持一致。
+
+## 输出间隙与公共复核层（0.14.1）
+
+`tools/gaps/{cli,service,detector,evidence,review,reports}.py` 管理独立检测、旁证和标签。`core/output_events.py` 只负责共享的输出事件合同；`core/rtp_timeline.py` 负责受限时序分片。`core/review/` 提供 HTML 壳、播放/波形 JS、WaveSurfer 资源和 gap 展示适配器，QA 仍保留自己的 review.js 与业务解释。依赖为 QA/gaps/task → core/review → 本地静态资源，公共层不调用检测器或其他工具；RTP/NISQA 通过文件合同交换。默认 QA、report、NISQA 不自动启用新分析，SIP/benchmark 本轮不修改。详见 [合同](output-gaps-contract.md)。

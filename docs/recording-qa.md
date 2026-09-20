@@ -136,3 +136,7 @@ voice-tools qa generate --out data/demo-16k --sample-rate 16000 --seed 20260916
 指标是候选二分类：`missing/delayed` 为正例，`audible` 为负例，`exclude/uncertain` 明示计数但不计分。0.2 将观察不足、证据不足和算法排除单列为 `abstained`，不当成通过；同时提供评分覆盖率与包含无法判定正例的保守召回。报告输出 TP/FP/FN/TN、precision、recall、分层指标及区间；分母为零为 `null`。有活动却无有效回答的噪声可能成为假阴性，需要真实标注。
 
 `--dataset-kind synthetic` 与 `real` 必须明确选择；人工复核过的合成声音仍是合成数据。本仓库不交付伪造的人工黄金标签。真实黄金集需要补齐不同线路、音量、噪声、编解码和业务等待策略的样本，最好独立复核分歧并保留版本。
+
+## 与输出间隙检测的边界
+
+`qa` 继续检测用户说完后的应答机会；`gaps` 处理已有 AI 输出中途的声学间隙。两者共享播放和波形资源，但不共享标签解释、黄金集或评估指标。qa freeze 会保留识别到的 output_events 扩展和来源，旧事件按原规则解释。详见 [输出间隙](output-gaps.md)。

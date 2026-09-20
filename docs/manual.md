@@ -167,3 +167,7 @@ HOMER 有独立退出码，6 表示部分搜索结果，见 [HOMER 手册](homer
 - 生产准确率未知：合成测试不能代替真实录音和独立人工标签。
 
 大模型调用见 [Agent 协议](ai-usage.md)；`voice-tools schema --tool qa` 输出实际参数，前置 `--json` 避免解析中文提示。
+
+## 输出中途间隙复核
+
+录音已开始输出却中途停顿时，使用 `voice-tools gaps analyze`。它独立输出候选、事件排除原因和 RTP/NISQA 旁证，支持单独 CLI、时间轴试听、人工补标与跨机复核。安装、批量示例、退出码见 [完整使用指南](output-gaps.md)，数据接入见 [合同](output-gaps-contract.md)。QA 原有应答机会和黄金集保持独立。

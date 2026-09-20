@@ -13,7 +13,7 @@ from .render import render
 
 def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), clock_rates=None,
           include_audio=False, threshold_db=-45, max_packets=250000, tshark="tshark", title="通话媒体分析报告",
-          session_exports=(), correlations=(), pcap_groups=(), rtcp_ports=(), decode_rtp=False):
+          session_exports=(), correlations=(), pcap_groups=(), rtcp_ports=(), decode_rtp=False, rtp_timeline=False):
     audio_paths = list(dict.fromkeys(Path(p).resolve() for p in audio_paths))
     sources = {Path(p).resolve(): {"ports": set(rtp_ports)} for p in pcap_paths}
     for sensor, paths in pcap_groups:
@@ -122,7 +122,15 @@ def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), cloc
             item.update(status="ok", sensor=options['sensor'], call_id=options['call_id'], source_files=[str(p) for p in options['paths']],
                         analysis=pcap.analyze_group(options['paths'], options['ports'], clock_rates, max_packets, tshark,
                             options['rtcp_ports'], options['mappings'], output / 'rtp-audio' if decode_rtp else None,
-                            f'group-{group_number:03d}', 256*1048576-audio_bytes))
+                            f'group-{group_number:03d}', 256*1048576-audio_bytes,
+                            timeline_output=output / f'rtp-timeline-{group_number:03d}' if rtp_timeline else None))
+            if rtp_timeline:
+                timeline_path = output / f'rtp-timeline-{group_number:03d}' / 'timeline.json'
+                timeline = item['analysis']['timeline']
+                timeline.update(sensor=options['sensor'], call_id=options['call_id'],
+                    sources=[{'sha256': sha256(p), 'name': Path(p).name} for p in options['paths']])
+                write_json(timeline_path, timeline)
+                item['rtp_timeline'] = str(timeline_path.relative_to(output))
             audio_bytes += item['analysis']['media']['audio_bytes']
         except (ValueError, OSError) as error:
             item.update(status="error", error=str(error))
