@@ -148,3 +148,11 @@ SIP 0.8.1：[结构化断言](docs/sip-assertions.md)支持应答码、接收 RT
 使用 `voice-tools task` 或 Docker 入口 `./vt`，将现有工具编排为顺序任务：本机生成 `.vtask.zip`，执行机检查并后台运行，带回 `.vresult.zip` 后查看录音、断言、评分和人工标签。工作台使用模板、步骤列表和参数侧栏；SIP Studio 支持五类接收证据断言。
 
 准备、网络边界、素材引用和完整命令见 [跨主机任务文档](docs/task-delivery.md)。离线演示任务见 [demo.json](examples/task/demo.json)；实际验证及未验证范围见 [验证记录](docs/task-validation.md)。
+
+## 许可证
+
+本项目自有代码采用 [Apache License 2.0](LICENSE)，允许按协议使用、修改及商业分发。第三方代码、依赖、模型权重和外部工具按各自许可证使用，详见 [第三方许可清单](THIRD_PARTY_NOTICES.md)。项目许可证不替代这些上游授权。
+
+**NISQA 官方 `nisqa.tar` 权重采用 CC BY-NC-SA 4.0，含非商业限制。** 商业客服、收费服务或其他商业用途需另行取得相应授权；更换调用封装不会改变权重许可。权重由用户显式下载，不随本项目源码、安装包或镜像分发。详见 [NISQA 权重许可](docs/nisqa.md#权重许可)。
+
+包含 PJSIP/PJSUA2 等组件的运行环境或 Docker 镜像还需遵守其 GPL 或商业许可条件，不能整体标为仅受 Apache-2.0 授权。

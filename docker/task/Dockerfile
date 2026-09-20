@@ -13,7 +13,7 @@ RUN curl -fL https://github.com/pjsip/pjproject/archive/refs/tags/2.17.tar.gz -o
     && cd pjsip-apps/src/swig/python && make wheel PYTHON_EXE=/usr/local/bin/python \
     && mkdir /wheels && cp dist/*.whl /wheels/
 COPY scripts/install_visqol.py scripts/visqol_export_runtime.py /build/
-COPY pyproject.toml README.md /build/
+COPY pyproject.toml README.md LICENSE THIRD_PARTY_NOTICES.md /build/
 COPY src /build/src
 RUN python -m pip install /build
 RUN python /build/install_visqol.py --prefix /build/visqol --jobs 2 --memory-mb 4096 \
@@ -29,7 +29,7 @@ COPY --from=native_backend /wheels /wheels
 COPY --from=native_backend /build/pj-source.sha256 /opt/native-pj-source.sha256
 COPY --from=native_backend /build/backend /opt/visqol
 WORKDIR /opt/voice-tools
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md LICENSE THIRD_PARTY_NOTICES.md ./
 COPY src/ ./src/
 RUN python -m pip install 'torch>=2.6,<3' --index-url https://download.pytorch.org/whl/cpu \
     && python -m pip install '.[nisqa,vad]' /wheels/*.whl && rm -rf /wheels \

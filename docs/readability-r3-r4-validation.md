@@ -2,6 +2,8 @@
 
 日期：2026-09-20。开始修改前已获取最新 `origin/main`，从已合入 R1/R2 的 `374576cad6b72679e3d67973c60c67abdbce14bb` 创建 `refactor/v0.12.1-readability-r3-r4`。本轮只调整内部职责，版本沿用 `0.12.1`。
 
+PR 提交期间主线合入许可证维护，已同步并合并 `585742c`。冲突仅在 CHANGELOG 顶部，两项记录完整保留。该主线更新没有修改 `src`、`tests` 或运行依赖；合并后的 R3/R4 源码与已验证文件哈希一致，原有测试证据仍适用于当前代码。未因许可文档同步重复执行无关业务测试或 Docker 构建。
+
 ## 修改范围
 
 - `sessions/store.py`：把 `build()` 中的输入收集和同源分片合并分别提取为 `_collect_inputs()`、`_merge_pcap_groups()`。`build()` 保留输出目录管理、逐来源 SAVEPOINT／ROLLBACK／commit 以及汇总输出。
