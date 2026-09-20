@@ -17,6 +17,27 @@
 
 初轮完整回归发现旧原生测试替身没有新增的 `AudioMediaPort` 边界，补齐替身后重新通过。macOS 原生合并测试的一次“忽略插话”用例返回非零，初轮断言未保存详细原因；最终 8 项时序回环全部通过，Linux 对应项也通过。该偶发退出没有被包装成已定位根因或长期稳定性证明；测试失败断言现会展示执行回执，便于后续追踪。
 
+## PR #25 评审修正验证
+
+2026-09-20 在同一功能分支修复四条评审意见，保留未发布版本 0.13.1。再次同步主线，`origin/main` 仍为 `7e9e30d`。
+
+- `benchmark analyze/summarize` 的超限回执在任务中记为 `findings`，后续依赖步骤可以继续；进程退出 1 但缺少有效回执时仍为失败。使用实际打包与子进程执行验证两种命令，没有模拟任务状态。
+- 数值配置先做类型和有限区间比较，超大 JSON 整数、NaN／无穷和非法类型返回稳定输入错误。超大媒体帧时间归为证据不足。
+- 批次汇总校验回执类型、版本、状态、非空任务数组、唯一 ID 和输出引用；空对象／损坏结构返回 JSON `INVALID_INPUT`、退出 2。取消、失败及缺少音频证据的任务仍计入分母。
+- 运行时与快照 schema 同时声明 SIP 1.0／1.1 可读版本，并区分普通模板写出 1.0、中文时序模板写出 1.1；保留旧字段兼容。
+
+Python 3.9 相关回归 **94 项全部通过、无跳过**，包含新增的 9 项评审回归：
+
+```sh
+python -m unittest tests.benchmark.test_analysis tests.benchmark.test_delivery tests.benchmark.test_review_regressions tests.task.test_delivery tests.test_machine_cli tests.sip.test_offline tests.sip.test_runner tests.sip.test_batch_load -v
+```
+
+更新本地 `voice-tools-executor:0.13.1` 后，在禁网 Linux arm64 容器中使用安装包执行 `tests.benchmark.test_review_regressions`，**9 项全部通过**。只挂载测试与 schema 快照，没有用源码覆盖安装包。镜像 ID：`sha256:78ebd48b0982f196ed9a25eddb4d63ff5238a2d311153549b4e9680588e5217a`。
+
+使用 `code-readability` Skill 复查相对最新主线的差异及任务状态、批次输出、机器封套调用点；校验入口与汇总职责分开，补上崩溃退出码与有效超限回执的区别，未发现本轮范围内待处理的可读性问题。`git diff --check` 通过。
+
+日志保存于本机 `/Users/zzl/Documents/xcode/voice-benchmark-implementation-2026-09-20/`：`pr25-review-related-tests.log`、`pr25-review-docker-build.log`、`pr25-review-linux-tests.log`。本轮没有修改页面或原生媒体链路，未重复浏览器／原生回环验收，也未新增真实中文电话验收。
+
 ## 明确覆盖的反例
 
 - 持续收取静音 PCM 的 800ms 间隔；时长根据实际样本数计算，包括 40ms 消息。

@@ -1,6 +1,4 @@
 """Offline benchmark contract. Optional VAD/native modules load only at runtime."""
-import math
-
 DEFAULTS = {"backend": "webrtcvad", "threshold_db": -45.0, "minimum_ms": 60,
             "join_gap_ms": 100, "stop_silence_ms": 200}
 
@@ -11,7 +9,8 @@ def fields(value, allowed, name):
 
 
 def number(value, low, high, name):
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or not low <= value <= high:
+    # Finite bounds also reject NaN/infinity, without converting large JSON integers to float.
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or not low <= value <= high:
         raise ValueError(f"{name} 须为 {low}–{high} 的有限数字")
     return value
 

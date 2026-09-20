@@ -35,11 +35,40 @@ def distribution(reports):
     return {"calls": len(reports), "counts": counts, "metrics": statistics}
 
 
+def batch_jobs(path):
+    """Validate receipt structure while retaining unfinished jobs as observations."""
+    batch = read_json(path)
+    if not isinstance(batch, dict) or batch.get("schema_version") != "1.0" or batch.get("kind") != "sip_batch_result":
+        raise ValueError("批次回执须为 schema_version=1.0、kind=sip_batch_result")
+    if batch.get("status") not in ("planned", "running", "completed", "failed", "interrupted"):
+        raise ValueError("批次回执 status 缺失或无效")
+    jobs = batch.get("jobs")
+    if not isinstance(jobs, list) or not 1 <= len(jobs) <= 10000:
+        raise ValueError("批次回执 jobs 须为包含 1–10000 项的数组")
+    ids = set()
+    states = ("pending", "running", "planned", "completed", "failed", "cancelled", "interrupted")
+    for index, job in enumerate(jobs):
+        if not isinstance(job, dict):
+            raise ValueError(f"批次回执 jobs[{index}] 须为对象")
+        identifier = job.get("id")
+        if not isinstance(identifier, str) or not identifier or identifier in ids:
+            raise ValueError(f"批次回执 jobs[{index}].id 缺失或重复")
+        ids.add(identifier)
+        if job.get("status") not in states:
+            raise ValueError(f"批次回执 jobs[{index}].status 缺失或无效")
+        if "name" in job and not isinstance(job["name"], str):
+            raise ValueError(f"批次回执 jobs[{index}].name 须为文本")
+        if "output" in job or job["status"] == "completed":
+            if not isinstance(job.get("output"), str) or not job["output"]:
+                raise ValueError(f"批次回执 jobs[{index}].output 缺失或无效")
+    return jobs
+
+
 def summarize(batch_dir, output):
     root = Path(batch_dir).resolve()
-    batch = read_json(root / "batch-result.json")
+    jobs = batch_jobs(root / "batch-result.json")
     reports = []
-    for job in batch.get("jobs", []):
+    for job in jobs:
         report = {"case_id": job.get("name", job.get("id")), "tags": [], "metrics": [],
                   "status": "insufficient_evidence", "execution_status": job.get("status"), "issues": []}
         try:

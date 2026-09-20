@@ -205,6 +205,12 @@ def classify(tool, action, code, payload):
         if tool == 'capture' and action == 'ring-start': return 'remote_running'
         return 'completed'
     if code == 1 and tool == 'qa': return 'findings'
+    if code == 1 and tool == 'benchmark' and action in ('analyze', 'summarize'):
+        # A crashed subprocess may also exit 1; only a valid findings receipt permits dependants to run.
+        if (isinstance(payload, dict) and payload.get('ok') is True
+                and payload.get('status') == 'findings' and payload.get('exit_code') == code):
+            return 'findings'
+        return 'failed'
     if code == 1 and tool == 'nisqa': return 'insufficient_evidence'
     if code == 6 and tool == 'homer': return 'partial'
     if code == 3 and tool == 'sip':

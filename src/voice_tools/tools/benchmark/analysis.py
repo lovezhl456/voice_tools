@@ -1,6 +1,5 @@
 """Recompute acoustic timing from saved PCM and a verified callback timeline."""
 import json
-import math
 import wave
 from pathlib import Path
 
@@ -25,7 +24,7 @@ def read_frames(path):
                 if type(row.get(key)) is not int or row[key] < 0:
                     raise ValueError(f"媒体帧 {key} 无效")
             at = row.get("at_s")
-            if isinstance(at, bool) or not isinstance(at, (int, float)) or not math.isfinite(at) or not 0 <= at <= 1100:
+            if isinstance(at, bool) or not isinstance(at, (int, float)) or not 0 <= at <= 1100:
                 raise ValueError("媒体帧时间无效")
             if not 0 < row["samples"] <= 8000:
                 raise ValueError("媒体帧样本数无效")

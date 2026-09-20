@@ -25,6 +25,8 @@ voice-tools benchmark summarize batch --out summary
 
 旧 `schema_version=1.0` 的行为和退出码保持兼容。1.1 的 `benchmark` 为可选配置；启用后支持 `wait_audio` 和播放步骤的 `speech`：
 
+机器客户端通过 `data_contracts.sip_scenario_read=["1.0","1.1"]` 判断可读版本。普通 SIP 模板的 `sip_scenario_write` 为 `1.0`，中文时序模板的 `benchmark_scenario_write` 为 `1.1`；旧字段 `sip_scenario` 保留为普通模板写出版本的兼容别名，不代表完整读取能力。
+
 ```json
 {
   "schema_version": "1.1",
@@ -88,6 +90,8 @@ voice-tools benchmark summarize batch --out summary
 回调仅复制 PCM、时间和来源并入有界队列；VAD、JSON 和 WAV 写入在工作循环中执行。丢帧、写入失败、媒体重建、时间轴中断或音频截断会禁止精确时延结果。原始音频仍保留供人工排查。报告摘要固定绑定输入证据，`result.json` 因随后附加断言形成循环，不包含在摘要表内。
 
 配置阈值后，时序断言附加到既有 `assertions.json`；证据不足不能当成通过。执行失败原因不被时序断言覆盖。`benchmark analyze` 的退出码为完成 0、超限 1、证据不足 3。批量汇总保留有效、失败、无效、证据不足四类计数，并按标签分组；分位数标明有效**测量数**，包含失败通话中仍有效的数值，小样本 P95/P99 仅是经验统计。
+
+`benchmark analyze/summarize` 返回 1 且提供有效的 `findings` 机器回执时，任务执行器将步骤记为 `findings`，允许后续依赖步骤继续处理产物；真实输入错误返回 2，仍记为失败。进程崩溃或回执损坏不会因退出码同为 1 而被当成超限报告。批次汇总要求合法的 `sip_batch_result` 1.0 回执、状态和非空任务数组，空对象或损坏结构不会生成成功汇总。取消／中断且尚未产生输出的任务保留在统计分母内；合法回执中的音频证据缺失仍按失败或证据不足计入。
 
 ## 任务包与工作台
 
