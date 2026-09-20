@@ -2,7 +2,7 @@
 
 ## 0.10.2 · NISQA Linux Docker 部署与验收
 
-- **状态：实现与 Linux Docker 验收完成，待 PR，尚未合并交付。**
+- **状态：实现与 Linux Docker 验收完成，[PR #19](https://github.com/lovezhl456/voice_tools/pull/19) 待审阅，尚未合并交付。**
 - 分支：`enhance/v0.10.2-nisqa-docker`；从已同步主线 `14ed371`（NISQA PR #17）创建。
 - 范围：CPU Docker 镜像定义、构建上下文排除权重/录音、Linux 安装和断网真实推理验证、Docker 使用文档与资源记录。
 - 两架构构建及真实断网评分通过：`linux/arm64` 原生虚拟化，`linux/amd64` 本机模拟；独立完成 Linux CLI 权重下载、哈希校验、多采样率/声道批量及失败路径验证。
