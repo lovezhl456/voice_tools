@@ -167,3 +167,7 @@ HOMER 有独立退出码，6 表示部分搜索结果，见 [HOMER 手册](homer
 - 生产准确率未知：合成测试不能代替真实录音和独立人工标签。
 
 大模型调用见 [Agent 协议](ai-usage.md)；`voice-tools schema --tool qa` 输出实际参数，前置 `--json` 避免解析中文提示。
+
+## 中文电话时序（0.13.1）
+
+SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](benchmark.md)。

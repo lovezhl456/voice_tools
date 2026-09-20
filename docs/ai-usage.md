@@ -129,3 +129,7 @@ Do not merge arbitrary PCAPs across sensors. Use explicit `--pcap-group SENSOR F
 Use `voice-tools schema --tool visqol` for the actual contract. `doctor` only checks native executable/model files. `score --reference ... --degraded ... --out ...` and `batch --pairs ... --out ...` require a separately installed local ViSQOL backend. `speech` expects mono PCM16 16 kHz WAV; `audio` expects 48 kHz. The caller must establish corresponding content. No automatic resampling, mixing or quality threshold is applied. Read [installation and usage](visqol.md) and [local validation](visqol-local-validation.md).
 
 A score is not human MOS or proof of a fault cause. Exit 3 preserves per-pair failures with null scores; the mean excludes failed pairs. Do not describe a partial batch as completed. Native stdout/stderr is stored in artifacts, leaving one JSON envelope on stdout. Output directories must be new/empty. Installation is explicit and online; scoring is CPU/offline.
+
+## 中文电话时序（0.13.1）
+
+SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](benchmark.md)。

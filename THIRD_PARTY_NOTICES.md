@@ -52,3 +52,10 @@ wavesurfer.js 的版权归原权利人所有；分发源码或二进制时保留
 ## 维护与交付
 
 增删、升级、复制第三方组件或改变镜像打包方式时同步更新清单。分发本项目时保留根目录 `LICENSE`、本清单及内嵌 wavesurfer.js 许可；分发依赖、模型或镜像时另外保留其对应许可和版权资料，并履行实际适用的义务。仅提供一份许可清单或上游链接不能替代 GPL 等协议要求的对应源码交付。
+
+## telephony-voice-agent-benchmark（设计参考）
+
+- 来源：https://github.com/ictinnovations/telephony-voice-agent-benchmark
+- 固定参考提交：`fdc4410316110a163c25efecb53aa66459526b7c`；上游 MIT 许可见该提交的 LICENSE。
+- 本版选择性借鉴时序测量和故障模拟思路，独立实现 SIP 媒体观测与中文模板。未复制上游源代码、文件或素材，不是依赖或 vendored 组件；参考仓库保持独立且保留原 LICENSE。
+- 若后续复制实际源码，须同时保留上游完整 MIT 版权与许可声明，不能仅依赖这条设计来源说明。

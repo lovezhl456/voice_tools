@@ -117,3 +117,7 @@ No tool-to-tool imports. Shared helpers come from `core`. Keep optional imports 
 Run relevant tests under `tests/sip`; optional actual localhost tests use `VOICE_TOOLS_SIP_LOOPBACK=1`. The independent peer records observed UDP audio/DTMF and validates Digest, so native tests are not SDK mocks. Keep new failure behavior covered, update both human/Agent docs and examples, regenerate CLI schema from actual parser once, then run the full repository suite. Preserve unrelated uncommitted tool work.
 
 Do not claim gateway/NAT, large concurrency, arbitrary codecs, unimplemented ASR branches or portable native wheels are validated by local synthetic tests.
+
+## 中文电话时序（0.13.1）
+
+SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](benchmark.md)。
