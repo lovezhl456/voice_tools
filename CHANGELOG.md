@@ -37,9 +37,9 @@
 
 ## 当前状态与编号迁移
 
-- 按本规则整理的当前已交付基线：**`0.7.1`**，对应 PR #12 合并提交 `4d003a6`。
-- 当前开发分支源码、CLI 和机器接口文档已从旧版本 `2.0.0` 统一迁移为 **`0.8.1`**；合并前不标为已交付。
-- 本次功能交付目标：**`0.8.1`**，待 PR 验证及合并。
+- 当前已交付基线：**`0.8.1`**，对应 [PR #14](https://github.com/lovezhl456/voice_tools/pull/14) 合并提交 `d44599c`。
+- 主线已完成 `0.8.1` 的版本迁移；本工作分支源码、CLI 与机器接口统一为 **`0.9.1`**。
+- 本次功能交付目标：**`0.9.1`**，在已合入的断言功能上增加批量队列与 SIPp 压力后端，待 PR #16 合并。
 - 下表是根据现有 Git 合并历史重新编排的版本，不表示过去实际发布过这些版本号；建立台账时仓库没有发布标签。不补打历史发布标签，不改写旧报告中的原版本号。
 
 ## 历史迭代编排
@@ -57,6 +57,7 @@
 | `0.5.4` | 抓包完整性与媒体分析修复 | [PR #10](https://github.com/lovezhl456/voice_tools/pull/10) · `6849b18` |
 | `0.6.1` | 按主叫／被叫采集与会话包下载 | [PR #11](https://github.com/lovezhl456/voice_tools/pull/11) · `e523373` |
 | `0.7.1` | SIP 用例编排工作台原型 | [PR #12](https://github.com/lovezhl456/voice_tools/pull/12) · `4d003a6` |
+| `0.8.1` | SIP 结构化测试断言 | [PR #14](https://github.com/lovezhl456/voice_tools/pull/14) · `d44599c` |
 
 历史功能的验证范围以各 PR 和当时的验收记录为准；此表只记录功能归属与合入证据。
 
@@ -66,11 +67,11 @@
 - 新增[联动快速说明](docs/sngrep-workflow.md)和[安装使用手册](docs/sngrep.md)，接入首页、人工手册及抓包文档导航。
 - 推荐通过 PCAP 文件联动现有采集、sngrep 人工时序查看和媒体报告；不新增采集后端或修改运行行为。
 - 验证：9 条离线转换/合并/sngrep 命令通过，完整样本的 52 包保持可读取；号码采集 dry-run、3 条 voice_tools 示例参数、14 个 Bash 代码块及新增文档的 11 处本地链接核对通过。终端中实际打开 PCAP 并进入时序窗口。
-- 状态：文档及本地核对完成，尚未合并；Linux 安装、实时抓包及生产环境未验收。
+- 状态：已随 [PR #15](https://github.com/lovezhl456/voice_tools/pull/15) 合入（`600888e`）；Linux 安装、实时抓包及生产环境未验收。
 
 ## 0.8.1 · SIP 结构化测试断言
 
-- **状态：开发中，尚未合并交付。**
+- **状态：已随 PR #14 合入主线（`d44599c`）。**
 - 目标开发分支：`feat/v0.8.1-sip-assertions`。
 - 参考 VoIP Patrol，增加可配置的应答码、接收 RTP、最小有效音频、预期 DTMF／音调断言。
 - 每项断言输出预期值、实测值、证据和通过／失败／证据不足状态，并纳入整体结果及退出码。
@@ -79,4 +80,15 @@
 - 本轮离线 SIP／指标／失败路径测试：49 项通过；样例校验、预演、版本／schema 一致性、文档链接和 diff 检查通过。
 - 最终全仓验证：`VOICE_TOOLS_SIP_LOOPBACK=1 .venv/bin/python -m unittest discover -s tests -v`，**299 项全部通过，无跳过**，包含 **19 项真实本机 SIP 测试**。先前沙箱端口限制已通过用户授权的本机验证解除。
 - 原生验证覆盖预期 486、实际接收 RTP、静音 RTP、无 RTP、无应答、重复 RFC4733 DTMF、SIP INFO DTMF、双频音调和既有生命周期回归。修正 SWIG 所有者对象生命周期读取，并让测试对端按对方 SDP 声明的 PT 回传 DTMF；修复后全仓复测通过。
-- 尚未验证生产网关／运营商线路、NAT；本轮不修改或发布 HTML。合入 PR／提交待补充。
+- 尚未验证生产网关／运营商线路、NAT；本轮不修改或发布 HTML。合入 [PR #14](https://github.com/lovezhl456/voice_tools/pull/14)／`d44599c`。
+
+## 0.9.1 · SIP 批量队列与 SIPp 压力测试
+
+- **状态：开发中，尚未交付。**
+- 目标分支：`feat/v0.9.1-sip-batch-sipp`。基于已合入主线的 `0.8.1` SIP 断言功能。
+- 增加功能拨测批量队列、并发上限、端口隔离、逐项结果与中断清理。
+- 可视化工作台生成批量执行文件及独立 SIPp 场景包，提供安装、使用和结果边界文档。
+- 验证：284 项完整回归（11 跳过）、42 项受影响范围复验、14 项批量专项、22 项 Studio 核心、9 组 CLI 兼容场景通过；桌面 / 手机 UI 与本机 4 通并发 2 验收通过。RFC4733 原始发包受 macOS 权限限制，详见 [验收记录](docs/sip-batch-validation.md)。
+- PR：[#16](https://github.com/lovezhl456/voice_tools/pull/16)，未合并，不标为已交付。
+
+- 2026-09-20 main integration: 315 Python tests passed (0 skipped), 22 Studio tests and 9 CLI compatibility cases passed; native batch assertion pass/fail aggregation verified. See [validation](docs/sip-batch-validation.md).

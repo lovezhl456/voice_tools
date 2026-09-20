@@ -122,3 +122,7 @@ python -m unittest discover -s tests -v
 真实录音、通话导出、凭据、虚拟环境和运行结果不提交；本地数据与输出放在忽略的 `data/`、`outputs/` 中。`--include-audio` 会将原录音复制到质检报告，分享时按原录音的权限处理。
 
 SIP 0.8.1：[结构化断言](docs/sip-assertions.md)支持应答码、接收 RTP、最小有效音频和预期 DTMF／音调，统一输出三态结果与失败退出码。
+
+### SIP 批量与压力测试
+
+工作台「批量」可配置队列、重复次数、并发上限和端口池，下载 `queue.json` 后运行 `voice-tools sip batch`。性能压力独立使用 `voice-tools sip sipp-load`：工作台生成 SIPp XML、CSV、DTMF PCAP 和启动脚本。执行结果可导回工作台查看。参见 [安装与完整使用指南](docs/sipp.md)。
