@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0",
+  "network_allowed": false,
+  "model_dir": "/models/nisqa",
+  "visqol_dir": "/opt/visqol/source",
+  "secret_env": [],
+  "environments": {"lab": {"params": {}}}
+}

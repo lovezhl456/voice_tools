@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice-tools"
-version = "0.11.1"
+version = "0.12.1"
 description = "本地运行、CPU 优先的语音工具集"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -24,3 +24,4 @@ where = ["src"]
 
 [tool.setuptools.package-data]
 "voice_tools.tools.recording_qa" = ["*.html", "*.js", "vendor/*.js", "vendor/*.txt", "vendor/*.json"]
+"voice_tools.tools.task" = ["web/*.html", "web/*.css", "web/*.js", "web/*.json"]

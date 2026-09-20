@@ -1,0 +1,3 @@
+#!/bin/sh
+# Docker is managed on the host; the business container never receives its socket.
+exec python3 "$(dirname "$0")/scripts/task_host.py" "$@"

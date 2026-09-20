@@ -232,8 +232,8 @@ def main(argv=None):
         raise ValueError("jobs/timeout 须大于 0，memory-mb 须至少 512")
     system = platform.system(); machine = platform.machine().lower()
     arch = "arm64" if machine in ("arm64", "aarch64") else "x86_64" if machine in ("x86_64", "amd64") else machine
-    if (system, arch) not in {("Darwin", "arm64"), ("Darwin", "x86_64"), ("Linux", "x86_64")}:
-        raise ValueError("安装脚本目前仅提供 macOS arm64/x86_64 与 Linux x86_64 路线；其他平台请按上游手动构建")
+    if (system, arch) not in {("Darwin", "arm64"), ("Darwin", "x86_64"), ("Linux", "x86_64"), ("Linux", "arm64")}:
+        raise ValueError("安装脚本仅提供 macOS 与 Linux 的 arm64/x86_64 路线；其他平台请按上游手动构建")
     if not (3, 9) <= sys.version_info[:2] < (3, 12):
         raise ValueError("本安装路线使用 Python 3.9–3.11，以兼容固定版本的旧构建依赖")
     for name in ("git", "curl"):
