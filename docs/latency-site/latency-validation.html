@@ -3,7 +3,7 @@
 <h2>固定来源与环境</h2>
 <ul>
 <li>主线冻结：<code>92ad27f</code>，已合入 benchmark PR #25。独立工作树 <code>feat/v0.15.1-latency</code>，保留并行 0.14.1 工作；最终收尾再次 fetch 主线仍为该提交。</li>
-<li>上游提交、归档、补丁摘要以 <a href="https://github.com/lovezhl456/voice_tools/blob/1f26ab951091441b32a3cdeacb9d6f955a7957fa/src/voice_tools/tools/latency/resources/manifest.json">包内 manifest</a> 为准，当前补丁版本 2。原始源码和普通样本对照使用相同固定提交。</li>
+<li>上游提交、归档、补丁摘要以 <a href="https://github.com/lovezhl456/voice_tools/blob/1e9f1c82ed8e0ec7bdf9dc111d0f18353bdc7247/src/voice_tools/tools/latency/resources/manifest.json">包内 manifest</a> 为准，当前补丁版本 2。原始源码和普通样本对照使用相同固定提交。</li>
 <li>macOS ARM64：主 CLI Python 3.9.6；外部引擎 Python 3.12.14 / NumPy 2.2.6。</li>
 <li>Linux：Docker 的 ARM64 原生虚拟化，Python 3.11，非 root 10001:10001；专用镜像基于原任务镜像 0.13.1。未验证物理 Linux、Intel Mac、Linux amd64 或 amd64 模拟性能。</li>
 <li>Linux 全仓测试使用另建的 validation 镜像补齐既有测试需要的 Node、procps、tcpdump；这些不是 latency 业务运行依赖，不放进生产镜像。</li>
@@ -170,6 +170,20 @@ MARKED_MODULE=/absolute/path/to/marked/lib/marked.esm.js node scripts/build_late
 <li>浏览器实测同一结果包的 gaps iframe 标注页、benchmark 时间轴和 latency 报告均能加载；三个入口实际试听分别观测到 1.206s、0.313s、1.846s 且正在播放。390px 移动端总览、步骤切换、latency 跳转正常，控制台无错误。</li>
 <li>本轮只增加兼容测试并解决合并冲突；引擎补丁及摘要仍为 2，不需因为主线同步再创建新的引擎前缀。未重新测量 3600s 性能或生产容量。</li>
 </ul>
+<h2>PR #27 复查页脚本注入修复</h2>
+<p>2026-09-21，在合入 <code>d4d073d</code> 后的 <code>11c8a36</code> 复现。向 <code>run.json</code> 的 <code>coverage.paired</code> 写入只设置 DOM 标记的 img/onerror 测试字符串，并更新清单中的大小及 SHA-256；54 个文件摘要校验全部通过，旧页面仍执行事件处理器。安全 JSON 嵌入不能代替后续 HTML 渲染处的类型校验和转义。</p>
+<ul>
+<li>修复共享组件的配对数、分母、两个方向的轮数和去向计数；要求非负安全整数。覆盖率严格限制为 0–1 的有限数值或 null；非法值明确报错，合法 0/null 保持原有不足证据语义。展示文本转义，引擎和结果协议不变。</li>
+<li>macOS latency 与任务交付 37 项测试全部通过，无跳过。新增 Python 入口中包含 16 组 Node 渲染测试，检查所有 HTML 写入，包括错误前的中间写入；覆盖事件处理器载荷、字符串/布尔值/对象/数组、缺失字段、负数、小数、超大数和非有限数。该测试不模拟真实 DOM；在旧 JS 上 12 组失败，在修复后全部通过。</li>
+<li>Linux ARM64 现有 validation 镜像（Node 18）中，非 root、禁网、只读挂载源码，新增 2 项 Python 测试及其中 16 组 Node 测试全部通过。另一项 Python 测试验证摘要正常的结果包与独立报告都使用当前共享组件。</li>
+<li>真实浏览器打开同一结果包重新生成的复查页：显示字段错误，无注入节点、无事件执行标记。四个原始漏洞字段分别在运行摘要/录音详情中注入，共 8 个真实 DOM 场景，全部拒绝。</li>
+<li>正常结果的 0.500s 延迟、1/1 覆盖和反向零轮次保持一致；桌面与实际 375px 视口的任务切换、统计和跳转试听可用，窄视口页面无整体横向溢出。试听状态显示从 1.700s 开始，移动端播放器显示播放中；本轮未重新测量精确 seek 误差或 Range/206。</li>
+</ul>
+<p>无引擎的自动回归命令（需 Node 18+，缺失时渲染测试会明确跳过）：</p>
+<pre><code class="language-sh">PYTHONPATH=src python3 -m unittest tests.latency.test_web -v
+node --test-reporter=tap tests/latency/web_renderer.cjs src/voice_tools/tools/latency/web/latency.js
+</code></pre>
+<p>已生成报告需按<a href="latency-integration.html">集成说明</a>更新，旧静态 JS 不会随工具升级自动修复。本轮未重跑全仓、打包构建或重建生产镜像；上述主线同步和引擎验收属于此前记录。</p>
 <h2>未作承诺</h2>
 <p>不承诺真实中文录音准确率、业务应答成功率、指定 FreeSWITCH/运营商线路、生产并发容量、跨时钟自动对齐或原生离线首次安装。不承诺 file://；浏览器实际验收通过本地 HTTP Range 服务。算法受上游能量门限和配对假设限制，串音、弱音、噪声、过长停顿都应结合原始录音复核。</p>
 </main><footer>此站只展示说明书和合成音频；业务报告保留在各自结果目录。内容源为仓库四份 latency 文档。</footer></body></html>
