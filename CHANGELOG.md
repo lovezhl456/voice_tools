@@ -8,7 +8,7 @@
 - 本机已完成：M1 Max / 32 GiB 源码编译、语音/一般音频真实评分、独立 wheel 评分、批次部分失败与证据保留；上游 20 项一致性和 3 项 TFLite 测试通过。
 - 主线合入后全仓 354 项，322 项执行通过、32 项可选测试跳过。最终 CSV 错误处理小修复后 17 项 ViSQOL 专项和重建 wheel 真实评分通过。
 - 最终验证与资源记录见 [ViSQOL 本机实战](docs/visqol-local-validation.md)；Linux 与生产通话未验收。
-- PR：待创建；不直接修改或推送 main。
+- PR：[#18](https://github.com/lovezhl456/voice_tools/pull/18)，待审阅，尚未合并。
 
 ## 0.10.1 · NISQA 本地听感评分
 
