@@ -1,6 +1,8 @@
 # voice_tools · 大模型 / Agent 接入协议
 
-Version 0.9.1. The CLI is the primary interface. Use a local subprocess with an argv array; no MCP server is required. Audio/QA are offline CPU tools. HOMER online commands contact only the configured instance; offline schema and analyze --input need no credentials.
+Version 0.10.1. The CLI is the primary interface. Use a local subprocess with an argv array; no MCP server is required. Audio/QA are offline CPU tools. HOMER online commands contact only the configured instance; offline schema and analyze --input need no credentials.
+
+NISQA is optional (Python 3.10+, `.[nisqa]`). Discover `voice-tools schema --tool nisqa`; explicitly download licensed weights with `nisqa download`, inspect offline metadata/hash with `nisqa doctor`, and score with `nisqa analyze`. Only download uses the network; analyze refuses missing/corrupt local weights. Stereo requires explicit left/right/both; mono is never duplicated. Results are per channel and segment, with named MOS/noisiness/discontinuity/coloration/loudness scores. Short/silent segments have null scores and exit 1; processing errors preserve other results and exit 3. RMS is not a VAD. Doctor readiness only checks metadata/hash, not runtime inference. Respect CC BY-NC-SA 4.0 weights; changing wrappers does not authorize commercial use. See [NISQA](nisqa.md).
 
 ## Discovery
 
@@ -33,7 +35,7 @@ Audio/QA emit one JSON object on stdout, including handled errors. No progress p
 
 ```json
 {
-  "schema_version": "1.0", "tool_version": "0.9.1",
+  "schema_version": "1.0", "tool_version": "0.10.1",
   "tool": "qa", "action": "analyze", "ok": true,
   "exit_code": 0, "status": "completed",
   "summary": {"files": 20, "errors": 0, "candidates": 11},

@@ -2,6 +2,8 @@
 
 CLI 是主入口：录音体检、格式准备、质检、冻结与版本对比都通过命令运行，HTML 用于查看和人工试听标注。HOMER 继续使用[独立手册](homer.md)。
 
+NISQA 的 CPU 听感评分通过 `voice-tools nisqa` 使用：见[安装、下载、使用与退出码](nisqa.md)和[本地实战验收](nisqa-validation.md)。它是可选依赖，权重单独缓存，不改变已有 QA 规则。
+
 SIP 时序排障可结合 [sngrep 联动快速说明](sngrep-workflow.md)和[安装使用手册](sngrep.md)，通过已有抓包文件衔接。
 
 ## 安装
