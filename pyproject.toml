@@ -7,6 +7,8 @@ name = "voice-tools"
 version = "0.12.1"
 description = "本地运行、CPU 优先的语音工具集"
 readme = "README.md"
+license = {file = "LICENSE"}
+classifiers = ["License :: OSI Approved :: Apache Software License"]
 requires-python = ">=3.9"
 dependencies = ["numpy>=1.24,<3"]
 
@@ -18,6 +20,9 @@ nisqa = ["torch>=2.6,<3", "torchmetrics==1.9.0", "librosa>=0.10.2,<0.12", "sound
 voice-tools = "voice_tools.cli:main"
 homerctl = "voice_tools.tools.homer.client:main"
 voice-sip = "voice_tools.tools.sip.cli:main"
+
+[tool.setuptools]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/voice_tools/tools/recording_qa/vendor/wavesurfer.LICENSE.txt"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
