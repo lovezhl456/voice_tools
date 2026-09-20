@@ -4,6 +4,7 @@ from pathlib import Path
 import shutil
 import wave
 import array
+import os
 from urllib.parse import quote
 
 from voice_tools.core.files import new_output, read_json
@@ -69,6 +70,7 @@ def review(package, output):
     for step in receipt['steps']:
         if not isinstance(step.get('id'), str) or not ID.fullmatch(step['id']): raise ValueError('回执步骤 ID 无效')
         item = dict(step); item.update(files=[], assertions=[], scores=[], records=[], audio=[], benchmarks=[], benchmark_summaries=[], latency=[])
+        record_directories = {}
         folder = root / 'steps' / step['id']
         if folder.exists():
             for path in sorted(folder.rglob('*')):
@@ -106,13 +108,14 @@ def review(package, output):
                         if summary.get('kind') == 'benchmark_summary':
                             item['benchmark_summaries'].append({k: v for k, v in summary.items() if k != 'reports'})
                     except (OSError, ValueError, TypeError): pass
-                if path.suffix == '.jsonl':
+                if path.suffix == '.jsonl' and not (path.name.startswith('packets-') and (path.parent / 'timeline.json').is_file()):
                     with path.open(errors='replace') as stream:
                         for line in stream:
                             if len(item['records']) >= 2000: item['records_truncated'] = True; break
                             try: row = json.loads(line)
                             except ValueError: continue
                             if not isinstance(row, dict): continue
+                            record_directories[id(row)] = path.parent
                             match = aliases.get(str(row.get('file') or row.get('degraded') or row.get('input')))
                             if match: row['playback'] = match['path']
                             if step.get('tool') == 'latency' and path.name == 'files.jsonl':
@@ -157,6 +160,32 @@ def review(package, output):
                             selected[audio['path']] = audio
                 item['audio'] = list(selected.values())
             except (ValueError, OSError): pass
+        if step.get('tool') == 'gaps' and step.get('action') == 'analyze':
+            from voice_tools.core.review.gaps import render_gap_review
+            gap_records = []
+            target = output / 'gap-review' / step['id']
+            target.mkdir(parents=True)
+            for row in item['records']:
+                if row.get('tool') != 'gaps' or not isinstance(row.get('result'), dict):
+                    continue
+                record = dict(row)
+                sources = {}
+                for channel, value in record.get('playback_sources', {}).items():
+                    if channel not in ('both', 'left', 'right') or not isinstance(value, str):
+                        continue
+                    source = (record_directories[id(row)] / value).resolve()
+                    if folder.resolve() in source.parents and source.is_file():
+                        sources[channel] = quote(os.path.relpath(source, target))
+                record['playback_sources'] = sources
+                gap_records.append(record)
+            if gap_records:
+                try:
+                    render_gap_review(target / 'review.html', gap_records,
+                        {'files': len(gap_records), 'candidates': sum(r['result'].get('candidate_count', 0) for r in gap_records),
+                         'truncated': item.get('records_truncated', False)}, True, task_review=True)
+                    item['gaps_review'] = quote((target / 'review.html').relative_to(output).as_posix())
+                except (ValueError, TypeError, KeyError) as error:
+                    item['gaps_review_error'] = str(error)
         rows.append(item)
     page(output, 'review', {'receipt': receipt, 'steps': rows, 'inputs_audio': [v for k,v in audio_index.items() if k.startswith('work/inputs/')], 'manifest': {'run_id': manifest.get('run_id'), 'files': len(manifest['files'])}})
     return {'index': str(output / 'index.html'), 'steps': len(rows), 'verified_files': len(manifest['files']), 'network_accessed': False}

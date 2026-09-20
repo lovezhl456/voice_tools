@@ -2,6 +2,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import tempfile
 import unittest
@@ -107,6 +108,56 @@ class RealEngineTests(unittest.TestCase):
                     self.assertEqual(result['coverage']['dispositions'], {'overlap': 1, 'unpaired': 1})
                     self.assertEqual(measurement['status'], 'insufficient_evidence')
                     self.assertEqual(measurement['pairs'], [])
+
+    def test_mixed_gaps_benchmark_latency_review_after_migration(self):
+        from voice_tools.audio.io import write_wav
+        from tests.gaps.test_detection import signal
+        from tests.benchmark.test_review_regressions import ReviewRegressionTests
+
+        source = self.root / 'mixed-source'
+        source.mkdir()
+        demo.recording(source / 'normal.wav')
+        gap_audio = signal()
+        write_wav(source / 'gap.wav', gap_audio.samples, gap_audio.sample_rate)
+        ReviewRegressionTests().evidence(source / 'timing')
+        task = {
+            'schema_version': '1.0', 'id': 'mixed-tools', 'title': '三工具迁移复查',
+            'inputs': {'latency_audio': 'normal.wav', 'gap_audio': 'gap.wav', 'timing': 'timing'},
+            'steps': [
+                {'id': 'gaps', 'tool': 'gaps', 'action': 'analyze', 'params': {
+                    'inputs': [{'input': 'gap_audio'}], 'include_audio': True, 'fail_on_findings': True}},
+                {'id': 'timing', 'tool': 'benchmark', 'action': 'analyze', 'depends_on': ['gaps'],
+                 'params': {'run_dir': {'input': 'timing'}}},
+                {'id': 'latency', 'tool': 'latency', 'action': 'analyze', 'depends_on': ['timing'],
+                 'params': {'wav': {'input': 'latency_audio'}, 'system_channel': 'right'}},
+            ],
+        }
+        write_json(source / 'task.json', task)
+        package = self.root / 'mixed-task.zip'
+        bundle.pack(source / 'task.json', source, package)
+        shutil.rmtree(source)
+        config = self.root / 'mixed-executor.json'
+        write_json(config, {'schema_version': '1.0', 'network_allowed': False,
+                            'environments': {}, 'latency_dir': ENGINE})
+        execution = self.root / 'mixed-run'
+        result = runner.run(package, execution, config)
+        self.assertEqual([s['status'] for s in result['steps']], ['findings', 'findings', 'completed'])
+        results = self.root / 'mixed-result.zip'
+        runner.collect(execution, results)
+        shutil.rmtree(execution)
+        output = self.root / 'mixed-review'
+        review.review(results, output)
+        html = (output / 'index.html').read_text()
+        data = json.loads(re.search(r'<script>window.VT_DATA=(.*?);</script>', html, re.S)[1])
+        gaps, timing, latency = data['steps']
+        self.assertTrue((output / gaps['gaps_review']).is_file())
+        self.assertEqual(timing['benchmarks'][0]['report']['kind'], 'voice_benchmark')
+        self.assertTrue((output / timing['benchmarks'][0]['audio']['rx']['path']).is_file())
+        self.assertTrue((output / latency['latency'][0]['detail']).is_file())
+        self.assertTrue((output / latency['latency'][0]['playback']).is_file())
+        self.assertEqual(latency['latency_summary']['statistics']['human_to_ai']['median_s'], .5)
+        for asset in ('benchmark.js', 'latency.js', 'latency.css'):
+            self.assertTrue((output / asset).is_file())
 
     def test_pack_remove_inputs_run_collect_review(self):
         source=self.root/'source';source.mkdir();demo.recording(source/'normal.wav')

@@ -118,3 +118,7 @@ export VT_EXECUTOR_DIR=/absolute/path/to/executor-config
 ## latency 可选步骤
 
 新版本 catalog 提供 latency doctor/analyze/batch；`latency_dir` 是执行端 runtime 路径，不作为输入打包。旧配置可省略，只有 latency 步骤检查引擎。通过 `VT_IMAGE=voice-tools-latency:0.15.1` 显式选择专用镜像，原 prepare/default image 不变。示例、迁移命令及路径优先级见 [latency 集成](latency-integration.md)，镜像离线导入见 [安装说明](latency-install.md)。独立报告 include_audio 不改变任务/结果包原本携带输入音频的行为。
+
+## gaps 依赖与可信复核
+
+gaps 的 evidence 清单、NISQA provenance 与其原结果、RTP timeline 与分片由打包器显式收集，必须落在打包根内。新类型证据及其引用的内容保持字节和摘要，执行路径映射单独处理；不可重写后重新计算摘要冒充原始证据。每片 <=8 MiB，沿用结构化文件 16 MiB 和总包额度。RTP 包行不进入普通记录列表。结果页“人工标签”重建 gaps 复核页，独立导入/导出间隙标签；包内 HTML 不执行。示例命令见 [间隙使用指南](output-gaps.md)。

@@ -22,13 +22,14 @@ homerctl = "voice_tools.tools.homer.client:main"
 voice-sip = "voice_tools.tools.sip.cli:main"
 
 [tool.setuptools]
-license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/voice_tools/tools/recording_qa/vendor/wavesurfer.LICENSE.txt", "src/voice_tools/tools/latency/resources/upstream-LICENSE.txt"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/voice_tools/core/review/vendor/wavesurfer.LICENSE.txt", "src/voice_tools/tools/latency/resources/upstream-LICENSE.txt"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"voice_tools.tools.recording_qa" = ["*.html", "*.js", "vendor/*.js", "vendor/*.txt", "vendor/*.json"]
+"voice_tools.tools.recording_qa" = ["*.js"]
+"voice_tools.core.review" = ["*.html", "*.js", "vendor/*.js", "vendor/*.txt", "vendor/*.json"]
 "voice_tools.tools.task" = ["web/*.html", "web/*.css", "web/*.js", "web/*.json"]
 
 "voice_tools.tools.latency" = ["resources/*.json", "resources/*.patch", "resources/*.txt", "web/*.js", "web/*.css", "web/*.html"]

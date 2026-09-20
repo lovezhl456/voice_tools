@@ -1,5 +1,4 @@
 """自包含复核页面；仅显式 include_audio 时输出试听副本。"""
-import json
 from pathlib import Path
 
 from voice_tools.audio.health import waveform
@@ -42,16 +41,6 @@ def render_workbench(output, records, summary, hide_paths=False):
     data = {"records": [{**{k: r[k] for k in fields if k in r}, "input": Path(r["input"]).name if hide_paths else r["input"]} for r in records],
             "summary": summary, "labels": LABELS, "evidence": EVIDENCE,
             "fields": REVIEW_FIELDS + EXTRA_REVIEW_FIELDS}
-    payload = json.dumps(data, ensure_ascii=False, allow_nan=False).replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
-    template = Path(__file__).with_name("review.html").read_text(encoding="utf-8")
+    from voice_tools.core.review.page import render_page
     script = Path(__file__).with_name("review.js").read_text(encoding="utf-8")
-    playback_script = Path(__file__).with_name("playback.js").read_text(encoding="utf-8")
-    waveform_script = Path(__file__).with_name("waveform.js").read_text(encoding="utf-8")
-    vendor = Path(__file__).with_name("vendor")
-    license_text = (vendor / "wavesurfer.LICENSE.txt").read_text(encoding="utf-8")
-    bundles = "\n".join((vendor / name).read_text(encoding="utf-8") for name in
-                        ("wavesurfer.min.js", "regions.min.js", "timeline.min.js"))
-    bundles = ("/* WaveSurfer.js 7.12.12 — " + license_text + " */\n" + bundles).replace("</script", "<\\/script")
-    page = template.replace("__REVIEW_SCRIPT__", script).replace("__WAVEFORM_SCRIPT__", waveform_script)
-    page = page.replace("__PLAYBACK_SCRIPT__", playback_script).replace("__WAVEFORM_VENDOR__", bundles).replace("__REVIEW_DATA__", payload)
-    (output / "review.html").write_text(page, encoding="utf-8")
+    render_page(output / "review.html", data, script)

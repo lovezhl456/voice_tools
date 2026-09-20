@@ -79,7 +79,16 @@ MARKED_MODULE=/absolute/path/to/marked/lib/marked.esm.js node scripts/build_late
 # 从源码包生成：LATENCY_SOURCE_REVISION=<对应源码的完整提交SHA> MARKED_MODULE=... node scripts/build_latency_guide.mjs
 ```
 
-生成前应先提交源码修复，保证页面链接指向已提交内容。构建后仅复制 `docs/latency-site/*.html` 到本地说明书目录；业务报告与音频仍保留在结果目录。本轮没有重新执行初版全仓测试、3600s 性能或镜像跨机导入，不把历史记录当作补丁 2 的重新验收。
+生成前应先提交源码修复，保证页面链接指向已提交内容。构建后仅复制 `docs/latency-site/*.html` 到本地说明书目录；业务报告与音频仍保留在结果目录。该轮评审修复没有重新执行初版全仓测试、3600s 性能或镜像跨机导入，不把历史记录当作补丁 2 的重新验收。
+
+## 同步最新 main：输出间隙 PR #26
+
+2026-09-21 合入 `origin/main d4d073d`。9 个冲突文件涉及版本台账、架构/任务说明、schema、版本号、工具注册、任务复查和许可路径。保留 0.15.1，同时保留 main 的 gaps 注册、公共复核资源迁移及 latency 独立入口；schema 从合并后的 CLI 重新生成。QA/gaps/benchmark/SIP/NISQA/ViSQOL 业务模块及公共复核层与该主线没有差异。
+
+- macOS 全仓 499 项：46 条件跳过，其余通过；Linux ARM64 全仓 499 项：28 条件跳过，其余通过。两侧均实际运行全部 17 项 latency 测试，包含新的混合任务回归。
+- 新回归在同一个任务中依次运行 gaps → benchmark → latency，前两步 findings 不阻断后续步骤。打包后删除原素材，收集后再删除执行目录，三个工具的报告、音频和独立展示入口仍可复查；latency 正常样本保持 0.5s。
+- 浏览器实测同一结果包的 gaps iframe 标注页、benchmark 时间轴和 latency 报告均能加载；三个入口实际试听分别观测到 1.206s、0.313s、1.846s 且正在播放。390px 移动端总览、步骤切换、latency 跳转正常，控制台无错误。
+- 本轮只增加兼容测试并解决合并冲突；引擎补丁及摘要仍为 2，不需因为主线同步再创建新的引擎前缀。未重新测量 3600s 性能或生产容量。
 
 ## 未作承诺
 

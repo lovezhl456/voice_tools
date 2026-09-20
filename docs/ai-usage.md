@@ -130,6 +130,10 @@ Use `voice-tools schema --tool visqol` for the actual contract. `doctor` only ch
 
 A score is not human MOS or proof of a fault cause. Exit 3 preserves per-pair failures with null scores; the mean excludes failed pairs. Do not describe a partial batch as completed. Native stdout/stderr is stored in artifacts, leaving one JSON envelope on stdout. Output directories must be new/empty. Installation is explicit and online; scoring is CPU/offline.
 
+## gaps 文件合同与自动化
+
+先运行 `voice-tools schema --tool gaps`。gaps 1.0 结果不能按 QA 标签解释；只有 --fail-on-findings 才因候选退出 1，部分输入/显式证据错误退出 3。无需模型或网络即可发现帮助/schema；NISQA 与 RTP 通过文件关联，不由 gaps 触发评分或抓包。任务 params 与真实解析器同步，详情见 [事件、证据、身份和 CSV 合同](output-gaps-contract.md)。
+
 ## 中文电话时序（0.13.1）
 
 SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](benchmark.md)。

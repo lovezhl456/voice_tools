@@ -24,9 +24,13 @@ def detect_activity(audio, *, threshold_db=-45, minimum_s=0.16, gap_s=0.3, backe
     data, rate = audio.samples, audio.sample_rate
     frame = round(rate * 0.02)
     levels, dc = [], 0.0
+    clipped, channel_difference = 0, 0.0
     # 分块计算，避免长录音额外产生整文件大小的居中副本。
     for offset in range(0, len(data), frame * 512):
         block = data[offset:offset + frame * 512]
+        clipped += int(np.count_nonzero(np.abs(block) >= .999))
+        if data.shape[1] == 2:
+            channel_difference = max(channel_difference, float(np.max(np.abs(block[:, 0] - block[:, 1]))))
         complete = len(block) // frame * frame
         if complete:
             parts = block[:complete].reshape(-1, frame, data.shape[1])
@@ -63,6 +67,6 @@ def detect_activity(audio, *, threshold_db=-45, minimum_s=0.16, gap_s=0.3, backe
                 for channel in range(data.shape[1])]
     health = {"median_dbfs": np.median(levels, axis=0).round(2).tolist(),
               "max_dc_offset": dc,
-              "clipping_fraction": float(np.mean(np.abs(data) >= 0.999)),
-              "duplicate_channels": bool(data.shape[1] == 2 and np.max(np.abs(data[:, 0] - data[:, 1])) < 1e-5)}
+              "clipping_fraction": clipped / data.size,
+              "duplicate_channels": bool(data.shape[1] == 2 and channel_difference < 1e-5)}
     return activity, health

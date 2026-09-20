@@ -18,6 +18,7 @@ def register(commands):
     analyze.add_argument("--segment-seconds", type=float, default=10.0, help="分段时长，1～20 秒")
     analyze.add_argument("--min-seconds", type=float, default=1.0, help="过短片段不打分，至少 0.5 秒")
     analyze.add_argument("--min-rms-dbfs", type=float, default=-60.0, help="低于此 RMS 门槛不打分；不是 VAD")
+    analyze.add_argument("--provenance", action="store_true", help="额外保存源录音与结果摘要，不改变评分列")
     analyze.add_argument("--threads", type=int, default=2, help="PyTorch CPU 计算线程数，1～64")
 
 
@@ -36,7 +37,7 @@ def run(args):
         return emit_result(args, result, message, exit_code=0 if result["ready"] else 1)
     from .service import analyze
     result, code = analyze(args.inputs, args.out, args.model_dir, args.channel, args.segment_seconds,
-                           args.min_seconds, args.min_rms_dbfs, args.threads)
+                           args.min_seconds, args.min_rms_dbfs, args.threads, provenance=args.provenance)
     return emit_result(args, result,
         f"NISQA：{result['scored']} 段已评分，{result['insufficient_evidence']} 段证据不足，{result['errors']} 项错误。结果：{args.out}",
-        artifacts(args.out, "results.jsonl", "results.csv", "run.json"), code)
+        artifacts(args.out, "results.jsonl", "results.csv", "run.json", *(["provenance.json"] if args.provenance else [])), code)

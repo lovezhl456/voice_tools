@@ -2,6 +2,7 @@
 
 BUILTIN_TOOLS = (
     "voice_tools.tools.latency.cli",
+    "voice_tools.tools.gaps.cli",
     "voice_tools.tools.benchmark.cli",
     "voice_tools.tools.task.cli",
     "voice_tools.tools.visqol.cli",
