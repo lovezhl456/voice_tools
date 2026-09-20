@@ -1,10 +1,11 @@
 import csv
 import importlib.util
 import json
+import math
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
 
@@ -106,6 +107,73 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual((code, summary["errors"], summary["scored"]), (3, 1, 1))
         self.assertEqual(rows[0]["reason"], "test failure")
 
+    def test_duration_and_rms_gates_include_exact_boundary(self):
+        samples = np.concatenate([np.full(16000, 0.125), np.full(16000, 0.0625), np.zeros(7999)])
+        self.write("boundary.wav", samples)
+        gate = 20 * math.log10(0.125)
+
+        summary, code, rows = self.run_analysis(segment_seconds=1, min_seconds=1, min_rms_dbfs=gate)
+
+        self.assertEqual((code, summary["scored"], summary["insufficient_evidence"]), (1, 1, 2))
+        self.assertEqual([r["reason"] for r in rows], [None, "silent_or_below_rms_gate", "too_short"])
+        self.assertEqual(rows[0]["rms_dbfs"], gate)
+        self.assertEqual(rows[-1]["end_seconds"], len(samples) / 16000)
+        self.assertEqual(len(self.calls), 1)
+        np.testing.assert_array_equal(self.calls[0][0], samples[:16000].astype(np.float32))
+        self.assertEqual(self.calls[0][1], 16000)
+
+    def test_stereo_failure_preserves_channel_order_samples_and_error_priority(self):
+        samples = np.empty((20000, 2), dtype=np.float32)
+        samples[:] = [0.125, 0.25]
+        self.write("stereo.wav", samples)
+
+        def score(audio, rate):
+            self.calls.append((audio.copy(), rate))
+            audio[:] = 0  # A scorer may mutate its input; later channels must stay intact.
+            if len(self.calls) == 1:
+                raise RuntimeError("x" * 600)
+            return dict.fromkeys(SCORE_NAMES, 3)
+
+        self.factory.return_value = score
+        summary, code, rows = self.run_analysis(channel="both", segment_seconds=1)
+
+        self.assertEqual((code, summary["errors"], summary["scored"], summary["insufficient_evidence"]),
+                         (3, 1, 1, 2))
+        self.assertEqual([r["channel"] for r in rows], ["left", "right", "left", "right"])
+        self.assertEqual([r["status"] for r in rows], ["error", "ok", "insufficient_evidence", "insufficient_evidence"])
+        self.assertEqual(rows[0]["reason"], "x" * 500)
+        self.assertEqual(summary["scored_audio_seconds"], 1)
+        for number, (audio, rate) in enumerate(self.calls):
+            np.testing.assert_array_equal(audio, samples[:16000, number])
+            self.assertEqual((audio.dtype, rate), (np.dtype("float32"), 16000))
+        with (self.root / "out/results.csv").open() as stream:
+            csv_rows = list(csv.DictReader(stream))
+        self.assertEqual([r["status"] for r in csv_rows], [r["status"] for r in rows])
+        self.assertEqual([r["mos"] for r in csv_rows], ["", "3.0", "", ""])
+
+    def test_nonfinite_short_audio_precedes_duration_gate(self):
+        self.write("short.wav", np.array([np.nan], dtype=np.float32))
+
+        summary, code, rows = self.run_analysis()
+
+        self.assertEqual((code, summary["errors"]), (3, 1))
+        self.assertEqual(rows[0]["reason"], "non_finite_audio")
+        self.assertNotIn("rms_dbfs", rows[0])
+        self.assertEqual(self.calls, [])
+
+    def test_invalid_score_shapes_fail_per_segment_and_later_segment_completes(self):
+        self.write("scores.wav", np.full(48000, 0.125))
+        invalid = dict.fromkeys(SCORE_NAMES, 3)
+        invalid["mos"] = float("inf")
+        self.factory.return_value = Mock(side_effect=[{"mos": 3}, invalid, dict.fromkeys(SCORE_NAMES, 3)])
+
+        summary, code, rows = self.run_analysis(segment_seconds=1)
+
+        self.assertEqual((code, summary["errors"], summary["scored"]), (3, 2, 1))
+        self.assertEqual([r["reason"] for r in rows], ["模型未返回五项有限分数"] * 2 + [None])
+        self.assertEqual([r["scores"] for r in rows[:2]], [None, None])
+        self.assertEqual(rows[2]["scores"], dict.fromkeys(SCORE_NAMES, 3.0))
+
     def test_unsupported_sample_rate_is_rejected_before_scoring(self):
         self.write("rate.wav", np.full(4000, 0.03), rate=4000)
         summary, code, rows = self.run_analysis()
@@ -140,3 +208,18 @@ class ServiceTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing model"):
             self.run_analysis()
         self.assertFalse((self.root / "out").exists())
+
+    def test_missing_numpy_fails_before_output_even_for_empty_audio(self):
+        self.write("empty.wav", np.zeros(0))
+        original_import = __import__
+
+        def import_without_numpy(name, *args, **kwargs):
+            if name == "numpy":
+                raise ImportError("numpy unavailable")
+            return original_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=import_without_numpy):
+            with self.assertRaisesRegex(ValueError, "NISQA 可选依赖"):
+                self.run_analysis()
+        self.assertFalse((self.root / "out").exists())
+        self.assertEqual(self.calls, [])
