@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice-tools"
-version = "0.10.1"
+version = "0.11.1"
 description = "本地运行、CPU 优先的语音工具集"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -12,6 +12,7 @@ dependencies = ["numpy>=1.24,<3"]
 
 [project.optional-dependencies]
 vad = ["webrtcvad-wheels>=2.0.14,<3"]
+nisqa = ["torch>=2.6,<3", "torchmetrics==1.9.0", "librosa>=0.10.2,<0.12", "soundfile>=0.12,<0.14", "requests>=2.31,<3"]
 
 [project.scripts]
 voice-tools = "voice_tools.cli:main"

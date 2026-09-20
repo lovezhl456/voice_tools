@@ -20,7 +20,7 @@ python -m pip install -e .
 voice-tools --version
 ```
 
-若下载本项目，先使用 `git clone https://github.com/lovezhl456/voice_tools.git`，进入仓库；尚未合并的功能需要切换到 `feat/v0.10.1-visqol`。不要为安装本功能覆盖自己已有的工作树或未提交修改。
+若下载本项目，先使用 `git clone https://github.com/lovezhl456/voice_tools.git`，进入仓库；尚未合并的功能需要切换到 `feat/v0.11.1-visqol`。不要为安装本功能覆盖自己已有的工作树或未提交修改。
 
 ### 1.2 系统前置工具
 

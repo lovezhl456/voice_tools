@@ -2,6 +2,7 @@
 
 BUILTIN_TOOLS = (
     "voice_tools.tools.visqol.cli",
+    "voice_tools.tools.nisqa.cli",
     "voice_tools.tools.audio.cli",
     "voice_tools.tools.recording_qa.cli",
     "voice_tools.tools.homer.cli",

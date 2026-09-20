@@ -1,7 +1,7 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
-.venv/
+.venv
 build/
 dist/
 .pytest_cache/
@@ -14,3 +14,11 @@ outputs/
 *.mp3
 *.flac
 .DS_Store
+# Model checkpoints are downloaded into a local cache, never committed.
+weights/
+models/
+nisqa*.tar
+*.pt
+*.pth
+*.ckpt
+*.safetensors

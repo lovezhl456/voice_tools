@@ -64,9 +64,9 @@ def read_pairs(path):
     pairs = []
     with path.open(encoding="utf-8-sig", newline="") as stream:
         reader = csv.DictReader(stream, strict=True)
-        if reader.fieldnames != ["reference", "degraded"]:
-            raise ValueError("CSV 表头必须为 reference,degraded")
         try:
+            if reader.fieldnames != ["reference", "degraded"]:
+                raise ValueError("CSV 表头必须为 reference,degraded")
             for number, row in enumerate(reader, 2):
                 if None in row or any(not row.get(k, "") or not row[k].strip() for k in ("reference", "degraded")):
                     raise ValueError(f"CSV 第 {number} 行须有且只有 reference,degraded 两项路径")

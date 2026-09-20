@@ -146,7 +146,7 @@ class VisqolCliTests(unittest.TestCase):
         self.assertIsNone(rows[0]['moslqo']); self.assertEqual(rows[1]['moslqo'], 4.2)
 
     def test_empty_and_malformed_csv_fail_before_output(self):
-        for i, data in enumerate(['reference,degraded\n', 'ref,deg\na,b\n', 'reference,degraded\na,b,c\n', 'reference,degraded\na,\n']):
+        for i, data in enumerate(['reference,degraded\n', 'ref,deg\na,b\n', 'reference,degraded\na,b,c\n', 'reference,degraded\na,\n', '"reference,degraded\n']):
             p = self.root / f'p{i}.csv'; p.write_text(data)
             out = self.root / f'o{i}'
             r, e = self.command('batch', '--pairs', p, '--visqol-dir', self.backend, '--out', out)

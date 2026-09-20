@@ -59,6 +59,8 @@ voice_tools/
 
 依赖方向：`cli → tools/<tool> → audio / core`。`audio` 和 `core` 不导入具体工具；工具之间不直接互相导入。报告中与“应答机会”有关的列属于录音质检，不提前抽象成所有工具的通用报告。
 
+`tools/nisqa/` 独立负责可选 CPU 听感评分：CLI 注册不导入运行库；`weights` 显式下载并校验固定 checkpoint；`backend` 延迟加载版本锁定的 TorchMetrics 模型；`service` 流式读取 WAV/FLAC、按显式声道分段并输出 JSONL/CSV。它只依赖公共 `core`，不导入其他工具，也不改变已有 QA 规则。权重和实际录音不随包分发，详见 [NISQA](nisqa.md)。
+
 会话抓包位于 `tools/capture/`，负责 SSH/fs_cli、ESL、BPF、远端 dumpcap 环形/限时任务、冻结与 SCP（保留旧 tcpdump 后端）；联合媒体报告位于 `tools/report/`，复用公共音频读取/健康指标，并独立使用本机 tshark。两者通过版本化的 `capture.json` 和 PCAP 文件交换数据，不直接互相导入。详见[抓包与报告指南](capture-report.md)。
 
 批量抓包产出 `batch.json`、各机 `host.json`、分片 PCAP 和 FS `events.jsonl`（兼容旧 `sessions.jsonl`）。`tools/sessions/` 建立不可变 SQLite 索引，通过文件协议读取这些产物，并通过原 `voice-tools homer` 子进程 CLI 查询 HOMER。会话导出的 `session.json` 和关联回执 `correlation.json` 可被报告工具读取；工具间仍不直接导入实现。详见[批量会话指南](batch-sessions-homer.md)。

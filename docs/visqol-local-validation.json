@@ -1,0 +1,305 @@
+{
+  "schema_version": "1.0",
+  "date": "2026-09-20",
+  "tool_version": "0.11.1",
+  "base_main_commit": "14ed371",
+  "platform": {
+    "cpu": "Apple M1 Max",
+    "logical_cpu_count": 10,
+    "ram_gib": 32,
+    "os": "macOS 26.6.2",
+    "xcode": "26.6 (17F113)",
+    "python": "3.9.6",
+    "numpy": "2.0.2",
+    "ffmpeg": "8.1.2"
+  },
+  "upstream": {
+    "source_commit": "38d0b0163e441047d4429bf07ad09e5b9031d02c",
+    "source_archive_sha256": "dbfe6283f362560cedee7441255c1d95ed31e977ecc2854fc60db020c788a508",
+    "bazel_version": "bazel 5.1.0",
+    "bazel_sha256": "485afe1117d129c9a792ef484a7108e053e99ddb239591f3b8469091dd8359c2",
+    "binary_sha256": "816c15189f8396718ba1452a460938314153d8e2dcbf46bc06cb1d93e68ad529",
+    "binary_bytes": 7995464,
+    "dependency_patch": {
+      "dependency": "TensorFlow 2.11.0 d5b57ca93e506df258271ea00fc29cf98383a374",
+      "file": "tensorflow/lite/kernels/elementwise.cc",
+      "original_sha256": "2c3fd99764287694f2f052fac06f78221e75beca3a9d2f120927c36ef3338771",
+      "patched_sha256": "03635bf3ce7c65b573c83f7f5844b1321ca016c6e7e691462a7c4069816176d4",
+      "change": "std::abs<float> 改为调用 std::abs(float) 的等价 lambda，兼容现代 libc++"
+    }
+  },
+  "models": {
+    "lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite": {
+      "bytes": 2233840,
+      "sha256": "4bd031d6c95594ae2cd1d471aa6611bff26b3bbf816528431ff1741bcd798dc6"
+    },
+    "libsvm_nu_svr_model.txt": {
+      "bytes": 138117,
+      "sha256": "1e8246ed33bf36dc5c859351f7110f2cd31f98661989715c0fcf974ec48d3e2e"
+    }
+  },
+  "wheel": {
+    "name": "voice_tools-0.11.1-py3-none-any.whl",
+    "bytes": 248441,
+    "sha256": "7c02e68390b3f766ee03793a36835685a6c553cbe78dcd81d71bdcddf01f78a9"
+  },
+  "actual_cli_cases": [
+    {
+      "case": "identity",
+      "pair_index": 1,
+      "mode": "speech",
+      "status": "completed",
+      "moslqo": 4.506983757019043,
+      "reference_name": "reference16.wav",
+      "degraded_name": "reference16.wav",
+      "inputs": {
+        "reference": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.026812822246803106,
+          "peak": 0.198089599609375,
+          "sha256": "153e0f1b6709c2b0012002bbd2eb62fd0ddc48abcd23a07d5073d1e0bd1054e0",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        },
+        "degraded": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.026812822246803106,
+          "peak": 0.198089599609375,
+          "sha256": "153e0f1b6709c2b0012002bbd2eb62fd0ddc48abcd23a07d5073d1e0bd1054e0",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        }
+      }
+    },
+    {
+      "case": "speech-batch",
+      "pair_index": 1,
+      "mode": "speech",
+      "status": "completed",
+      "moslqo": 3.3159115314483643,
+      "reference_name": "reference16.wav",
+      "degraded_name": "transcoded16.wav",
+      "inputs": {
+        "reference": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.026812822246803106,
+          "peak": 0.198089599609375,
+          "sha256": "153e0f1b6709c2b0012002bbd2eb62fd0ddc48abcd23a07d5073d1e0bd1054e0",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        },
+        "degraded": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.024274850604748044,
+          "peak": 0.165252685546875,
+          "sha256": "24c334c21617678498dfc2f3a6ae17d56266d8e6df76539eec7494255ba9b710",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        }
+      }
+    },
+    {
+      "case": "speech-batch",
+      "pair_index": 2,
+      "mode": "speech",
+      "status": "completed",
+      "moslqo": 1,
+      "reference_name": "reference16.wav",
+      "degraded_name": "noise16.wav",
+      "inputs": {
+        "reference": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.026812822246803106,
+          "peak": 0.198089599609375,
+          "sha256": "153e0f1b6709c2b0012002bbd2eb62fd0ddc48abcd23a07d5073d1e0bd1054e0",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        },
+        "degraded": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.08440348684494224,
+          "peak": 0.415740966796875,
+          "sha256": "6f63ac2f6de83f2e772b154f7dfb6318a4c464610ce47fe0d5127b7ceb4c9006",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        }
+      }
+    },
+    {
+      "case": "audio",
+      "pair_index": 1,
+      "mode": "audio",
+      "status": "completed",
+      "moslqo": 1.7658378752958073,
+      "reference_name": "CA01_01.wav",
+      "degraded_name": "transcoded_CA01_01.wav",
+      "inputs": {
+        "reference": {
+          "sample_rate": 48000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384166666666667,
+          "rms": 0.027147895698964815,
+          "peak": 0.19873046875,
+          "sha256": "9d150f092cd14a98c2ae2ff8ca8e5bc9445e245a95db5074ca75103bad61ae16",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        },
+        "degraded": {
+          "sample_rate": 48000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384166666666667,
+          "rms": 0.024275005606299728,
+          "peak": 0.166046142578125,
+          "sha256": "ffb070bed063b9aba29ce2d156726c4dedb5ff6a827eea7a8b060606efad4232",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        }
+      }
+    }
+  ],
+  "demo_audio_conformance": {
+    "case": "kCA01_01AsAudio",
+    "expected": 1.7658378752958486,
+    "observed": 1.7658378752958073,
+    "tolerance": 0.0001,
+    "passed": true
+  },
+  "native_measurement_scope": "native single process; warm OS cache; fresh process per run; Darwin RSS in bytes; inputs approximately 2.738 seconds; Python caller excluded",
+  "native_measurements": [
+    {
+      "mode": "speech",
+      "run": 1,
+      "exit_code": 0,
+      "real_s": 0.54,
+      "user_s": 0.51,
+      "sys_s": 0.01,
+      "peak_rss_bytes": 53018624,
+      "moslqo": 3.3159115314483643
+    },
+    {
+      "mode": "speech",
+      "run": 2,
+      "exit_code": 0,
+      "real_s": 0.53,
+      "user_s": 0.52,
+      "sys_s": 0.0,
+      "peak_rss_bytes": 56999936,
+      "moslqo": 3.3159115314483643
+    },
+    {
+      "mode": "speech",
+      "run": 3,
+      "exit_code": 0,
+      "real_s": 0.53,
+      "user_s": 0.52,
+      "sys_s": 0.0,
+      "peak_rss_bytes": 54493184,
+      "moslqo": 3.3159115314483643
+    },
+    {
+      "mode": "audio",
+      "run": 1,
+      "exit_code": 0,
+      "real_s": 1.99,
+      "user_s": 1.96,
+      "sys_s": 0.01,
+      "peak_rss_bytes": 71139328,
+      "moslqo": 1.7658378752958073
+    },
+    {
+      "mode": "audio",
+      "run": 2,
+      "exit_code": 0,
+      "real_s": 1.97,
+      "user_s": 1.95,
+      "sys_s": 0.01,
+      "peak_rss_bytes": 66109440,
+      "moslqo": 1.7658378752958073
+    },
+    {
+      "mode": "audio",
+      "run": 3,
+      "exit_code": 0,
+      "real_s": 2.0,
+      "user_s": 1.98,
+      "sys_s": 0.01,
+      "peak_rss_bytes": 67895296,
+      "moslqo": 1.7658378752958073
+    }
+  ],
+  "real_mixed_batch": {
+    "completed": 1,
+    "errors": 1,
+    "exit_code": 3,
+    "failed_moslqo": null
+  },
+  "verification": {
+    "regression_tests_total": 354,
+    "executed_passed": 322,
+    "skipped": 32,
+    "skipped_by_reason": {
+      "pjsua2_loopback": 19,
+      "vad_extra": 1,
+      "nisqa_soundfile": 11,
+      "nisqa_real_weights": 1
+    },
+    "final_visqol_tests_total": 17,
+    "final_visqol_tests_passed": 17,
+    "final_fix": "malformed quoted CSV header gives structured error; affected suite rerun after full regression",
+    "final_wheel_real_score": 3.3159115314483643
+  },
+  "not_verified": [
+    "Linux",
+    "Intel Mac",
+    "fresh empty-cache reinstall of final script",
+    "production recordings and quality accuracy",
+    "load/concurrency capacity",
+    "full build peak RSS and cold install time"
+  ],
+  "upstream_tests": {
+    "status": "passed",
+    "conformance_cases": 20,
+    "tflite_quality_mapper_cases": 3,
+    "conformance_tolerance": 0.0001,
+    "test_link_mode": "--dynamic_mode=off",
+    "test_sharding": "disabled",
+    "default_dynamic_tests": "failed before assertions: dyld missing _TfLiteXNNPackDelegateDelete",
+    "unmodified_upstream_expectations": true
+  },
+  "local_evidence_sha256": {
+    "upstream-tests-static.log": "a9e650c8baae38c535e1405bfd4c14318f1599a33dd9e4c1205037246f677d61",
+    "tests-merged-main-approved.log": "eb65bb322bc643530858f6af2e31c44350b8d036c2d51aa5989fe83ad3740796",
+    "test-visqol-final-csv.log": "78bbd743795115073cb5d3556d8220cdfb0be76cd0b4c9735181054a7ec97dfb",
+    "resource-measurements-verified/measurements.json": "20a8f3659d6275402890abdabf2ee2d6f1058f209c25ef9bc51dc29640d41d52",
+    "demo-final/demo.json": "3b94e7c717a46d50b72b9db9a3031e53a3bb7418418bc7df531a270c1d77c387",
+    "wheel-final-csv-score.stdout.json": "aa5c03cf18c837dbbda40a65dcfc3c70c936b92aa16fb6ead565ba5a515e6b54"
+  }
+}
