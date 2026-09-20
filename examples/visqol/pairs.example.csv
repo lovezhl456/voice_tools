@@ -1,0 +1,3 @@
+reference,degraded
+./reference16.wav,./received16.wav
+./reference16_b.wav,./received16_b.wav
