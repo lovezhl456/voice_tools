@@ -1,14 +1,14 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>latency · latency-validation</title><style>*{box-sizing:border-box}body{margin:0;background:#f2f6f7;color:#183347;font:16px/1.8 system-ui,sans-serif}header{background:#15394b;color:white;padding:32px max(20px,calc((100vw - 1040px)/2))}header p{color:#c0e1e6}nav{display:flex;flex-wrap:wrap;gap:12px}nav a{color:#d9f1f2;font-size:14px}main{max-width:1040px;margin:28px auto;background:white;padding:32px;border-radius:16px}h1{font-size:30px}h2{margin-top:32px;border-top:1px solid #dce8ec;padding-top:20px}a{color:#14727a;overflow-wrap:anywhere}pre{overflow:auto;padding:18px;background:#eef4f6;border-radius:10px;font-size:13px}code{font-family:ui-monospace,monospace;overflow-wrap:anywhere}table{display:block;max-width:100%;overflow:auto;border-collapse:collapse;font-size:14px}th,td{border:1px solid #dae5e8;padding:10px;text-align:left;min-width:100px}blockquote{border-left:4px solid #19818b;padding-left:16px}footer{max-width:1040px;margin:20px auto;color:#526976}@media(max-width:650px){main{padding:18px;margin:12px}header{padding:24px 18px}h1{font-size:24px}}</style></head><body><header><p>VOICE_TOOLS 0.15.1 · 可选外部引擎</p><h1>双轨录音延迟说明书</h1><nav><a href="/">← 本地总导航</a><a href="latency.html">使用与结果</a><a href="latency-install.html">安装与回退</a><a href="latency-integration.html">任务与协议</a><a href="latency-validation.html">验收记录</a><a href="demo/">合成录音演示 ↗</a><a href="task-review/">任务复查演示 ↗</a></nav></header><main><h1>latency 0.15.1 验收记录</h1>
-<p>日期：2026-09-20。状态：实现及本地分层验收记录，PR 未合并。真实中文录音准确率、指定线路和生产容量不在本次合成验收范围。</p>
+<p>日期：初版 2026-09-20，PR 评审修复 2026-09-21。状态：实现及本地分层验收记录，PR 未合并。真实中文录音准确率、指定线路和生产容量不在本次合成验收范围。</p>
 <h2>固定来源与环境</h2>
 <ul>
 <li>主线冻结：<code>92ad27f</code>，已合入 benchmark PR #25。独立工作树 <code>feat/v0.15.1-latency</code>，保留并行 0.14.1 工作；最终收尾再次 fetch 主线仍为该提交。</li>
-<li>上游提交、归档、补丁摘要以 <a href="https://github.com/lovezhl456/voice_tools/blob/feat/v0.15.1-latency/src/voice_tools/tools/latency/resources/manifest.json">包内 manifest</a> 为准，补丁版本 1。原始源码和普通样本对照使用相同固定提交。</li>
+<li>上游提交、归档、补丁摘要以 <a href="https://github.com/lovezhl456/voice_tools/blob/123ec147313308cb0079299aeafd9dd641086e7a/src/voice_tools/tools/latency/resources/manifest.json">包内 manifest</a> 为准，当前补丁版本 2。原始源码和普通样本对照使用相同固定提交。</li>
 <li>macOS ARM64：主 CLI Python 3.9.6；外部引擎 Python 3.12.14 / NumPy 2.2.6。</li>
 <li>Linux：Docker 的 ARM64 原生虚拟化，Python 3.11，非 root 10001:10001；专用镜像基于原任务镜像 0.13.1。未验证物理 Linux、Intel Mac、Linux amd64 或 amd64 模拟性能。</li>
 <li>Linux 全仓测试使用另建的 validation 镜像补齐既有测试需要的 Node、procps、tcpdump；这些不是 latency 业务运行依赖，不放进生产镜像。</li>
 </ul>
-<h2>已执行的检查与结果</h2>
+<h2>初版补丁 1 的检查与结果</h2>
 <table>
 <thead>
 <tr>
@@ -122,6 +122,46 @@ VOICE_TOOLS_TEST_LATENCY_DIR=/absolute/path/to/engine PYTHONPATH=src python3 -m 
 python scripts/serve_latency.py --root results --port 8088
 </code></pre>
 <p>安装、独立前缀切换/回退、镜像离线导入按 <a href="latency-install.html">安装说明</a>；迁移按 <a href="latency-integration.html">集成协议</a>。跳过的既有测试主要依赖指定原生/模型/真实环境；不将条件跳过当作通过，不把静态检查代替音频播放。首次全量检查中的 schema 快照遗漏已修正，对应 benchmark 合同测试复跑通过。首次 Linux 全量失败是测试工具缺失，补齐后全量通过。说明书与合成演示已接入 <a href="http://127.0.0.1:8080/latency-guide/">本地 8080 总导航</a>，桌面/移动端正式地址再次验证。</p>
+<h2>PR #27 评审修复：补丁 2</h2>
+<p>主线重新 fetch 后仍为 <code>92ad27f</code>。本轮只改 latency 片段审计、安装资源和文档生成；没有修改共享任务模块或旧业务算法。沿用尚未发布的 0.15.1，旧环境和镜像保留；补丁 2 使用新前缀与单独镜像标签。</p>
+<table>
+<thead>
+<tr>
+<th>检查</th>
+<th>本轮实测</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>macOS ARM64</td>
+<td>新建 Python 3.12.13 / NumPy 2.2.6 前缀，官方 wheel 哈希校验安装成功；16 项 latency 测试全部通过，无跳过</td>
+</tr>
+<tr>
+<td>Linux ARM64</td>
+<td>从原基础镜像重新构建 patch2 专用镜像；Python 3.11，非 root、禁网、只读源码，16 项 latency 测试全部通过，无跳过</td>
+</tr>
+<tr>
+<td>续说归属</td>
+<td>人声 1–2s、4.8–6.3s，AI 4.5–4.9s：前段 outgoing overlap，续说 incoming overlap / outgoing unpaired；覆盖率 0/2，状态不足证据。再加 AI 7–8s，续说 outgoing paired，延迟 0.7s，覆盖率 1/2</td>
+</tr>
+<tr>
+<td>补丁 1/2 对照</td>
+<td>正常、长延迟、普通重叠、续说、续说后回复、短片段和静音共 7 组，除 segment_audit 外检测结果逐字段相等；本样本仅无后续回复的续说审计发生预期修正</td>
+</tr>
+<tr>
+<td>哈希失败路径</td>
+<td>离线提供同名同版本、不同字节的 wheel，完整安装器退出 2；保留 installing.json，不写 ready.json，释放安装锁。自动测试另验 pip 不接受该 wheel</td>
+</tr>
+<tr>
+<td>Node 18</td>
+<td>在 Linux Node 18.20.4 实际生成 5 个 HTML 页面、8 个固定提交链接；无 Git 的源目录通过显式 SHA 生成，分支名作为 revision 会被拒绝</td>
+</tr>
+</tbody></table>
+<p>说明书生成使用 Node 18+ 和可导入的 marked ESM 模块；在仓库内默认固定到当前 HEAD。源码包没有 Git 元数据时必须显式传入对应的完整 40 位提交 SHA：</p>
+<pre><code class="language-sh"># MARKED_MODULE 指向本机已安装的 marked 模块；有本地 node_modules 时可省略。
+MARKED_MODULE=/absolute/path/to/marked/lib/marked.esm.js node scripts/build_latency_guide.mjs
+# 从源码包生成：LATENCY_SOURCE_REVISION=&lt;对应源码的完整提交SHA&gt; MARKED_MODULE=... node scripts/build_latency_guide.mjs
+</code></pre>
+<p>生成前应先提交源码修复，保证页面链接指向已提交内容。构建后仅复制 <code>docs/latency-site/*.html</code> 到本地说明书目录；业务报告与音频仍保留在结果目录。本轮没有重新执行初版全仓测试、3600s 性能或镜像跨机导入，不把历史记录当作补丁 2 的重新验收。</p>
 <h2>未作承诺</h2>
 <p>不承诺真实中文录音准确率、业务应答成功率、指定 FreeSWITCH/运营商线路、生产并发容量、跨时钟自动对齐或原生离线首次安装。不承诺 file://；浏览器实际验收通过本地 HTTP Range 服务。算法受上游能量门限和配对假设限制，串音、弱音、噪声、过长停顿都应结合原始录音复核。</p>
 </main><footer>此站只展示说明书和合成音频；业务报告保留在各自结果目录。内容源为仓库四份 latency 文档。</footer></body></html>

@@ -11,7 +11,7 @@ voice-tools schema --tool latency
 </code></pre>
 <p>目录递归收集 WAV。规范化后的相同路径仅处理一次，并按路径排序。不同路径的相同 PCM 内容保留，标记 <code>duplicate_of_file_index</code>，按实际处理的文件和轮次参与汇总；这不是独立样本量的证明。无 WAV 的目录记为文件错误。</p>
 <h2>参数的唯一来源</h2>
-<p><a href="https://github.com/lovezhl456/voice_tools/blob/feat/v0.15.1-latency/src/voice_tools/tools/latency/contract.py">代码契约</a> 是参数单位、范围、默认值与退出码的唯一维护来源。<code>voice-tools schema --tool latency</code> 的 <code>latency_contract</code> 输出完整表；<code>cli.arguments</code> 的 <code>null</code> 表示未显式覆盖，实际默认值由该契约解析。结果保存全部有效参数、<code>default/explicit</code> 来源以及固定算法常量。</p>
+<p><a href="https://github.com/lovezhl456/voice_tools/blob/123ec147313308cb0079299aeafd9dd641086e7a/src/voice_tools/tools/latency/contract.py">代码契约</a> 是参数单位、范围、默认值与退出码的唯一维护来源。<code>voice-tools schema --tool latency</code> 的 <code>latency_contract</code> 输出完整表；<code>cli.arguments</code> 的 <code>null</code> 表示未显式覆盖，实际默认值由该契约解析。结果保存全部有效参数、<code>default/explicit</code> 来源以及固定算法常量。</p>
 <p>能量阈值的单位是归一化采样的 <strong>均方能量 × 10⁶</strong>，不能直接使用 QA 的 dBFS 参数。毫秒参数必须为 10ms 的整数倍，否则拒绝；不会悄悄截断。每文件超时用 <code>--timeout</code>，任务步骤自己的 <code>timeout_s</code> 同时有效，以先触发者为准。</p>
 <h2>结果与解释</h2>
 <table>
