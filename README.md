@@ -142,3 +142,9 @@ SIP 0.8.1：[结构化断言](docs/sip-assertions.md)支持应答码、接收 RT
 ### SIP 批量与压力测试
 
 工作台「批量」可配置队列、重复次数、并发上限和端口池，下载 `queue.json` 后运行 `voice-tools sip batch`。性能压力独立使用 `voice-tools sip sipp-load`：工作台生成 SIPp XML、CSV、DTMF PCAP 和启动脚本。执行结果可导回工作台查看。参见 [安装与完整使用指南](docs/sipp.md)。
+
+## 跨主机任务与离线复查（0.12.1）
+
+使用 `voice-tools task` 或 Docker 入口 `./vt`，将现有工具编排为顺序任务：本机生成 `.vtask.zip`，执行机检查并后台运行，带回 `.vresult.zip` 后查看录音、断言、评分和人工标签。工作台使用模板、步骤列表和参数侧栏；SIP Studio 支持五类接收证据断言。
+
+准备、网络边界、素材引用和完整命令见 [跨主机任务文档](docs/task-delivery.md)。离线演示任务见 [demo.json](examples/task/demo.json)；实际验证及未验证范围见 [验证记录](docs/task-validation.md)。

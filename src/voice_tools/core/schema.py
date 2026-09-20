@@ -42,7 +42,7 @@ def contract(parser, selected=None, native_parsers=None):
                        "homer": "preserves HOMER native JSON envelope and exit codes; use voice-tools homer schema"},
             "exit_codes": {"0": "completed, not proof of audio quality", "1": "qa findings, nisqa insufficient evidence, or nisqa doctor not ready",
                            "2": "invalid arguments/input/runtime dependency", "3": "partial result or input errors; inspect artifacts"},
-            "data_contracts": {"results_jsonl": "1.0", "events": "1.0", "golden_read": ["1.0", "1.1"], "golden_write": "1.1",
+            "data_contracts": {"task": "1.0", "voice_task": "1.0", "voice_result": "1.0", "task_run": "1.0", "results_jsonl": "1.0", "events": "1.0", "golden_read": ["1.0", "1.1"], "golden_write": "1.1",
                                "nisqa_results": "1.0", "nisqa_run": "1.0",
                                "capture": "1.0", "capture_batch": "1.0", "capture_number": "1.0",
                                "capture_number_bundle": "1.0", "sessions_index": "1.0",

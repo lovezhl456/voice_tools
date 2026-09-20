@@ -29,14 +29,29 @@
     const port=v.match(/:(\d+)(?:;transport=udp)?$/);if(port)num(Number(port[1]),1,65535,label+' 端口',true);
   }
   const stepFields = {wait:['seconds'],play:['file'],dtmf:['digits','method','duration_ms','gap_ms'],play_media:['file'],hangup:[]};
+  const assertionFields={response_code:['codes'],received_rtp:['min_packets'],effective_audio:['min_duration_s','threshold_dbfs'],dtmf:['digits','match'],tone:['frequencies_hz','min_duration_s','threshold_dbfs','min_power_ratio']};
+  function validateAssertions(items){
+    if(!Array.isArray(items)||items.length>64)throw Error('assertions 必须是最多 64 项的列表');
+    const ids=new Set();items.forEach((a,i)=>{
+      if(!a||!Object.hasOwn(assertionFields,a.type))throw Error('断言类型无效');
+      object(a,['id','type',...assertionFields[a.type]],'断言');const id=get(a,'id','assertion_'+(i+1));str(id,'断言 ID',128);if(ids.has(id))throw Error('断言 ID 不得重复');ids.add(id);
+      if(a.type==='response_code'){if(!Array.isArray(a.codes)||!a.codes.length||a.codes.length>500)throw Error('应答码列表无效');a.codes.forEach(v=>num(v,200,699,'应答码',true));}
+      else if(a.type==='received_rtp')num(get(a,'min_packets',1),1,100000000,'最少 RTP 包',true);
+      else if(a.type==='dtmf'){str(a.digits,'断言按键',128);if(!/^[0-9*#ABCD]+$/.test(a.digits)||!['exact','contains'].includes(get(a,'match','exact')))throw Error('按键断言无效');}
+      else {num(a.min_duration_s,a.type==='tone'?.04:.02,900,'最短音频时长');num(get(a,'threshold_dbfs',-40),-90,0,'音频阈值');
+        if(a.type==='tone'){if(!Array.isArray(a.frequencies_hz)||!a.frequencies_hz.length||a.frequencies_hz.length>4)throw Error('音调需要 1–4 个频率');a.frequencies_hz.forEach(v=>num(v,100,3500,'频率'));const fs=[...a.frequencies_hz].sort((a,b)=>a-b);if(fs.some((v,i)=>i&&v-fs[i-1]<25))throw Error('音调频率间隔至少 25 Hz');num(get(a,'min_power_ratio',.6),.5,1,'能量比例');}
+      }
+    });return items;
+  }
   function validateScenario(data, assets=[]) {
     const errors=[],warnings=[];
     let knownDuration=0,unknownDuration=0;
     const check=fn=>{try{fn();}catch(e){errors.push(e.message);}};
-    check(()=>object(data,['schema_version','target_uri','account','network','codec','connect_timeout_s','max_call_s','record_early','steps'],'scenario'));
+    check(()=>object(data,['schema_version','target_uri','account','network','codec','connect_timeout_s','max_call_s','record_early','steps','assertions'],'scenario'));
     if(errors.length)return {errors,warnings,knownDuration,unknownDuration};
     check(()=>{if(data.schema_version!=='1.0')throw Error('scenario.schema_version 必须为 1.0');});
     check(()=>uri(data.target_uri,'目标 URI'));
+    check(()=>validateAssertions(get(data,'assertions',[])));
     check(()=>{
       const a=get(data,'account',{});object(a,['id_uri','registrar_uri','proxy_uri','auth'],'account');uri(get(a,'id_uri','sip:voice-tools@127.0.0.1'),'本机 URI');
       ['registrar_uri','proxy_uri'].forEach(k=>{if(k in a)uri(a[k],k,true);});
@@ -71,28 +86,28 @@
   }
   function compile(item,env){
     if(!env)throw Error('请选择有效环境');
-    return {schema_version:'1.0',...clone(env.config),steps:item.steps.map(s=>{
+    return {schema_version:'1.0',...clone(env.config),...(item.assertions?.length?{assertions:clone(item.assertions)}:{}),steps:item.steps.map(s=>{
       if(!Object.hasOwn(stepFields,s.action))throw Error('不支持的步骤：'+s.action);
       const out={action:s.action};stepFields[s.action].forEach(k=>{if(k in s)out[k]=s[k];});return out;
     })};
   }
   function importScenario(data,title='导入的用例'){
     const result=validateScenario(data);if(result.errors.length)throw Error(result.errors.join('；'));
-    const env=defaultEnv();env.name='导入环境';const {schema_version,steps,...config}=data;env.config={...env.config,account:{id_uri:'sip:voice-tools@127.0.0.1'},...clone(config)};
+    const env=defaultEnv();env.name='导入环境';const {schema_version,steps,assertions,...config}=data;env.config={...env.config,account:{id_uri:'sip:voice-tools@127.0.0.1'},...clone(config)};
     if(config.account)env.config.account={id_uri:'sip:voice-tools@127.0.0.1',...config.account};
     if(config.network)env.config.network={sip_port:0,rtp_port:4000,...config.network};
-    const item=makeCase(env.id,title);item.tags='导入';item.steps=steps.map(s=>({...makeStep(s.action),...clone(s)}));
+    const item=makeCase(env.id,title);item.tags='导入';item.assertions=clone(assertions||[]);item.steps=steps.map(s=>({...makeStep(s.action),...clone(s)}));
     return {item,env};
   }
-  function exportDocument(item,env){return {studio_version:'1.0',title:item.title,tags:item.tags,environment:{name:env.name,config:clone(env.config)},steps:clone(item.steps)};}
+  function exportDocument(item,env){return {studio_version:'1.0',title:item.title,tags:item.tags,environment:{name:env.name,config:clone(env.config)},steps:clone(item.steps),assertions:clone(item.assertions||[])};}
   function importDocument(data){
     if(data?.schema_version)return importScenario(data);
-    object(data,['studio_version','title','tags','environment','steps'],'Studio 用例');if(data.studio_version!=='1.0')throw Error('不支持的 Studio 文档版本');
+    object(data,['studio_version','title','tags','environment','steps','assertions'],'Studio 用例');if(data.studio_version!=='1.0')throw Error('不支持的 Studio 文档版本');
     str(data.title,'用例名称',160);if(typeof data.tags!=='string'||data.tags.length>256)throw Error('标签无效');
     object(data.environment,['name','config'],'environment');object(data.environment.config,['target_uri','account','network','codec','connect_timeout_s','max_call_s','record_early'],'环境参数');str(data.environment.name,'环境名称',80);
     if(!Array.isArray(data.steps))throw Error('steps 必须是数组');
     data.steps.forEach(s=>{if(!s||typeof s.action!=='string'||!Object.hasOwn(stepFields,s.action))throw Error('不支持的 action');object(s,['id','label','action',...stepFields[s.action]],'步骤');str(s.label,'步骤名称',160);});
-    const temp={title:data.title,tags:data.tags,steps:data.steps},env={id:uid(),name:data.environment.name,config:clone(data.environment.config)};
+    const temp={title:data.title,tags:data.tags,steps:data.steps,assertions:data.assertions||[]},env={id:uid(),name:data.environment.name,config:clone(data.environment.config)};
     // Studio and CLI imports must share defaults used by the inspector and previews.
     const normalized=importScenario(compile(temp,env),data.title);
     normalized.env.name=data.environment.name;
@@ -118,6 +133,6 @@
     (get(data,'dtmf',[])).forEach(e=>{object(e,['at_s','digit','duration_ms','end_observed'],'DTMF event');num(e.at_s,0,data.duration_s,'事件时间');num(e.duration_ms,40,8000,'事件持续时间',true);if(typeof e.digit!=='string'||!(/^[0-9*#ABCD]$/.test(e.digit)))throw Error('DTMF 事件按键无效');if('end_observed' in e && typeof e.end_observed!=='boolean')throw Error('end_observed 必须为布尔值');if(e.at_s+1e-9<end||e.at_s+e.duration_ms/1000>data.duration_s+1/8000)throw Error('DTMF 事件重叠或超出音频');end=e.at_s+e.duration_ms/1000;});
     return {duration:data.duration_s,eventCount:(get(data,'dtmf',[])).length,audio:data.audio};
   }
-  const api={clone,uid,definitions,makeStep,defaultEnv,makeCase,compile,validateScenario,importScenario,exportDocument,importDocument,moveStep,wavInfo,mediaInfo};
+  const api={clone,uid,definitions,makeStep,defaultEnv,makeCase,compile,validateScenario,validateAssertions,importScenario,exportDocument,importDocument,moveStep,wavInfo,mediaInfo};
   if(typeof module!=='undefined'&&module.exports)module.exports=api;else root.SipStudio=api;
 })(globalThis);

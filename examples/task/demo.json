@@ -1,0 +1,11 @@
+{
+  "schema_version":"1.0",
+  "id":"portable-demo",
+  "title":"离线合成录音验收（非真实通话）",
+  "inputs":{},
+  "steps":[
+    {"id":"generate","tool":"qa","action":"generate","params":{}},
+    {"id":"analyze","tool":"qa","action":"analyze","params":{"inputs":[{"step":"generate","path":"data"}],"include_audio":true,"fail_on_findings":true}},
+    {"id":"inspect","tool":"audio","action":"inspect","params":{"inputs":[{"step":"generate","path":"data"}]}}
+  ]
+}

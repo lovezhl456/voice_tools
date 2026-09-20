@@ -1,5 +1,15 @@
 # 版本记录与迭代规则
 
+## 0.12.1 · 跨主机任务交付与可视化复查
+
+- 状态：实现与本地验收完成，待 PR 审阅；尚未合并。
+- 分支：`feat/v0.12.1-task-delivery`；从最新主线 `fc453bd` 创建，包含已合入的 ViSQOL 和 NISQA Docker。
+- 范围：现有工具统一任务包／结果包、独立 Docker 执行环境、任务编排与离线证据复查；不建设本机网页直接拨测或远程控制服务。
+- 平台：macOS 与 Linux Docker；原始网络任务限 Linux，Mac 可通过 SSH 调用远端采集。
+- 已实现：51 个业务操作的类型化任务、ZIP64 素材收集和摘要校验、Docker 后台运行／停止／收集、离线复查、人工标签及 Studio 五类断言。
+- 验证：Python 全量 377 项（31 项条件跳过）；收尾任务专项 18 项在 Mac 与 Linux ARM64 分别通过；Studio 24 项通过。Docker 迁移、后台流程、中断、NISQA／ViSQOL 和 SIP 容器回环已实际执行。
+- 边界：尚未验证目标执行机、真实线路／HOMER／SSH、物理 Linux 原始网络或 amd64 统一镜像。详见 [验证记录](docs/task-validation.md) 和 [使用文档](docs/task-delivery.md)。
+
 ## 0.11.1 · ViSQOL 全参考音质评估
 
 - 状态：实现与本地验收完成，待 PR 审阅，尚未合并交付。
