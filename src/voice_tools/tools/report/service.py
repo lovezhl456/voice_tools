@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
+from contextlib import ExitStack
 from pathlib import Path
 import shutil
+import tempfile
 
 from voice_tools import __version__
 from voice_tools.audio.io import write_wav
@@ -118,20 +120,31 @@ def build(output, audio_paths=(), pcap_paths=(), captures=(), rtp_ports=(), cloc
         path = options['paths'][0]
         item = {"path": str(path), "name": path.name}
         try:
-            item["sha256"] = sha256(path)
-            item.update(status="ok", sensor=options['sensor'], call_id=options['call_id'], source_files=[str(p) for p in options['paths']],
-                        analysis=pcap.analyze_group(options['paths'], options['ports'], clock_rates, max_packets, tshark,
-                            options['rtcp_ports'], options['mappings'], output / 'rtp-audio' if decode_rtp else None,
-                            f'group-{group_number:03d}', 256*1048576-audio_bytes,
-                            timeline_output=output / f'rtp-timeline-{group_number:03d}' if rtp_timeline else None))
-            if rtp_timeline:
-                timeline_path = output / f'rtp-timeline-{group_number:03d}' / 'timeline.json'
-                timeline = item['analysis']['timeline']
-                timeline.update(sensor=options['sensor'], call_id=options['call_id'],
-                    sources=[{'sha256': sha256(p), 'name': Path(p).name} for p in options['paths']])
-                write_json(timeline_path, timeline)
-                item['rtp_timeline'] = str(timeline_path.relative_to(output))
-            audio_bytes += item['analysis']['media']['audio_bytes']
+            with ExitStack() as cleanup:
+                timeline_directory = None
+                if rtp_timeline:
+                    source_hashes = [sha256(p) for p in options['paths']]
+                    # Publish only after all grouped sources pass the second hash.
+                    staging = cleanup.enter_context(tempfile.TemporaryDirectory(prefix='.rtp-timeline-', dir=output))
+                    timeline_directory = Path(staging) / 'timeline'
+                item["sha256"] = source_hashes[0] if rtp_timeline else sha256(path)
+                analysis = pcap.analyze_group(options['paths'], options['ports'], clock_rates, max_packets, tshark,
+                    options['rtcp_ports'], options['mappings'], output / 'rtp-audio' if decode_rtp else None,
+                    f'group-{group_number:03d}', 256*1048576-audio_bytes, timeline_output=timeline_directory)
+                audio_bytes += analysis['media']['audio_bytes']
+                if rtp_timeline:
+                    if source_hashes != [sha256(p) for p in options['paths']]:
+                        raise ValueError('PCAP 在分析期间发生变化，未发布 RTP 时序；请使用已停止写入的抓包')
+                    timeline = analysis['timeline']
+                    timeline.update(sensor=options['sensor'], call_id=options['call_id'],
+                        sources=[{'sha256': digest, 'name': Path(p).name}
+                                 for p, digest in zip(options['paths'], source_hashes)])
+                    write_json(timeline_directory / 'timeline.json', timeline)
+                    published = output / f'rtp-timeline-{group_number:03d}'
+                    timeline_directory.rename(published)
+                    item['rtp_timeline'] = str((published / 'timeline.json').relative_to(output))
+                item.update(status="ok", sensor=options['sensor'], call_id=options['call_id'],
+                            source_files=[str(p) for p in options['paths']], analysis=analysis)
         except (ValueError, OSError) as error:
             item.update(status="error", error=str(error))
         data["pcaps"].append(item)

@@ -79,6 +79,29 @@ class DetectionTests(unittest.TestCase):
         result = analyze(signal(7, ((1, 2), (4, 5)), ((1.9, 3),)), HASH)
         self.assertEqual(len(candidates(result)), 1)
 
+    def test_legacy_boundaries_without_output_extension(self):
+        cases = [({'exclusions': [{'start_s': 2, 'end_s': 4}]}, 'business_exclusion'),
+                 ({'ai_start_s': 4}, 'before_ai_takeover'),
+                 ({'ai_end_s': 2}, 'after_ai_exit'),
+                 ({'user_speech': [{'start_s': 1.9, 'end_s': 3}]}, 'user_turn_changed')]
+        for fields, reason in cases:
+            with self.subTest(fields=fields):
+                legacy = {'schema_version': '1.0', 'channel_verified': True, **fields}
+                result = analyze(signal(), HASH, legacy)
+                self.assertEqual(candidates(result), [])
+                self.assertTrue(any(reason in gap['reason_code'] for gap in result['gaps']))
+                self.assertTrue(all(gap['evidence_level'] == 'acoustic_only' for gap in result['gaps']))
+                legacy['channel_verified'] = False
+                self.assertEqual(len(candidates(analyze(signal(), HASH, legacy))), 1)
+
+    def test_legacy_filter_survives_unaligned_optional_extension(self):
+        events = metadata([{'id': 'wait', 'type': 'tool_wait', 'start_s': 2, 'end_s': 4,
+                            'allows_silence': True}], verified=False)
+        events['exclusions'] = [{'start_s': 2, 'end_s': 3}]
+        result = analyze(signal(), HASH, events)
+        self.assertEqual([(g['start_s'], g['end_s']) for g in candidates(result)], [(3, 4)])
+        self.assertFalse(any('allowed_tool_wait' in g['reason_code'] for g in result['gaps']))
+
     def test_earlier_interrupt_does_not_exclude_later_output(self):
         event = {'id': 'earlier', 'type': 'user_interrupt', 'start_s': .1, 'end_s': .5}
         self.assertEqual(len(candidates(analyze(signal(), HASH, metadata([event])))), 1)

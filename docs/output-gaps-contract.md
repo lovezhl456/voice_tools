@@ -6,6 +6,8 @@
 
 沿用 QA 的同名 `.events.json`、`schema_version: "1.0"`、`system_channel`（0 左，1 右）、`channel_verified`、AI 接管时间、人工用户语音和业务排除区间。旧字段的 QA 解释不变。新增 `output_events` 是独立扩展：
 
+在 gaps 中，合法的旧 `ai_start_s` / `ai_end_s`、`user_speech` 和 `exclusions` 在声道已核实时参与过滤，不依赖 `output_events` 是否存在或对齐；无扩展时仍为 `acoustic_only`。新输出事件另行要求录音摘要和映射验证。未核实角色的元数据不排除声学候选。检测规则身份已更新为 `output-gaps-2`，早期规则生成的标签须重新复核，不能静默套用。
+
 ```json
 {
   "schema_version": "1.0",
@@ -67,6 +69,8 @@
 RTP 录音时间 = 抓包 epoch − recording_start_epoch。必须显式匹配 sensor 和完整的有方向五元组；SSRC 更换需要另一条绑定。时钟漂移声明 `clock_drift_detected: true` 或抓包时间倒退均降级为未对齐。仅支持固定偏移，不做自动时钟漂移校正。不把其他流合并填补当前流覆盖。
 
 每个 `rtp_timeline` 1.0 清单含 sensor、sources 原始抓包摘要、complete、coverage_start_epoch/end_epoch、packet_limit_reached、truncated_packets、out_of_order_capture_timestamps 以及 chunks。分片项包含 path、bytes、sha256、rows；每片最多 8 MiB。包行包含 epoch、src/src_port、dst/dst_port、ssrc、seq、timestamp、pt、clock_rate，不含媒体载荷。导出复用现有解析，不额外启动 tshark 扫描。
+
+启用时序导出时，在分析前后对每个分组源 PCAP 计算 SHA-256；仅在摘要一致后发布时序目录。分析期间文件变化或消失会保留错误报告并返回部分失败，不发布该组时序；默认 report 不增加这些摘要扫描。`aligned` 还要求选定流覆盖全部待关联区间；即使清单 complete=true，只要某一区间首尾覆盖不足，来源摘要也为 partial。
 
 导入顺序跨分片连续；每条绑定最多读取 100 万包。序号按 16 位、RTP 时间戳按 32 位回绕处理，保留重复、乱序、序号大跳变/源重启候选、时间戳倒退线索。间隙关联还包括窗口外最近的前后包；到包最大间隔可跨越窗口边界。`forward_sequence_jump_candidates` 不是最终丢包数；重启启发式也不是经过校准的根因判断。缺少匹配流或覆盖末端不足为 partial，不能当作无丢包。
 

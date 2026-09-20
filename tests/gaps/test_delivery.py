@@ -57,6 +57,30 @@ class DeliveryTests(unittest.TestCase):
         migrated = self.root / 'run/work/inputs/call.events.json'
         self.assertEqual(sha256(migrated), original_hash)
 
+    def test_mixed_gap_and_benchmark_task_keeps_both_review_adapters(self):
+        from tests.benchmark.test_review_regressions import ReviewRegressionTests
+        ReviewRegressionTests().evidence(self.source / 'benchmark-input')
+        task_path = self.task()
+        task = read_json(task_path)
+        task['inputs']['timing'] = 'benchmark-input'
+        task['steps'].extend([
+            {'id': 'timing', 'tool': 'benchmark', 'action': 'analyze', 'depends_on': ['detect'],
+             'params': {'run_dir': {'input': 'timing'}}},
+            {'id': 'after', 'tool': 'benchmark', 'action': 'init', 'depends_on': ['timing'], 'params': {}}])
+        write_json(task_path, task)
+        bundle.pack(task_path, self.source, self.root / 'task.zip')
+        result = runner.run(self.root / 'task.zip', self.root / 'run')
+        self.assertEqual([step['status'] for step in result['steps']], ['findings', 'findings', 'completed'])
+        runner.collect(self.root / 'run', self.root / 'result.zip')
+        review.review(self.root / 'result.zip', self.root / 'review')
+        html = (self.root / 'review/index.html').read_text()
+        data = json.loads(re.search(r'<script>window.VT_DATA=(.*?);</script>', html, re.S)[1])
+        self.assertIn('gaps_review', data['steps'][0])
+        timing = data['steps'][1]['benchmarks'][0]
+        self.assertEqual(timing['report']['kind'], 'voice_benchmark')
+        self.assertTrue((self.root / 'review' / timing['audio']['rx']['path']).is_file())
+        self.assertTrue((self.root / 'review/benchmark.js').is_file())
+
     def test_evidence_protected_from_path_rewriting(self):
         nisqa=self.source/'scores.jsonl';nisqa.write_text(json.dumps({'file':str(self.audio),'scores':{'mos':3}})+'\n')
         provenance={'schema_version':'1.0','kind':'nisqa_provenance','results':'scores.jsonl','results_sha256':sha256(nisqa),'sources':[{'file':str(self.audio),'sha256':sha256(self.audio),'unchanged':True}]}

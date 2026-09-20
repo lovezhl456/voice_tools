@@ -139,9 +139,14 @@ def exclusions_for(gap, callers, metadata, events, trusted, duration):
             onset = max(a, start)
             # Once the user takes the turn, later silence is an answer-delay question.
             excluded.append((start if onset - start <= .15 else onset, end, "user_turn_changed"))
+    # Legacy metadata is already validated and role-gated by the caller. Its
+    # recording-relative boundaries do not require the optional TTS extension.
+    excluded.extend((e["start_s"], e["end_s"], "business_exclusion") for e in metadata.get("exclusions", []))
+    if metadata.get("ai_start_s") is not None:
+        excluded.append((0, metadata["ai_start_s"], "before_ai_takeover"))
+    excluded.append((metadata.get("ai_end_s", duration), duration, "after_ai_exit"))
     if not trusted:
         return excluded
-    excluded.extend((e["start_s"], e["end_s"], "business_exclusion") for e in metadata.get("exclusions", []))
     for e in events:
         if e["type"] == "tool_wait" and e.get("allows_silence", False):
             excluded.append((e["start_s"], e["end_s"], "allowed_tool_wait"))
@@ -162,9 +167,6 @@ def exclusions_for(gap, callers, metadata, events, trusted, duration):
             cursor = b
         if cursor < end:
             excluded.append((cursor, end, "outside_output_turn"))
-    if metadata.get("ai_start_s") is not None:
-        excluded.append((0, metadata["ai_start_s"], "before_ai_takeover"))
-    excluded.append((metadata.get("ai_end_s", duration), duration, "after_ai_exit"))
     return excluded
 
 
@@ -257,7 +259,7 @@ def analyze(audio, audio_sha256, metadata=None, config=None):
         health["correlation"] = round(float(np.corrcoef(sampled.T)[0, 1]), 6)
         if abs(health["correlation"]) > .98:
             warnings.append("双轨同步相关性高；仅供复核，不能确认串音、角色或故障概率")
-    fingerprint = identity({"algorithm": "output-gaps-1", "audio": audio_sha256,
+    fingerprint = identity({"algorithm": "output-gaps-2", "audio": audio_sha256,
                             "events": detection_metadata(metadata), "config": asdict(config)})
     result = {"duration_s": audio.duration_s, "sample_rate": audio.sample_rate, "channels": audio.samples.shape[1],
               "config": asdict(config), "fingerprint": fingerprint, "channel_verified": verified,
@@ -274,7 +276,7 @@ def analyze(audio, audio_sha256, metadata=None, config=None):
     system, caller = activity[config.system_channel], activity[1-config.system_channel]
     if not verified:
         caller = []  # An unverified role cannot silently remove an acoustic candidate.
-    if trusted and "user_speech" in metadata:
+    if verified and "user_speech" in metadata:
         caller = [(s["start_s"], s["end_s"]) for s in metadata["user_speech"]]
     levels, frame_s = fine_levels(audio.samples[:, config.system_channel], audio.sample_rate)
     raw = raw_gaps(system, levels, frame_s, config)
@@ -293,7 +295,8 @@ def analyze(audio, audio_sha256, metadata=None, config=None):
             matches = [e for e in events if e['type'] == 'tts_expected' and e['start_s'] <= gap['start_s'] and e['end_s'] >= gap['end_s']]
             if len(matches) == 1:
                 gap['utterance_id'] = matches[0]['utterance_id']
-        rows.extend(split_gap(gap, exclusions_for(gap, caller, metadata, events, trusted, audio.duration_s), fingerprint, trusted, config, windows))
+        exclusions = exclusions_for(gap, caller, metadata if verified else {}, events, trusted, audio.duration_s)
+        rows.extend(split_gap(gap, exclusions, fingerprint, trusted, config, windows))
         if len(rows) > MAX_GAPS:
             truncated = True
             rows = rows[:MAX_GAPS]

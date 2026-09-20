@@ -208,7 +208,8 @@ def rtp(base, binding, record):
         covered = bool(times and times[0] <= start and times[-1] >= end and manifest.get("complete"))
         intervals[gap["id"]] = {"coverage": "observed_window" if covered else "partial",
                                **packet_metrics(packets[a:b], start, end)}
-    return {"kind": "rtp", "status": "aligned" if packets and manifest.get("complete") else "partial",
+    covered_all = all(interval["coverage"] == "observed_window" for interval in intervals.values())
+    return {"kind": "rtp", "status": "aligned" if packets and manifest.get("complete") and covered_all else "partial",
             "stream": binding["stream"], "sensor": binding["sensor"], "intervals": intervals,
             "notice": "到包间隔包含边界相邻包；序号跳跃可能由乱序、抓包或源重启造成，不能确定网络根因。"}
 

@@ -88,6 +88,19 @@ voice-tools task review outputs/gaps-result.vresult.zip --out outputs/gaps-task-
 
 `evidence-legacy.json` 演示旧 RTP 汇总和未验证 NISQA；`evidence-nisqa.json` 可单独演示评分片段关联；`evidence-wrong.json` 演示错误采集点，退出码为 3，但检测结果保留。跨机路径必须落在打包根目录，引用目录结构随包保留；无需把模型、PCAP 或原始执行机路径自动附加到 gaps 运行环境。
 
+## 演示页部署
+
+仓库中的 `docs/output-gaps-demo/index.html` 是使用入口，主按钮指向已提交的指南与生成器。仓库不附带生成的录音或任务复查产物。先执行上一节命令，再从仓库根目录组装静态目录：
+
+```bash
+mkdir -p outputs/gaps-site
+cp docs/output-gaps-demo/index.html outputs/gaps-site/index.html
+cp -R outputs/gaps-demo/review outputs/gaps-site/demo
+cp -R outputs/gaps-task-review outputs/gaps-site/task-review
+```
+
+每次使用新的目标目录，避免混入旧结果。将 `outputs/gaps-site/` 部署到支持 HTTP Range 的静态服务，映射为 `http://127.0.0.1:8080/voice-output-gaps/`，页面的“已部署的本机演示”链接才可使用。使用其他地址时，直接打开该目录中的 `demo/review.html`、`demo/report.html` 和 `task-review/index.html`。只有这里生成的合成示例适合接入公共本地导航，不要发布真实录音。
+
 ## 退出码与排障
 
 | 退出码 | 含义 |

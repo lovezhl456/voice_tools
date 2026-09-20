@@ -63,6 +63,22 @@ class EvidenceTests(unittest.TestCase):
         binding['sensor']='other'
         self.assertEqual(associate(self.manifest(rtp=[binding]),self.record)['status'],'error')
 
+    def test_complete_manifest_cannot_hide_partial_stream_coverage(self):
+        binding = self.timeline(count=151)
+        for origin in (100, 97):
+            with self.subTest(origin=origin):
+                binding['recording_start_epoch'] = origin
+                result = associate(self.manifest(rtp=[binding]), self.record)['sources'][0]
+                self.assertEqual(result['status'], 'partial')
+                self.assertTrue(any(i['coverage'] == 'partial' for i in result['intervals'].values()))
+        binding['recording_start_epoch'] = 99
+        self.record['result']['gaps'] = [
+            {'id': 'inside', 'start_s': 2, 'end_s': 3},
+            {'id': 'outside', 'start_s': 5, 'end_s': 6}]
+        result = associate(self.manifest(rtp=[binding]), self.record)['sources'][0]
+        self.assertEqual(result['intervals']['inside']['coverage'], 'observed_window')
+        self.assertEqual(result['status'], 'partial')
+
     def test_sequence_wrap_duplicates_reorder_and_restart(self):
         packets=[(i*.02,s,(i*160)%2**32) for i,s in enumerate([65534,65535,0,2,1,2,9000])]
         result=packet_metrics(packets,0,1)
