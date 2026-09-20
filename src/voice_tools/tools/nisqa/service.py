@@ -41,6 +41,30 @@ def channels_for(count, selected):
     return [(0, "left"), (1, "right")] if selected == "both" else [(0 if selected == "left" else 1, selected)]
 
 
+def _evaluate_channel_segment(samples, rate, scorer, *, min_seconds, min_rms_dbfs):
+    """Apply evidence gates and isolate scoring errors to this channel segment."""
+    import numpy as np
+
+    result = {"scores": None}
+    try:
+        if not np.isfinite(samples).all():
+            raise ValueError("non_finite_audio")
+        rms = float(np.sqrt(np.mean(samples.astype(np.float64) ** 2)))
+        result["rms_dbfs"] = 20 * math.log10(rms) if rms > 0 else None
+        if len(samples) / rate < min_seconds:
+            result.update(status="insufficient_evidence", reason="too_short")
+        elif rms == 0 or result["rms_dbfs"] < min_rms_dbfs:
+            result.update(status="insufficient_evidence", reason="silent_or_below_rms_gate")
+        else:
+            scores = scorer(samples, rate)
+            if set(scores) != set(SCORE_NAMES) or not all(math.isfinite(float(v)) for v in scores.values()):
+                raise ValueError("模型未返回五项有限分数")
+            result.update(status="ok", reason=None, scores={k: float(v) for k, v in scores.items()})
+    except Exception as error:
+        result.update(status="error", reason=str(error)[:500], scores=None)
+    return result
+
+
 def analyze(inputs, output, model_dir=None, channel=None, segment_seconds=10.0,
             min_seconds=1.0, min_rms_dbfs=-60.0, threads=2, scorer_factory=Scorer):
     if channel not in (None, "left", "right", "both"):
@@ -61,7 +85,7 @@ def analyze(inputs, output, model_dir=None, channel=None, segment_seconds=10.0,
     scorer = scorer_factory(model_dir, threads=threads)
     try:
         import soundfile as sf
-        import numpy as np
+        import numpy  # Check optional dependencies before creating any output, including empty audio.
     except ImportError as error:
         raise ValueError("请先安装 NISQA 可选依赖：python -m pip install -e '.[nisqa]'") from error
     load_seconds = time.perf_counter() - started
@@ -105,22 +129,10 @@ def analyze(inputs, output, model_dir=None, channel=None, segment_seconds=10.0,
                             row = {"file": str(path), "channel": name, "segment_index": index,
                                    "start_seconds": offset / rate, "end_seconds": (offset + len(block)) / rate,
                                    "sample_rate": rate, "scores": None}
-                            try:
-                                if not np.isfinite(samples).all():
-                                    raise ValueError("non_finite_audio")
-                                rms = float(np.sqrt(np.mean(samples.astype(np.float64) ** 2)))
-                                row["rms_dbfs"] = 20 * math.log10(rms) if rms > 0 else None
-                                if len(samples) / rate < min_seconds:
-                                    row.update(status="insufficient_evidence", reason="too_short")
-                                elif rms == 0 or row["rms_dbfs"] < min_rms_dbfs:
-                                    row.update(status="insufficient_evidence", reason="silent_or_below_rms_gate")
-                                else:
-                                    scores = scorer(samples, rate)
-                                    if set(scores) != set(SCORE_NAMES) or not all(math.isfinite(float(v)) for v in scores.values()):
-                                        raise ValueError("模型未返回五项有限分数")
-                                    row.update(status="ok", reason=None, scores={k: float(v) for k, v in scores.items()})
-                            except Exception as error:
-                                row.update(status="error", reason=str(error)[:500], scores=None)
+                            row.update(_evaluate_channel_segment(
+                                samples, rate, scorer,
+                                min_seconds=min_seconds, min_rms_dbfs=min_rms_dbfs,
+                            ))
                             emit(row)
                         offset += len(block)
                         index += 1

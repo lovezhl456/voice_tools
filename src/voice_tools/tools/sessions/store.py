@@ -112,7 +112,9 @@ def homer_rows(value):
                'evidence': 'homer_message'}
 
 
-def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(5060,), max_packets=1000000, tshark='tshark', pcap_groups=(), events=()):
+def _collect_inputs(*, pcaps, batches, homer_json, snapshots, sip_ports, pcap_groups, events):
+    """Resolve sources in precedence order and retain manifest completeness evidence."""
+    # Later metadata wins for the same resolved path without moving its source position.
     inputs = {}
     warnings = []
     incomplete_inputs = False
@@ -167,9 +169,14 @@ def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(
                 inputs[str(snapshot_file)] = {'kind': 'fs', 'host': host.get('name', host.get('host'))}
     if not inputs:
         raise ValueError("至少提供一份 PCAP、批次、FS 快照或 HOMER JSON")
-    output = new_output(output)
-    output.chmod(0o700)
+    return inputs, warnings, incomplete_inputs
+
+
+def _merge_pcap_groups(inputs, output):
+    """Replace each successfully merged group in inputs; keep originals on failure."""
     from voice_tools.core.packets import merge_packets
+
+    warnings = []
     groups = {}
     for name, info in list(inputs.items()):
         if info.get('group'):
@@ -181,17 +188,31 @@ def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(
             for name, info in members:
                 if info.get('sha256') and sha256(name) != info['sha256']:
                     raise ValueError('源分片摘要与清单不一致')
-            folder = output / 'pcaps'; folder.mkdir(exist_ok=True)
+            folder = output / 'pcaps'
+            folder.mkdir(exist_ok=True)
             target = folder / f'{index:04d}.pcapng'
             originals = merge_packets([name for name, _ in members], target)
-            combined = dict(members[0][1]); combined.pop('sha256', None)
+            combined = dict(members[0][1])
+            combined.pop('sha256', None)
             combined.update(originals=originals, ports=sorted({p for _, i in members for p in i['ports']}))
             for name, _ in members:
                 del inputs[name]
             inputs[str(target.resolve())] = combined
         except (ValueError, OSError) as error:
-            incomplete_inputs = True
             warnings.append('分片组无法连续重组，降级为逐文件索引：' + str(error))
+    return warnings
+
+
+def build(output, pcaps=(), batches=(), homer_json=(), snapshots=(), sip_ports=(5060,), max_packets=1000000, tshark='tshark', pcap_groups=(), events=()):
+    inputs, warnings, incomplete_inputs = _collect_inputs(
+        pcaps=pcaps, batches=batches, homer_json=homer_json, snapshots=snapshots,
+        sip_ports=sip_ports, pcap_groups=pcap_groups, events=events,
+    )
+    output = new_output(output)
+    output.chmod(0o700)
+    merge_warnings = _merge_pcap_groups(inputs, output)
+    warnings.extend(merge_warnings)
+    incomplete_inputs |= bool(merge_warnings)
     db = initialize(output / 'sessions.sqlite')
     summary = {'schema_version': '1.0', 'tool': 'sessions-index', 'tool_version': __version__, 'sources': [],
                'warnings': warnings, 'errors': 0, 'partial': bool(incomplete_inputs),
