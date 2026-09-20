@@ -12,6 +12,7 @@
 
 | 工具 | 适用场景 | 命令入口 | 使用文档 |
 |---|---|---|---|
+| **NISQA 听感评分** | CPU 分段预测录音的整体质量、噪声、断续、音色和响度 | `voice-tools nisqa download / doctor / analyze` | [安装、权重下载与使用](docs/nisqa.md) · [本地验收](docs/nisqa-validation.md) |
 | **SIP 自动拨测** | 轻量 SIP UDP 呼叫、播放/按键/录音，PCAP 素材导入与独立 SIPp 回放 | `voice-tools sip` / `voice-sip` | [使用手册](docs/sip.md) · [大模型协议](docs/sip-ai.md) |
 | **录音体检与准备** | 查看逐轨音频健康指标，转换为保留声道和时间映射的 PCM16 WAV | `voice-tools audio inspect / prepare` | [人工使用手册](docs/manual.md) |
 | **双声道录音质检** | 批量筛查用户发言后 AI 无声或延迟输出的候选片段，生成试听报告与人工复核表 | `voice-tools qa` | [录音质检指南](docs/recording-qa.md) · [事件示例](examples/call.events.json) |
@@ -47,9 +48,21 @@ voice-tools schema --tool sip
 
 默认依赖 NumPy，用于录音质检；HOMER 工具自身仅用 Python 标准库。可选 CPU WebRTC VAD：`python -m pip install -e '.[vad]'`。也可用 `python -m voice_tools` 代替 `voice-tools`。
 
+NISQA 为独立可选功能，需 Python 3.10+：安装 `python -m pip install -e '.[nisqa]'`，再显式执行 `voice-tools nisqa download`。Linux 先安装 CPU 版 PyTorch，详见[安装说明](docs/nisqa.md)。权重仅存本地缓存、不入 Git，官方权重含非商业限制。
+
 格式准备使用本机可选的 FFmpeg / FFprobe。原生 PCM16 WAV 体检无需它们。音频、QA、抓包、会话检索与报告的 `--json` 放在工具名之前；HOMER 保留其原有 JSON 协议和退出码。
 
 ## 快速体验
+
+### NISQA 本地听感评分
+
+```bash
+voice-tools nisqa download
+voice-tools nisqa doctor
+voice-tools --json nisqa analyze data/call.wav --channel both --out outputs/nisqa-001
+```
+
+双声道显式选 left/right/both，单声道可省略 `--channel`；长录音流式分段，静音和短段不给分。返回 JSONL/CSV/run.json，不上传音频或自动下载模型。Linux/Mac 详细步骤及实战脚本见[完整手册](docs/nisqa.md)。
 
 ### 双声道录音质检
 
