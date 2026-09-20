@@ -12,7 +12,36 @@
   }
   function metrics(summary) {
     const coverage = summary.coverage || {};
-    return `<div class="lat-stats"><div class="lat-stat">执行状态<b>${escape(label(summary.execution_status))}</b></div><div class="lat-stat">测量状态<b>${escape(label(summary.measurement_status))}</b></div><div class="lat-stat">Human → AI 配对覆盖<b>${coverage.ratio == null ? '—' : (coverage.ratio * 100).toFixed(1) + '%'}</b>${coverage.paired || 0} / ${coverage.eligible_human_segments || 0} 个合格人声片段</div>${['human_to_ai','ai_to_human'].map(direction => `<div class="lat-stat">${direction === 'human_to_ai' ? 'Human → AI' : 'AI → Human'} 中位数<b>${seconds(summary.statistics?.[direction]?.median_s)}</b>${summary.statistics?.[direction]?.count || 0} 轮 · P95 ${seconds(summary.statistics?.[direction]?.p95_s)}</div>`).join('')}</div>`;
+    // Checksums establish byte integrity, not trustworthy field types. Never
+    // coerce malformed counts to zero or insert external values as HTML.
+    const paired = count(coverage.paired, 'coverage.paired');
+    const eligible = count(coverage.eligible_human_segments, 'coverage.eligible_human_segments');
+    const ratio = coverage.ratio;
+    if (ratio !== null && (typeof ratio !== 'number' || !Number.isFinite(ratio) || ratio < 0 || ratio > 1)) {
+      throw Error('latency 结果数据无效：coverage.ratio 必须为 0–1 的有限数值或 null');
+    }
+    for (const value of Object.values(coverage.dispositions || {})) {
+      count(value, 'coverage.dispositions');
+    }
+    const directions = ['human_to_ai', 'ai_to_human'].map(direction => {
+      const stats = summary.statistics?.[direction] || {};
+      const rounds = count(stats.count, `statistics.${direction}.count`);
+      const name = direction === 'human_to_ai' ? 'Human → AI' : 'AI → Human';
+      return `<div class="lat-stat">${name} 中位数<b>${seconds(stats.median_s)}</b>${escape(rounds)} 轮 · P95 ${seconds(stats.p95_s)}</div>`;
+    });
+    const percent = ratio === null ? '—' : (ratio * 100).toFixed(1) + '%';
+    return `<div class="lat-stats">
+      <div class="lat-stat">执行状态<b>${escape(label(summary.execution_status))}</b></div>
+      <div class="lat-stat">测量状态<b>${escape(label(summary.measurement_status))}</b></div>
+      <div class="lat-stat">Human → AI 配对覆盖<b>${escape(percent)}</b>${escape(paired)} / ${escape(eligible)} 个合格人声片段</div>
+      ${directions.join('')}
+    </div>`;
+  }
+  function count(value, field) {
+    if (!Number.isSafeInteger(value) || value < 0) {
+      throw Error(`latency 结果数据无效：${field} 必须为非负安全整数`);
+    }
+    return value;
   }
   function wave(track, duration, name) {
     const width = track.length || 1;

@@ -47,6 +47,10 @@ python scripts/serve_latency.py --root . --port 8088
 
 任务包收集原输入，结果包保留工作输入和步骤产物；独立报告只有 include_audio 才复制音频。任务复查根据已校验包内路径重建试听引用，不需要原素材绝对路径。包内 HTML/脚本只供下载，不执行；latency.js/css 来自当前安装包，数据通过同源 JSON 获取。通用复查最多展示 2000 条逐文件索引，并明确标记截断，完整 files.jsonl/turns.csv/详情仍可导出。每页 50 轮及波形降采样不改变统计。
 
+摘要校验只保证包内字节完整，不证明 JSON 字段类型可信。共享展示组件在运行摘要和录音详情两处校验配对数、分母、双向轮数及去向计数为非负安全整数，覆盖率为 0–1 有限数值或 null；不接受数字字符串、布尔值或缺失计数，也不把非法值替换为 0。文本插入 HTML 前转义，非法统计显示字段错误。原始导出数据和测量算法不变。
+
+升级工具不会更新已经生成的静态报告。任务结果包需使用修复后的工具重新执行 `voice-tools task review result.vresult.zip --out task-review-fixed`，输出到新目录；独立报告重新执行原 analyze/batch 命令并选择新的 `--out`。保留原结果包作为证据，不修改其校验清单或包内历史 HTML。此页面修复不改变引擎补丁 2，无需重装引擎前缀。
+
 ## 共享模块影响
 
 仅新增工具注册、schema 合同、任务 runtime/依赖识别、可选 profile 字段、复查入口和打包资源。复查 CSP 的 connect-src 从 none 扩为 self，以按需获取本页同源结构化 JSON；仍不执行包内 HTML/脚本。默认 Dockerfile 未引入引擎。许可、版本号及文档索引为配套变动。QA/SIP/benchmark/NISQA/ViSQOL 业务文件的基线对照及实际回归见 [验收记录](latency-validation.md)。
