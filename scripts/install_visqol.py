@@ -9,10 +9,12 @@ import os
 from pathlib import Path
 import platform
 import signal
+import shlex
 import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 
 COMMIT = "38d0b0163e441047d4429bf07ad09e5b9031d02c"
@@ -145,6 +147,77 @@ def run_build(argv, source, env, stream, timeout):
         raise subprocess.CalledProcessError(code, argv)
 
 
+LINUX_BAZEL_SHA256 = "0440ae4581ea5eac5cb36ed0790b1e942778eb81e3ba9bc1326f189427aef0fd"
+QEMU_PROC_SOURCE = r"""#define _GNU_SOURCE
+#include <dlfcn.h>
+#include <fcntl.h>
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+static char *self_exe;
+__attribute__((constructor)) static void initialize(void) {
+    const char *value = getenv("VISQOL_BAZEL_SELF_EXE");
+    if (value) self_exe = strdup(value);
+    unsetenv("LD_PRELOAD");
+    unsetenv("VISQOL_BAZEL_SELF_EXE");
+}
+static const char *rewrite(const char *name) {
+    return self_exe && strcmp(name, "/proc/self/exe") == 0 ? self_exe : name;
+}
+#define DEFINE_OPEN(symbol) \
+int symbol(const char *name, int flags, ...) { \
+    mode_t mode = 0; \
+    if ((flags & O_CREAT) || (flags & O_TMPFILE) == O_TMPFILE) { \
+        va_list args; va_start(args, flags); mode = va_arg(args, mode_t); va_end(args); \
+    } \
+    int (*original)(const char *, int, ...) = dlsym(RTLD_NEXT, #symbol); \
+    return original(rewrite(name), flags, mode); \
+}
+DEFINE_OPEN(open)
+DEFINE_OPEN(open64)
+"""
+
+
+def qemu_bazel_launcher(bazel, prefix):
+    """仅对固定官方 Linux launcher 注入文件打开兼容层；不修改官方二进制。"""
+    if digest(bazel) != LINUX_BAZEL_SHA256:
+        raise ValueError("QEMU 兼容层只接受已核对的官方 Bazel 5.1.0 Linux x86_64 文件")
+    if not shutil.which("gcc"):
+        raise ValueError("QEMU 兼容层需要 gcc；请使用提供的 Docker 工具镜像")
+    directory = Path(tempfile.mkdtemp(prefix="qemu-compat-", dir=prefix))
+    source = directory / "proc_self.c"
+    library = directory / "proc_self.so"
+    launcher = directory / "bazel"
+    source.write_text(QEMU_PROC_SOURCE)
+    subprocess.run(["gcc", "-shared", "-fPIC", "-Wall", "-Wextra", str(source), "-ldl", "-o", str(library)],
+                   check=True, timeout=120)
+    launcher.write_text("#!/bin/sh\nexec env VISQOL_BAZEL_SELF_EXE=" + shlex.quote(str(bazel)) +
+                        " LD_PRELOAD=" + shlex.quote(str(library)) + " " + shlex.quote(str(bazel)) + ' "$@"\n')
+    launcher.chmod(0o700)
+    return launcher, {"reason": "旧 Docker/QEMU 无法 seek /proc/self/exe",
+                      "original_binary": str(bazel), "original_sha256": digest(bazel),
+                      "launcher": str(launcher), "launcher_sha256": digest(launcher),
+                      "source_sha256": digest(source), "library_sha256": digest(library),
+                      "scope": "仅重定向 Bazel launcher 的 /proc/self/exe 打开；构造函数清除注入环境，不传给 Java 或编译器"}
+
+
+def check_bazel(bazel, prefix, allow_qemu=False):
+    result = subprocess.run([str(bazel), "--version"], capture_output=True, text=True, timeout=60)
+    compatibility = None
+    if result.returncode:
+        if (allow_qemu and platform.system() == "Linux" and
+                "Failed to open '/proc/self/exe' as a zip file" in result.stderr):
+            bazel, compatibility = qemu_bazel_launcher(bazel, prefix)
+            result = subprocess.run([str(bazel), "--version"], capture_output=True, text=True, timeout=60)
+        if result.returncode:
+            raise ValueError(f"Bazel 无法启动（退出 {result.returncode}）：{result.stderr.strip()}")
+    version = result.stdout.strip()
+    if version != "bazel " + BAZEL_VERSION:
+        raise ValueError(f"此固定安装路线要求 Bazel {BAZEL_VERSION}，收到 {version}")
+    return bazel, version, compatibility
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--prefix", type=Path, default=Path.home() / ".local/share/voice-tools/visqol")
@@ -153,6 +226,7 @@ def main(argv=None):
     parser.add_argument("--jobs", type=int, default=2, help="Bazel 并行编译任务数，默认 2")
     parser.add_argument("--memory-mb", type=int, default=4096, help="Bazel 调度内存预算，不是系统硬内存上限")
     parser.add_argument("--build-timeout", type=int, default=3600, help="构建最长秒数，默认 3600")
+    parser.add_argument("--qemu-proc-self-workaround", action="store_true", help="仅在旧 Docker/QEMU 的 Bazel /proc/self/exe 错误出现时启用已核对的启动兼容层")
     args = parser.parse_args(argv)
     if args.jobs < 1 or args.memory_mb < 512 or args.build_timeout < 1:
         raise ValueError("jobs/timeout 须大于 0，memory-mb 须至少 512")
@@ -184,6 +258,8 @@ def main(argv=None):
         release = f"https://github.com/bazelbuild/bazel/releases/download/{BAZEL_VERSION}/{name}"
         if system == "Darwin" and arch == "arm64":
             expected = "485afe1117d129c9a792ef484a7108e053e99ddb239591f3b8469091dd8359c2"
+        elif system == "Linux" and arch == "x86_64":
+            expected = LINUX_BAZEL_SHA256
         else:
             checksum = cache / (name + ".sha256")
             if not checksum.exists():download(release + ".sha256", checksum)
@@ -215,10 +291,7 @@ def main(argv=None):
     ])
     for url, filename, checksum in archives:
         download(url, cache / filename, checksum)
-    version = subprocess.run([str(bazel), "--version"],
-                             check=True, capture_output=True, text=True).stdout.strip()
-    if version != "bazel " + BAZEL_VERSION:
-        raise ValueError(f"此固定安装路线要求 Bazel {BAZEL_VERSION}，收到 {version}")
+    bazel, version, qemu_compatibility = check_bazel(bazel, prefix, args.qemu_proc_self_workaround)
     argv = [str(bazel), f"--output_user_root={prefix / 'bazel-cache'}", "--batch", "build", ":visqol", "-c", "opt",
             f"--jobs={args.jobs}", f"--local_ram_resources={args.memory_mb}", "--nokeep_going", f"--distdir={cache}"]
     if system == "Darwin":
@@ -240,6 +313,8 @@ def main(argv=None):
     if system == "Darwin":
         record["adjustments"].extend(["macOS 使用 BAZEL_USE_CPP_ONLY_TOOLCHAIN=1，避免旧 Xcode 包装器缺少 LC_UUID",
                                       "zlib 目标编译及宿主工具链定义 fdopen=fdopen，保留系统 fdopen，避免旧 Classic Mac 分支与现代 SDK 冲突"])
+    if qemu_compatibility:
+        record["qemu_compatibility"] = qemu_compatibility
     manifest = prefix / "installation.json"
     if manifest.is_symlink():raise ValueError("安装记录目标不可为符号链接")
     manifest.write_text(json.dumps(record, ensure_ascii=False, indent=2) + "\n")

@@ -1,0 +1,421 @@
+{
+  "schema_version": "1.0",
+  "date": "2026-09-20",
+  "tool_version": "0.11.1",
+  "status": "passed",
+  "host": {
+    "cpu": "Apple M1 Max",
+    "logical_cpu_count": 10,
+    "ram_gib": 32
+  },
+  "docker": {
+    "desktop_version": "4.19.0",
+    "engine_version": "23.0.5",
+    "vm_architecture": "arm64",
+    "vm_cpu_count": 5,
+    "vm_memory_bytes": 8232890368,
+    "container_platform": "linux/amd64",
+    "cross_architecture_emulation": "QEMU"
+  },
+  "platform": {
+    "system": "Linux",
+    "machine": "x86_64",
+    "kernel": "5.15.49-linuxkit",
+    "python": "3.10.12",
+    "numpy": "2.2.6",
+    "distribution": "Ubuntu 22.04.5 LTS",
+    "gcc": "11.4.0",
+    "ffmpeg": "4.4.2-0ubuntu0.22.04.1"
+  },
+  "upstream": {
+    "source_commit": "38d0b0163e441047d4429bf07ad09e5b9031d02c",
+    "source_archive_sha256": "dbfe6283f362560cedee7441255c1d95ed31e977ecc2854fc60db020c788a508",
+    "bazel_version": "bazel 5.1.0",
+    "bazel_official_sha256": "0440ae4581ea5eac5cb36ed0790b1e942778eb81e3ba9bc1326f189427aef0fd",
+    "binary_sha256": "c7ad86bef67ed57e85b7e1d818679ca5d251f96cb4faf5d642581f4f72bf996a",
+    "binary_bytes": 7095536,
+    "qemu_compatibility": {
+      "reason": "旧 Docker/QEMU 无法 seek /proc/self/exe",
+      "original_sha256": "0440ae4581ea5eac5cb36ed0790b1e942778eb81e3ba9bc1326f189427aef0fd",
+      "launcher_sha256": "cb9730f20ca45ce0b20fae489a4f9bb26089205d987a27053dd69ff45f63a64b",
+      "source_sha256": "4a1c19d135c623d88f34406deeb597655a0cffbd17ec59e8b0ca932ba25fdd4e",
+      "library_sha256": "dd0be34088806c0ec99a390495ba3922492c6045db321a83fa0cc911f1d1a5e6",
+      "scope": "仅重定向 Bazel launcher 的 /proc/self/exe 打开；构造函数清除注入环境，不传给 Java 或编译器"
+    },
+    "algorithm_or_model_modified": false,
+    "tflite_mac_patch_used": false
+  },
+  "models": {
+    "speech": {
+      "file": "lattice_tcditugenmeetpackhref_ls2_nl60_lr12_bs2048_learn.005_ep2400_train1_7_raw.tflite",
+      "sha256": "4bd031d6c95594ae2cd1d471aa6611bff26b3bbf816528431ff1741bcd798dc6",
+      "bytes": 2233840
+    },
+    "audio": {
+      "file": "libsvm_nu_svr_model.txt",
+      "sha256": "1e8246ed33bf36dc5c859351f7110f2cd31f98661989715c0fcf974ec48d3e2e",
+      "bytes": 138117
+    }
+  },
+  "build": {
+    "status": "built",
+    "container_exit_code": 0,
+    "oom_killed": false,
+    "cpu_limit": 4,
+    "memory_limit_bytes": 6442450944,
+    "memory_plus_swap_limit_bytes": 6442450944,
+    "bazel_jobs": 4,
+    "bazel_ram_budget_mb": 4096,
+    "build_elapsed_s": 2197.496033668,
+    "installer_elapsed_s": 2237.77,
+    "scope": "复用已校验下载缓存后的成功构建；不含此前镜像构建、下载与排障时间；不是空缓存完整安装基准。"
+  },
+  "actual_cli_cases": [
+    {
+      "case": "identity",
+      "pair_index": 1,
+      "mode": "speech",
+      "status": "completed",
+      "moslqo": 4.507157802581787,
+      "inputs": {
+        "reference": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.026815788152033528,
+          "peak": 0.1981201171875,
+          "sha256": "fe43a88015e860012ff73c7bc46c8e2e85ccf62ba6a94fe0490e0f09a53c6a82",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        },
+        "degraded": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.026815788152033528,
+          "peak": 0.1981201171875,
+          "sha256": "fe43a88015e860012ff73c7bc46c8e2e85ccf62ba6a94fe0490e0f09a53c6a82",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        }
+      }
+    },
+    {
+      "case": "speech-batch",
+      "pair_index": 1,
+      "mode": "speech",
+      "status": "completed",
+      "moslqo": 3.316093921661377,
+      "inputs": {
+        "reference": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.026815788152033528,
+          "peak": 0.1981201171875,
+          "sha256": "fe43a88015e860012ff73c7bc46c8e2e85ccf62ba6a94fe0490e0f09a53c6a82",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        },
+        "degraded": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.024277134332735324,
+          "peak": 0.165283203125,
+          "sha256": "8c97c0ed9508fe308251cb69426fd70bf3696f558a562570acc8f8941be14710",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        }
+      }
+    },
+    {
+      "case": "speech-batch",
+      "pair_index": 2,
+      "mode": "speech",
+      "status": "completed",
+      "moslqo": 1,
+      "inputs": {
+        "reference": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.026815788152033528,
+          "peak": 0.1981201171875,
+          "sha256": "fe43a88015e860012ff73c7bc46c8e2e85ccf62ba6a94fe0490e0f09a53c6a82",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        },
+        "degraded": {
+          "sample_rate": 16000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384375,
+          "rms": 0.08440441322991364,
+          "peak": 0.415740966796875,
+          "sha256": "76acf600a899cc55ae1dfa1460bc9d93c4dffd7df452402797e4bc43dd844933",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        }
+      }
+    },
+    {
+      "case": "audio",
+      "pair_index": 1,
+      "mode": "audio",
+      "status": "completed",
+      "moslqo": 1.765837875295841,
+      "inputs": {
+        "reference": {
+          "sample_rate": 48000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384166666666667,
+          "rms": 0.027147895698964815,
+          "peak": 0.19873046875,
+          "sha256": "9d150f092cd14a98c2ae2ff8ca8e5bc9445e245a95db5074ca75103bad61ae16",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        },
+        "degraded": {
+          "sample_rate": 48000,
+          "channels": 1,
+          "sample_width_bytes": 2,
+          "duration_s": 2.7384166666666667,
+          "rms": 0.024275005606299728,
+          "peak": 0.166046142578125,
+          "sha256": "ffb070bed063b9aba29ce2d156726c4dedb5ff6a827eea7a8b060606efad4232",
+          "warnings": [
+            "时长超出通常的 3–10 秒短片段范围，请核对适用性"
+          ]
+        }
+      }
+    }
+  ],
+  "upstream_short_baselines": [
+    {
+      "case": "speech-transcoded",
+      "expected": 3.3129234313964844,
+      "observed": 3.3129289150238037,
+      "tolerance": 0.0001,
+      "passed": true,
+      "source_sample_rate": 48000
+    },
+    {
+      "case": "speech-identity",
+      "expected": 4.505550384521484,
+      "observed": 4.505544185638428,
+      "tolerance": 0.0001,
+      "passed": true,
+      "source_sample_rate": 48000
+    },
+    {
+      "case": "audio-transcoded",
+      "expected": 1.7658378752958486,
+      "observed": 1.765837875295841,
+      "tolerance": 0.0001,
+      "passed": true,
+      "source_sample_rate": 48000
+    }
+  ],
+  "mixed_batch": {
+    "order": "missing file first, valid pair second",
+    "exit_code": 3,
+    "failed_moslqo": null,
+    "pairs": 2,
+    "completed": 1,
+    "errors": 1,
+    "mode": "speech",
+    "moslqo_mean": 3.316093921661377,
+    "aggregation_scope": "仅已完成音频对；部分失败时不能当成全批质量",
+    "elapsed_s": 6.8635967949994665
+  },
+  "python_tests": {
+    "mac": {
+      "run": 23,
+      "passed": 23
+    },
+    "linux": {
+      "run": 23,
+      "passed": 23,
+      "elapsed_s": 42.029
+    },
+    "scope": "ViSQOL 专项；未在本轮 Linux 重跑全仓或完整上游测试套件。"
+  },
+  "measurements": [
+    {
+      "mode": "speech",
+      "repetition": 1,
+      "moslqo": 3.316093921661377,
+      "elapsed_s": 6.6,
+      "peak_rss_kib": 65896,
+      "exit_code": 0
+    },
+    {
+      "mode": "speech",
+      "repetition": 2,
+      "moslqo": 3.316093921661377,
+      "elapsed_s": 6.62,
+      "peak_rss_kib": 65780,
+      "exit_code": 0
+    },
+    {
+      "mode": "speech",
+      "repetition": 3,
+      "moslqo": 3.316093921661377,
+      "elapsed_s": 6.63,
+      "peak_rss_kib": 66480,
+      "exit_code": 0
+    },
+    {
+      "mode": "audio",
+      "repetition": 1,
+      "moslqo": 1.765837875295841,
+      "elapsed_s": 22.57,
+      "peak_rss_kib": 69056,
+      "exit_code": 0
+    },
+    {
+      "mode": "audio",
+      "repetition": 2,
+      "moslqo": 1.765837875295841,
+      "elapsed_s": 22.59,
+      "peak_rss_kib": 69164,
+      "exit_code": 0
+    },
+    {
+      "mode": "audio",
+      "repetition": 3,
+      "moslqo": 1.765837875295841,
+      "elapsed_s": 22.83,
+      "peak_rss_kib": 69420,
+      "exit_code": 0
+    }
+  ],
+  "measurement_conditions": {
+    "cpu_limit": 2,
+    "memory_limit_bytes": 2147483648,
+    "network": "none",
+    "root_filesystem": "read-only",
+    "backend_volume": "read-only",
+    "sample_duration_s": 2.7384375,
+    "cache": "warm OS file cache, new process each run",
+    "rss_unit": "KiB",
+    "rss_scope": "GNU time 所见 Linux 评分进程；不包含 Python、Docker VM 或整机；跨架构仿真。"
+  },
+  "runtime_validation": {
+    "status": "passed",
+    "image": "voice-tools-visqol-runtime:0.11.1-amd64",
+    "restrictions": {
+      "network": "none",
+      "read_only_root": true,
+      "backend_volume_mounted": false,
+      "cpu_limit": 2,
+      "memory_limit_bytes": 2147483648,
+      "user": "501:20"
+    },
+    "environment": {
+      "uid": 501,
+      "gid": 20,
+      "compiler": null,
+      "bazel": null,
+      "ffmpeg": null,
+      "build_cache_present": false,
+      "binary_is_symlink": false
+    },
+    "cases": [
+      {
+        "case": "doctor",
+        "exit_code": 0
+      },
+      {
+        "case": "speech",
+        "exit_code": 0,
+        "summary": {
+          "pairs": 1,
+          "completed": 1,
+          "errors": 0,
+          "mode": "speech",
+          "moslqo_mean": 3.316093921661377,
+          "aggregation_scope": "仅已完成音频对；部分失败时不能当成全批质量",
+          "elapsed_s": 6.735758795000038
+        },
+        "binary_sha256": "c7ad86bef67ed57e85b7e1d818679ca5d251f96cb4faf5d642581f4f72bf996a",
+        "model_sha256": "4bd031d6c95594ae2cd1d471aa6611bff26b3bbf816528431ff1741bcd798dc6"
+      },
+      {
+        "case": "batch",
+        "exit_code": 0,
+        "summary": {
+          "pairs": 2,
+          "completed": 2,
+          "errors": 0,
+          "mode": "speech",
+          "moslqo_mean": 2.1580469608306885,
+          "aggregation_scope": "仅已完成音频对；部分失败时不能当成全批质量",
+          "elapsed_s": 13.288839298000312
+        },
+        "binary_sha256": "c7ad86bef67ed57e85b7e1d818679ca5d251f96cb4faf5d642581f4f72bf996a",
+        "model_sha256": "4bd031d6c95594ae2cd1d471aa6611bff26b3bbf816528431ff1741bcd798dc6"
+      },
+      {
+        "case": "audio",
+        "exit_code": 0,
+        "summary": {
+          "pairs": 1,
+          "completed": 1,
+          "errors": 0,
+          "mode": "audio",
+          "moslqo_mean": 1.765837875295841,
+          "aggregation_scope": "仅已完成音频对；部分失败时不能当成全批质量",
+          "elapsed_s": 22.80474496900024
+        },
+        "binary_sha256": "c7ad86bef67ed57e85b7e1d818679ca5d251f96cb4faf5d642581f4f72bf996a",
+        "model_sha256": "1e8246ed33bf36dc5c859351f7110f2cd31f98661989715c0fcf974ec48d3e2e"
+      }
+    ]
+  },
+  "images": [
+    {
+      "tag": "voice-tools-visqol:0.11.1-amd64",
+      "Id": "sha256:b95cf5ae1fedb047108ca159d4c2a4f44725a1a379da6a6625aa8d922f191bed",
+      "Size": 926646666,
+      "Architecture": "amd64",
+      "Os": "linux",
+      "Created": "2026-09-20T03:03:39.983243377Z"
+    },
+    {
+      "tag": "voice-tools-visqol-runtime:0.11.1-amd64",
+      "Id": "sha256:4d294f7dda362564d714186ae5f633a88db0267e55b241f43dc555c7a8bfaa4a",
+      "Size": 202801537,
+      "Architecture": "amd64",
+      "Os": "linux",
+      "Created": "2026-09-20T03:14:59.358215345Z"
+    }
+  ],
+  "disk": {
+    "build_volume_kib": 3086884,
+    "external_download_cache_kib": 183876,
+    "runtime_export_file_bytes": 9481512,
+    "scope": "镜像 Size 为未压缩逻辑大小，层可共享；volume 为 du -sk；不含 Docker builder 其他缓存。"
+  },
+  "limitations": [
+    "M1/QEMU 容器验证，不是原生 x86 Linux 主机性能或 Linux arm64 验收。",
+    "未完成真实中文/生产通话、并发容量或长音频准确度测试。",
+    "仅三个上游短样本基准，不冒充完整 20+3 项上游测试。",
+    "Mac 与 Linux 的 FFmpeg 版本和重采样输入 SHA256 不同，16 kHz 演示分数不能用于跨平台一致性断言。",
+    "资源配置是本次测试限制，不是官方最低要求。"
+  ]
+}

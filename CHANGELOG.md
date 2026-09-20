@@ -7,8 +7,10 @@
 - 范围：`voice-tools visqol doctor / score / batch`、固定版本 CPU 安装脚本、官方样本实战、下载/安装/使用文档与结构化结果。
 - 本机已完成：M1 Max / 32 GiB 源码编译、语音/一般音频真实评分、独立 wheel 评分、批次部分失败与证据保留；上游 20 项一致性和 3 项 TFLite 测试通过。
 - 主线合入后全仓 354 项，322 项执行通过、32 项可选测试跳过。最终 CSV 错误处理小修复后 17 项 ViSQOL 专项和重建 wheel 真实评分通过。
-- 最终验证与资源记录见 [ViSQOL 本机实战](docs/visqol-local-validation.md)；Linux 与生产通话未验收。
+- Mac 验证与资源记录见 [ViSQOL 本机实战](docs/visqol-local-validation.md)；生产通话未验收。
 - PR：[#18](https://github.com/lovezhl456/voice_tools/pull/18)，待审阅，尚未合并。
+- Linux 补充验收完成：本地 Docker 的 Ubuntu 22.04 / amd64 在 M1/QEMU 下完成编译、3 个官方短基准、真实单对/批量与部分失败；非 root、禁网、只读系统的独立运行镜像评分通过。不是原生 x86 Linux 主机性能验收。
+- 增加工具与运行 Dockerfile、显式 QEMU/Bazel 启动兼容、校验后端导出与 Linux 验收脚本。最终 Mac/Linux 各 23 项 ViSQOL 专项通过；[Linux 安装使用](docs/visqol-docker.md)及[实测记录](docs/visqol-linux-validation.md)已补齐，沿用尚未合并的 `0.11.1` 版本。
 
 ## 0.10.1 · NISQA 本地听感评分
 

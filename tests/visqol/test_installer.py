@@ -21,6 +21,33 @@ class InstallerTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
 
+    def test_qemu_workaround_rejects_unknown_binary_before_compiling(self):
+        binary = self.root / 'unverified-bazel'
+        binary.write_bytes(b'not the official release')
+        with patch.object(installer.subprocess, 'run') as run:
+            with self.assertRaisesRegex(ValueError, '官方 Bazel'):
+                installer.qemu_bazel_launcher(binary, self.root)
+            run.assert_not_called()
+        self.assertEqual(binary.read_bytes(), b'not the official release')
+
+    def test_bazel_startup_error_keeps_diagnostic_without_implicit_workaround(self):
+        error = "Failed to open '/proc/self/exe' as a zip file: Bad file descriptor"
+        result = subprocess.CompletedProcess(['bazel'], 36, '', error)
+        with patch.object(installer.subprocess, 'run', return_value=result), \
+                patch.object(installer, 'qemu_bazel_launcher') as fallback:
+            with self.assertRaisesRegex(ValueError, 'Bad file descriptor'):
+                installer.check_bazel(Path('/bazel'), self.root)
+            fallback.assert_not_called()
+
+    def test_qemu_option_does_not_mask_unrelated_startup_error(self):
+        result = subprocess.CompletedProcess(['bazel'], 7, '', 'unrelated failure')
+        with patch.object(installer.subprocess, 'run', return_value=result), \
+                patch.object(installer.platform, 'system', return_value='Linux'), \
+                patch.object(installer, 'qemu_bazel_launcher') as fallback:
+            with self.assertRaisesRegex(ValueError, 'unrelated failure'):
+                installer.check_bazel(Path('/bazel'), self.root, allow_qemu=True)
+            fallback.assert_not_called()
+
     def archive(self, entries):
         dest = self.root / 'source.tar.gz'
         with tarfile.open(dest, 'w:gz') as bundle:

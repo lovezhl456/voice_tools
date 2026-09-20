@@ -1,6 +1,6 @@
 # ViSQOL 全参考音质评估
 
-[返回工具导航](../README.md) · [本机实战记录](visqol-local-validation.md) · [安装脚本](../scripts/install_visqol.py) · [可运行演示](../scripts/visqol_demo.py)
+[返回工具导航](../README.md) · [本机实战记录](visqol-local-validation.md) · [Linux / Docker](visqol-docker.md) · [安装脚本](../scripts/install_visqol.py) · [可运行演示](../scripts/visqol_demo.py)
 
 ViSQOL 把**干净原声**和**同一句话的待测版本**成对比较，输出 MOS-LQO 听感估计。它适合固定语句线路测试、编解码对比，以及保留 TTS 原始输出后的传输损失评估。它不是 ASR、音频修复器或单端质量模型，不能拿主叫和被叫互作参考，不能用低分直接判断故障原因。
 
@@ -26,7 +26,7 @@ voice-tools --version
 
 macOS：安装 Apple Xcode Command Line Tools（`xcode-select --install`），准备 Git、curl 和 Python。演示脚本需要 FFmpeg；已使用 Homebrew 的机器可按需 `brew install ffmpeg`，已有的不用重复安装。
 
-Ubuntu 22.04 x86_64 是可选部署路线，使用 Python 3.10；本次实际验收平台以[实战记录](visqol-local-validation.md)为准。常见前置包：
+Ubuntu 22.04 x86_64 使用 Python 3.10。已完成本地 Docker 的 Ubuntu / amd64 验收（M1 上通过 QEMU 仿真）；下载、安装和运行镜像步骤见 [Docker 指南](visqol-docker.md)，具体范围见 [Linux 实测记录](visqol-linux-validation.md)。原生 Ubuntu 主机可参考以下前置包，主机安装和性能仍需自行验证：
 
 ```bash
 sudo apt-get update
@@ -173,7 +173,7 @@ voice-tools --json visqol batch \
 
 运行只需 CPU。源码构建和最终评分是不同开销：首次需要工具链、较大的 TensorFlow/TFLite 等源码依赖与编译缓存，运行时使用小得多的本地程序和模型。建议先少量短片段、单进程测量，再决定并发。
 
-实际本机版本、编译情况、单对耗时、程序/模型大小与峰值内存，见[本机实战记录](visqol-local-validation.md)。不要把这台机器的短样本结果推广为所有服务器或长通话的吞吐保证；冷启动、音频时长、模式和并发均影响开销。
+实际版本、编译情况、单对耗时、程序/模型大小与峰值内存，见 [Mac 本机实战](visqol-local-validation.md)和 [Linux / Docker 实战](visqol-linux-validation.md)。不要把短样本或跨架构仿真结果推广为所有服务器或长通话的吞吐保证；冷启动、音频时长、模式和并发均影响开销。
 
 推荐接入位置：固定测试语句/TTS 原始输出 → 接收端录音 → 对齐切片与显式格式准备 → ViSQOL → 异常样本试听。只有日常通话录音、没有参考原声时，需要选择单端估计或其他质检手段。延迟、回声、打断、业务话术等指标另行测量。
 

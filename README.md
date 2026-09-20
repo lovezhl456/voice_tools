@@ -12,7 +12,7 @@
 
 | 工具 | 适用场景 | 命令入口 | 使用文档 |
 |---|---|---|---|
-| **ViSQOL 音质对比** | 对照干净原声，评估线路/编码/传输后的音质；提供本地安装与官方样本演示 | `voice-tools visqol doctor / score / batch` | [下载、安装与使用](docs/visqol.md) · [本机实战](docs/visqol-local-validation.md) |
+| **ViSQOL 音质对比** | 对照干净原声，评估线路/编码/传输后的音质；提供本地安装与官方样本演示 | `voice-tools visqol doctor / score / batch` | [下载、安装与使用](docs/visqol.md) · [Mac 实战](docs/visqol-local-validation.md) · [Linux / Docker](docs/visqol-docker.md) |
 | **NISQA 听感评分** | CPU 分段预测录音的整体质量、噪声、断续、音色和响度 | `voice-tools nisqa download / doctor / analyze` | [安装、权重下载与使用](docs/nisqa.md) · [本地验收](docs/nisqa-validation.md) |
 | **SIP 自动拨测** | 轻量 SIP UDP 呼叫、播放/按键/录音，PCAP 素材导入与独立 SIPp 回放 | `voice-tools sip` / `voice-sip` | [使用手册](docs/sip.md) · [大模型协议](docs/sip-ai.md) |
 | **录音体检与准备** | 查看逐轨音频健康指标，转换为保留声道和时间映射的 PCM16 WAV | `voice-tools audio inspect / prepare` | [人工使用手册](docs/manual.md) |

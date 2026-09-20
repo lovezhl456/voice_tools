@@ -1,0 +1,17 @@
+ARG TOOLS_IMAGE=voice-tools-visqol:0.11.1-amd64
+FROM ${TOOLS_IMAGE} AS tools
+
+FROM ubuntu:22.04@sha256:b8b6ee6aa931ecd9d0d952abc34dc0e5f7c6a30c6bb71b079fe399fde0329c02 AS runtime-base
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 ca-certificates libstdc++6 libgomp1 time \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=tools /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:${PATH}" \
+    VOICE_TOOLS_VISQOL_DIR=/opt/visqol/source
+WORKDIR /data
+ENTRYPOINT ["voice-tools"]
+CMD ["visqol", "--help"]
+
+FROM runtime-base AS runtime
+COPY backend/ /opt/visqol/

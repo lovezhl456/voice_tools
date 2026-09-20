@@ -1,8 +1,8 @@
 # ViSQOL 本机实战验收 · 2026-09-20
 
-[安装与使用](visqol.md) · [结构化验收摘要](visqol-local-validation.json)
+[安装与使用](visqol.md) · [结构化验收摘要](visqol-local-validation.json) · [后续 Linux / Docker 验收](visqol-linux-validation.md)
 
-本轮已在 Mac 本机完成源码下载、原生编译、单对/批量评分、失败处理和独立 wheel 安装验证。最终 CLI 版本 **0.11.1**，已同步主线 NISQA、SIP 批量功能。这里记录实际结果，不把部署建议当成已测容量。
+本轮已在 Mac 本机完成源码下载、原生编译、单对/批量评分、失败处理和独立 wheel 安装验证。最终 CLI 版本 **0.11.1**，已同步主线 NISQA、SIP 批量功能。这里保留 Mac 阶段的历史验收口径；后续 Linux 部署与裁剪运行镜像另见上方记录，不改写本页原始测试范围。
 
 ## 环境与固定版本
 
