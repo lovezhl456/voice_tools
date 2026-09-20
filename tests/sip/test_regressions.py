@@ -133,7 +133,7 @@ class NativeAdapterLifecycle(unittest.TestCase):
     def setUp(self):
         # Import the adapter against a tiny SDK boundary, without requiring PJSUA2.
         from voice_tools.tools.sip import runner
-        fake = types.SimpleNamespace(Call=object, Account=object, AudioMediaPlayer=object,
+        fake = types.SimpleNamespace(Call=object, Account=object, AudioMediaPlayer=object, AudioMediaPort=object,
                                      PJMEDIA_TYPE_AUDIO=1, PJSUA_CALL_MEDIA_ACTIVE=1, Error=RuntimeError)
         path = Path(runner.__file__).with_name('pjsua.py')
         spec = importlib.util.spec_from_file_location('voice_tools.tools.sip._review_adapter', path)
@@ -144,6 +144,7 @@ class NativeAdapterLifecycle(unittest.TestCase):
         b = self.backend
         b.connected = True; b.disconnected = False; b.media_ready = True
         b.recorder = object(); b.player = None; b.record_started = 1.0
+        b.observation = b.rx_tap = None
         b.plan = {'record_early': True}; b.clock = lambda: 2.0; b.emit = lambda *a, **k: None
 
     def test_active_media_replacement_reconnects_existing_recorder(self):

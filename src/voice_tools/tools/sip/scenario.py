@@ -105,11 +105,18 @@ def media_bundle(path):
 def load_scenario(path):
     path = Path(path).resolve()
     source = read_json(path)
-    object_fields(source, {"schema_version", "target_uri", "account", "network", "codec", "connect_timeout_s", "max_call_s", "record_early", "steps", "assertions"}, "scenario")
+    object_fields(source, {"schema_version", "target_uri", "account", "network", "codec", "connect_timeout_s", "max_call_s", "record_early", "steps", "assertions", "benchmark"}, "scenario")
     from .assertions import validate_assertions
     assertions = validate_assertions(source.get("assertions", []))
-    if source.get("schema_version") != VERSION:
-        raise ValueError("scenario.schema_version 必须为 1.0")
+    version = source.get("schema_version")
+    if version not in (VERSION, "1.1"):
+        raise ValueError("scenario.schema_version 必须为 1.0 或 1.1")
+    benchmark = None
+    if "benchmark" in source:
+        if version != "1.1":
+            raise ValueError("benchmark 需要 scenario.schema_version=1.1")
+        from voice_tools.tools.benchmark.config import configuration
+        benchmark = configuration(source["benchmark"])
     account = dict(object_fields(source.get("account", {}), {"id_uri", "registrar_uri", "proxy_uri", "auth"}, "account"))
     account["id_uri"] = sip_uri(account.get("id_uri", "sip:voice-tools@127.0.0.1"), "account.id_uri")
     for key in ("registrar_uri", "proxy_uri"):
@@ -144,6 +151,10 @@ def load_scenario(path):
         raise ValueError("steps 必须包含 1–256 个动作")
     resolved, total = [], 0.0
     fields = {"wait": {"seconds"}, "play": {"file"}, "dtmf": {"digits", "method", "duration_ms", "gap_ms"}, "play_media": {"file"}, "hangup": set()}
+    if version == "1.1" and benchmark:
+        fields["wait_audio"] = {"state", "duration_ms", "timeout_s"}
+        fields["play"].add("speech")
+        fields["play_media"].add("speech")
     for i, raw in enumerate(steps):
         if not isinstance(raw, dict) or not isinstance(raw.get("action"), str) or raw["action"] not in fields:
             raise ValueError(f"steps[{i}] 不支持的 action")
@@ -158,6 +169,13 @@ def load_scenario(path):
         elif action == "play_media":
             step["media"] = media_bundle(resolve(path.parent, raw.get("file")))
             step["duration_s"] = step["media"]["duration_s"]
+        elif action == "wait_audio":
+            if raw.get("state") not in ("active", "silent"):
+                raise ValueError("wait_audio.state 须为 active 或 silent")
+            step["duration_ms"] = number(raw.get("duration_ms", 60 if raw["state"] == "active" else 200), 20, 5000, "wait_audio.duration_ms")
+            step["timeout_s"] = number(raw.get("timeout_s", 15), .1, MAX_SECONDS, "wait_audio.timeout_s")
+            if step["duration_ms"] > step["timeout_s"] * 1000:
+                raise ValueError("wait_audio 保持时长超过等待时限")
         elif action == "dtmf":
             digits = text(raw.get("digits"), "dtmf.digits", 128)
             if any(d not in DIGITS for d in digits):
@@ -170,15 +188,29 @@ def load_scenario(path):
             step["duration_s"] = len(digits) * (step["duration_ms"] + step["gap_ms"]) / 1000
         elif i != len(steps) - 1:
             raise ValueError("hangup 必须是最后一个动作")
+        if "speech" in step:
+            if not isinstance(step["speech"], list) or len(step["speech"]) > 200:
+                raise ValueError("speech 须为最多200个人工确认的源录音语音区间")
+            previous_end = 0
+            for span in step["speech"]:
+                object_fields(span, {"start_s", "end_s"}, "speech")
+                begin = number(span.get("start_s"), 0, step["duration_s"], "speech.start_s")
+                end = number(span.get("end_s"), 0, step["duration_s"], "speech.end_s")
+                if begin < previous_end or end <= begin:
+                    raise ValueError("speech 区间须有序、不重叠且长度大于0")
+                previous_end = end
         total += step.get("duration_s", 0)
         resolved.append(step)
     if total > maximum:
         raise ValueError("动作总时长超过 max_call_s")
-    return {"schema_version": VERSION, "scenario_file": str(path), "scenario_sha256": sha256(path),
+    result = {"schema_version": version, "scenario_file": str(path), "scenario_sha256": sha256(path),
             "target_uri": sip_uri(source.get("target_uri")), "account": account, "network": net, "codec": codec,
             "connect_timeout_s": connect, "max_call_s": maximum, "record_early": early, "steps": resolved,
             "planned_duration_s": total, "assertions": assertions,
             "recording": {"rx": "received decoded PCM", "tx_source": "scheduled local source timeline; not proof of remote reception"}}
+    if benchmark is not None:
+        result["benchmark"] = benchmark
+    return result
 
 
 def template(media=None):

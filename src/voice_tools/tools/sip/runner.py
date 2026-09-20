@@ -102,6 +102,8 @@ def execute(plan, output, backend_factory, clock=time.monotonic):
     journal.emit("run_start", target_uri=plan["target_uri"])
     try:
         backend = backend_factory(plan, output, journal.emit, clock)
+        if getattr(backend, "observation", None) is not None:
+            backend.observation.set_origin(journal.start)
         backend.dial()
         until(clock() + plan["connect_timeout_s"], lambda: backend.connected and backend.media_ready)
         answer = clock()
@@ -115,6 +117,11 @@ def execute(plan, output, backend_factory, clock=time.monotonic):
             journal.emit("step_start", index=index, action=action)
             if action == "wait":
                 until(clock() + step["duration_s"], call_deadline=deadline)
+            elif action == "wait_audio":
+                started = clock()
+                until(started + step["timeout_s"],
+                      lambda: backend.wait_audio_ready(step["state"], step["duration_ms"], started), deadline)
+                journal.emit("audio_trigger", state=step["state"], duration_ms=step["duration_ms"], index=index)
             elif action == "dtmf":
                 for digit in step["digits"]:
                     backend.dtmf(digit, step["duration_ms"], step["method"])
@@ -123,6 +130,7 @@ def execute(plan, output, backend_factory, clock=time.monotonic):
             elif action in ("play", "play_media"):
                 audio = step["audio"] if action == "play" else step["media"]["audio"]
                 events = [] if action == "play" else step["media"]["dtmf"]
+                backend.current_step_index = index
                 backend.play(audio["file"])
                 started = clock()
                 active_span = {"file": audio["file"], "start": started, "end": started}

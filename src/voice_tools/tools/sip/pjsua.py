@@ -2,6 +2,7 @@
 import gc
 import os
 import re
+import wave
 
 import pjsua2 as pj
 
@@ -44,6 +45,8 @@ class Call(pj.Call):
 
     def onStreamCreated(self, prm):
         self.owner.stream_generations += 1
+        if self.owner.observation and self.owner.stream_generations > 1:
+            self.owner.observation.issue("media_recreated")
 
 
 class Player(pj.AudioMediaPlayer):
@@ -54,6 +57,48 @@ class Player(pj.AudioMediaPlayer):
     def onEof2(self):
         # This callback may be a media thread. No SIP operations or destruction here.
         self.done = True
+
+
+class MediaTap(pj.AudioMediaPort):
+    """Copy bridge frames only; the worker loop owns analysis and persistence."""
+    def __init__(self, observation, direction):
+        super().__init__()
+        self.observation, self.direction = observation, direction
+        fmt = pj.MediaFormatAudio()
+        fmt.type = pj.PJMEDIA_TYPE_AUDIO
+        fmt.clockRate, fmt.channelCount = 8000, 1
+        fmt.bitsPerSample, fmt.frameTimeUsec = 16, 20000
+        self.createPort("benchmark_" + direction, fmt)
+
+    def onFrameReceived(self, frame):
+        if frame.type == pj.PJMEDIA_FRAME_TYPE_AUDIO and frame.size:
+            self.observation.submit(self.direction, bytes(frame.buf)[:frame.size])
+
+
+class ObservedPlayer(pj.AudioMediaPort):
+    """A bounded, preloaded source records exactly the PCM supplied to the bridge."""
+    def __init__(self, filename, observation, step_index):
+        super().__init__()
+        with wave.open(filename, "rb") as reader:
+            self.pcm = reader.readframes(reader.getnframes())
+        self.observation, self.step_index = observation, step_index
+        self.offset, self.done = 0, False
+        fmt = pj.MediaFormatAudio()
+        fmt.type, fmt.clockRate, fmt.channelCount = pj.PJMEDIA_TYPE_AUDIO, 8000, 1
+        fmt.bitsPerSample, fmt.frameTimeUsec = 16, 20000
+        self.createPort("benchmark_source", fmt)
+
+    def onFrameRequested(self, frame):
+        size = frame.size
+        chunk = self.pcm[self.offset:self.offset + size]
+        payload = chunk + bytes(size - len(chunk))
+        frame.type = pj.PJMEDIA_FRAME_TYPE_AUDIO
+        frame.buf = pj.ByteVector(payload)
+        if chunk:
+            self.observation.submit("tx", payload, source={"step_index": self.step_index,
+                "sample_start": self.offset // 2, "valid_samples": len(chunk) // 2})
+            self.offset += len(chunk)
+        self.done = self.offset >= len(self.pcm)
 
 
 class Account(pj.Account):
@@ -77,6 +122,7 @@ class Backend:
     def __init__(self, plan, output, emit, clock):
         self.plan, self.output, self.emit, self.clock = plan, output, emit, clock
         self.ep = self.account = self.call = self.audio = self.recorder = self.player = None
+        self.observation = self.rx_tap = None
         self.connected = self.disconnected = self.media_ready = False
         self.failure = None
         self.record_started = None
@@ -122,6 +168,10 @@ class Backend:
         self.ep.transportCreate(pj.PJSIP_TRANSPORT_UDP, transport)
         self.ep.libStart()
         self.ep.audDevManager().setNullDev()
+        if plan.get("benchmark"):
+            from voice_tools.tools.benchmark.observation import Observation
+            self.observation = Observation(self.output, self.clock, plan["benchmark"]["detector"])
+            self.rx_tap = MediaTap(self.observation, "rx")
         # Force the tested narrowband codec; telephone-event is negotiated separately.
         for codec in self.ep.codecEnum2():
             self.ep.codecSetPriority(codec.codecId, 255 if codec.codecId.startswith(plan["codec"] + "/8000") else 0)
@@ -171,6 +221,8 @@ class Backend:
             audio = self.call.getAudioMedia(item.index)
             if previous and previous.getPortId() != audio.getPortId():
                 self.detach_media(previous)
+            if self.observation and (previous is None or previous.getPortId() != audio.getPortId()):
+                self.observation.media_changed()
             self.audio = audio
             try:
                 self.codec = self.call.getStreamInfo(item.index).codecName
@@ -185,6 +237,8 @@ class Backend:
             # Reconnecting an existing edge is idempotent; the WAV stays open.
             if self.recorder is not None:
                 self.audio.startTransmit(self.recorder)
+            if self.rx_tap is not None and (self.connected or self.plan["record_early"]):
+                self.audio.startTransmit(self.rx_tap)
             if self.player is not None:
                 self.player.startTransmit(self.audio)
             self.media_ready = True
@@ -194,6 +248,11 @@ class Backend:
         self.audio = None
 
     def detach_media(self, audio):
+        if self.rx_tap is not None:
+            try:
+                audio.stopTransmit(self.rx_tap)
+            except pj.Error:
+                pass
         if self.recorder is not None:
             try:
                 audio.stopTransmit(self.recorder)
@@ -208,6 +267,13 @@ class Backend:
     def poll(self, milliseconds):
         self.ep.libHandleEvents(milliseconds)
         self.sample_rtp()
+        if self.observation:
+            self.observation.drain()
+
+    def wait_audio_ready(self, state, duration_ms, since):
+        if self.observation is None:
+            raise ValueError("wait_audio 需要启用 benchmark 媒体观测")
+        return self.observation.matches(state, duration_ms, since)
 
     def observe_response(self, event):
         # Received INVITE responses only: no REGISTER/INFO/BYE or local 408/487.
@@ -252,8 +318,11 @@ class Backend:
 
     def play(self, filename):
         self.stop_playback()
-        self.player = Player()
-        self.player.createPlayer(filename, pj.PJMEDIA_FILE_NO_LOOP)
+        if self.observation:
+            self.player = ObservedPlayer(filename, self.observation, self.current_step_index)
+        else:
+            self.player = Player()
+            self.player.createPlayer(filename, pj.PJMEDIA_FILE_NO_LOOP)
         self.player.startTransmit(self.audio)
 
     def playback_done(self):
@@ -314,6 +383,7 @@ class Backend:
         if self.audio:
             cleanup(lambda: self.detach_media(self.audio))
         self.player = self.audio = self.recorder = None
+        self.rx_tap = None
         self.call = None
         self.rejected_calls.clear()
         if self.account:
@@ -324,5 +394,7 @@ class Backend:
             cleanup(self.ep.libDestroy)
         self.ep = None
         gc.collect()
+        if self.observation:
+            cleanup(self.observation.close)
         if errors:
             raise errors[0]
