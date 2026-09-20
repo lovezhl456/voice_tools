@@ -19,15 +19,18 @@ def embedded(value):
 
 
 def page(output, name, data):
-    for asset in ('style.css', 'app.js'):
+    for asset in ('style.css', 'app.js', 'benchmark.js'):
         shutil.copyfile(WEB / asset, output / asset)
     html = (WEB / 'index.html').read_text()
     (output / 'index.html').write_text(html.replace('/*__DATA__*/', 'window.VT_DATA=' + embedded({'mode': name, **data}) + ';'))
 
 
 def workbench(output):
+    from voice_tools.tools.benchmark.templates import CASES, case
     output = new_output(output)
-    page(output, 'author', {'catalog': catalog()})
+    page(output, 'author', {'catalog': catalog(), 'benchmark_templates': {
+        kind: {'title': title, 'scenario': case(kind), 'phrases': phrases}
+        for kind, title, _, phrases in CASES}})
     return {'index': str((output / 'index.html').resolve()), 'network_accessed': False}
 
 
@@ -63,7 +66,7 @@ def review(package, output):
     rows = []
     for step in receipt['steps']:
         if not isinstance(step.get('id'), str) or not ID.fullmatch(step['id']): raise ValueError('回执步骤 ID 无效')
-        item = dict(step); item.update(files=[], assertions=[], scores=[], records=[], audio=[])
+        item = dict(step); item.update(files=[], assertions=[], scores=[], records=[], audio=[], benchmarks=[], benchmark_summaries=[])
         folder = root / 'steps' / step['id']
         if folder.exists():
             for path in sorted(folder.rglob('*')):
@@ -75,6 +78,26 @@ def review(package, output):
                 if path.name == 'assertions.json':
                     try: item['assertions'] += read_json(path).get('items', [])
                     except (ValueError, OSError): pass
+                if path.name == 'benchmark.json' and path.stat().st_size < 4 * 1024**2:
+                    try:
+                        timing = read_json(path)
+                        if timing.get('kind') == 'voice_benchmark' and len(item['benchmarks']) < 200:
+                            audio = {d: audio_index.get((path.parent / f'bridge_{d}.wav').relative_to(root).as_posix()) for d in ('rx', 'tx')}
+                            # Offline reanalysis lives in a later step; resolve its original evidence by path aliases.
+                            for direction in ('rx', 'tx'):
+                                if audio[direction] is None:
+                                    original = str(Path(timing.get('source_directory', '')) / f'bridge_{direction}.wav')
+                                    audio[direction] = aliases.get(original)
+                            item['benchmarks'].append({'report': timing, 'audio': audio, 'name': path.relative_to(folder).as_posix()})
+                        elif len(item['benchmarks']) >= 200:
+                            item['benchmarks_truncated'] = True
+                    except (OSError, ValueError, TypeError): pass
+                if path.name == 'benchmark-summary.json' and path.stat().st_size < 16 * 1024**2:
+                    try:
+                        summary = read_json(path)
+                        if summary.get('kind') == 'benchmark_summary':
+                            item['benchmark_summaries'].append({k: v for k, v in summary.items() if k != 'reports'})
+                    except (OSError, ValueError, TypeError): pass
                 if path.suffix == '.jsonl':
                     with path.open(errors='replace') as stream:
                         for line in stream:
@@ -91,7 +114,7 @@ def review(package, output):
                                     row['playback'] = match['path']
                                     if match not in item['audio']: item['audio'].append(match)
                                 item['scores'].append(row)
-                if path.name in ('stdout.json', 'report.json', 'comparison.json', 'metrics.json', 'result.json', 'batch-result.json') and path.stat().st_size < 4 * 1024**2:
+                if path.name in ('stdout.json', 'report.json', 'comparison.json', 'metrics.json', 'result.json', 'batch-result.json', 'benchmark-summary.json') and path.stat().st_size < 4 * 1024**2:
                     try: item.setdefault('details', []).append({'name': path.relative_to(folder).as_posix(), 'value': read_json(path)})
                     except (OSError, ValueError): pass
         if not item['audio']:

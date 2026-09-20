@@ -50,6 +50,7 @@ def serve(directory, mode="answer", duration=12):
     finish = time.monotonic() + duration
     peer_bye_sent = False
     reinvite_sent = False
+    interrupted_at = None
 
     def digest_verified(headers, method):
         auth = dict(re.findall(r'(\w+)="([^"]*)"', headers.get("authorization", "")))
@@ -82,6 +83,12 @@ def serve(directory, mode="answer", duration=12):
                 payload = b"\xd5" * 160 if mode == "silence" else b"\xaa" * 80 + b"\x2a" * 80
                 if tone_cycle is not None:
                     payload = bytes(tone_cycle[(stamp + i) % len(tone_cycle)] for i in range(160))
+                if mode == "timing_gap" and media_start and .6 <= now - media_start < 1.4:
+                    payload = b"\xd5" * 160
+                if mode in ("timing_stop", "timing_reply") and interrupted_at and now >= interrupted_at + .12:
+                    reply = mode == "timing_reply" and .8 <= now - interrupted_at < 1.2
+                    if not reply:
+                        payload = b"\xd5" * 160
                 transmit(rtp(seq, stamp, payload, 8, 4321), remote_rtp, current_media)
                 seq, stamp, next_audio = seq + 1, stamp + 160, next_audio + .02
             if mode == "reinvite" and media_start and now - media_start >= .35 and not reinvite_sent:
@@ -119,6 +126,9 @@ def serve(directory, mode="answer", duration=12):
                     elif pt in (0, 8):
                         report["audio_packets"] += 1
                         report["non_silent_packets"] += int(any(b not in (0xd5, 0x55, 0xff, 0x7f) for b in payload))
+                        if report["non_silent_packets"] >= 3 and interrupted_at is None:
+                            interrupted_at = now
+                            report["interruption_received_s"] = now - media_start if media_start else None
                         if sock is alternate:
                             report["post_switch_non_silent_packets"] += int(any(b not in (0xd5, 0x55, 0xff, 0x7f) for b in payload))
                     continue
@@ -201,7 +211,7 @@ def serve(directory, mode="answer", duration=12):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", required=True)
-    parser.add_argument("--mode", default="answer", choices=("answer", "auth", "early", "reject", "drop", "hangup", "register", "register_auth", "reinvite", "silence", "no_rtp", "echo_dtmf", "echo_info", "tone"))
+    parser.add_argument("--mode", default="answer", choices=("answer", "auth", "early", "reject", "drop", "hangup", "register", "register_auth", "reinvite", "silence", "no_rtp", "echo_dtmf", "echo_info", "tone", "timing_stop", "timing_reply", "timing_gap"))
     parser.add_argument("--duration", type=float, default=12)
     args = parser.parse_args()
     serve(args.out, args.mode, args.duration)

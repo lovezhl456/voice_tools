@@ -10,7 +10,7 @@ import sys
 import uuid
 
 REPO = Path(__file__).resolve().parents[1]
-IMAGE = os.environ.get('VT_IMAGE', 'voice-tools-executor:0.12.1')
+IMAGE = os.environ.get('VT_IMAGE', 'voice-tools-executor:0.13.1')
 
 
 def docker(*args, capture=False):

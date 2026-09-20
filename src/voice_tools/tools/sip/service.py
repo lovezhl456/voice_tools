@@ -46,6 +46,8 @@ def stop_worker(process):
 def run(scenario, output, dry_run=False):
     plan = load_scenario(scenario)
     if not dry_run:
+        if plan.get("benchmark", {}).get("detector", {}).get("backend") == "webrtcvad" and importlib.util.find_spec("webrtcvad") is None:
+            raise ValueError("时序评测需要可选依赖：pip install -e '.[vad]'；尚未拨号")
         if "example.invalid" in plan["target_uri"]:
             raise ValueError("请先将示例 target_uri 替换为实际测试端点")
         if importlib.util.find_spec("pjsua2") is None:
@@ -131,6 +133,12 @@ def run(scenario, output, dry_run=False):
             result["error"] = {"code": "RECORDING_INCOMPLETE", "message": str(exc)}
     from .assertions import apply_assertions
     apply_assertions(plan, result, output)
+    if plan.get("benchmark"):
+        from voice_tools.tools.benchmark.analysis import save_analysis, attach_assertions
+        # Persist execution/assertion status before the offline reader opens the receipt.
+        write_json(result_file, result)
+        timing = save_analysis(output, output)
+        attach_assertions(timing, result)
     # A native error must not cause a secret to escape through structured output.
     auth = plan["account"].get("auth")
     if auth and os.environ.get(auth["password_env"]):

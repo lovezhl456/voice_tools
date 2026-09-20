@@ -156,3 +156,7 @@ SIP 0.8.1：[结构化断言](docs/sip-assertions.md)支持应答码、接收 RT
 **NISQA 官方 `nisqa.tar` 权重采用 CC BY-NC-SA 4.0，含非商业限制。** 商业客服、收费服务或其他商业用途需另行取得相应授权；更换调用封装不会改变权重许可。权重由用户显式下载，不随本项目源码、安装包或镜像分发。详见 [NISQA 权重许可](docs/nisqa.md#权重许可)。
 
 包含 PJSIP/PJSUA2 等组件的运行环境或 Docker 镜像还需遵守其 GPL 或商业许可条件，不能整体标为仅受 Apache-2.0 授权。
+
+## 中文电话时序（0.13.1）
+
+SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](docs/benchmark.md)。

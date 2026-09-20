@@ -184,7 +184,7 @@ class NativeEvidenceTests(unittest.TestCase):
         from unittest.mock import patch
         from voice_tools.tools.sip import runner
         self.ns = types.SimpleNamespace
-        pj = self.ns(Call=object, Account=object, AudioMediaPlayer=object, PJMEDIA_TYPE_AUDIO=1,
+        pj = self.ns(Call=object, Account=object, AudioMediaPlayer=object, AudioMediaPort=object, PJMEDIA_TYPE_AUDIO=1,
                      PJSUA_CALL_MEDIA_ACTIVE=1, PJSIP_EVENT_TSX_STATE=2, PJSIP_EVENT_RX_MSG=3, Error=RuntimeError)
         spec = importlib.util.spec_from_file_location('voice_tools.tools.sip._assertion_adapter', Path(runner.__file__).with_name('pjsua.py'))
         module = importlib.util.module_from_spec(spec)
