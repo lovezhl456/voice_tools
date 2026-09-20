@@ -144,21 +144,25 @@ python scripts/nisqa_smoke.py data/speech.wav \
 
 脚本调用安装后的 CLI，要求至少一段真实模型评分、没有处理错误；额外记录启动至完成的墙钟时间、子进程峰值 RSS 和完整 JSON 回执。它不下载权重，不生成或上传用户录音。Mac/Linux 可运行，`resource` RSS 单位已按平台换算。若模型加载或输入错误，仍保留原始 CLI 退出码。
 
-无需权重的测试：
+无需权重的测试（从仓库根目录、选定虚拟环境执行；假评分器服务测试仍需 soundfile）：
 
 ```bash
-python -m unittest discover -s tests/nisqa -v
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO \
+  PYTHONPATH="$PWD/src" python -m unittest discover -s tests/nisqa -v
 ```
 
 真实权重对齐测试（显式指定本地素材，不下载）：
 
 ```bash
-VOICE_TOOLS_NISQA_MODEL_DIR="$PWD/.local/nisqa-model" \
-VOICE_TOOLS_NISQA_AUDIO="$PWD/data/speech.wav" \
-python -m unittest tests.nisqa.test_real_model -v
+env -u VOICE_TOOLS_SIP_LOOPBACK \
+  VOICE_TOOLS_NISQA_MODEL_DIR="$PWD/.local/nisqa-model" \
+  VOICE_TOOLS_NISQA_AUDIO="$PWD/data/speech.wav" \
+  PYTHONPATH="$PWD/src" python -m unittest tests.nisqa.test_real_model -v
 ```
 
 对齐测试禁止 HTTP 请求，验证本工具的五项输出与 TorchMetrics 1.9.0 函数输出一致。这验证实现路径，不是人工听感准确度评测。
+
+上述路径需自行准备，未满足条件而跳过不算专项通过。普通命令临时隔离已设置的模型开关；分层运行、源码来源确认及结果复用见[测试指南](testing.md)。
 
 ## 资源与部署建议
 

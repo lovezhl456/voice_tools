@@ -83,9 +83,10 @@ case-001/
 
 ```bash
 node --test tests/studio/core.test.cjs
-PYTHONPATH=src python3 tests/studio/check_cli_compat.py
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO \
+  PYTHONPATH="$PWD/src" python tests/studio/check_cli_compat.py
 ```
 
-这些命令不发 SIP。UI 变更另需验证实际浏览器的拖拽、侧栏编辑、导入导出、刷新恢复、素材与手机导航。
+从仓库根目录、选定测试虚拟环境执行。这些命令不发 SIP；源码来源、依赖和整体选测规则见[测试指南](../testing.md)。UI 变更另需验证实际浏览器的拖拽、侧栏编辑、导入导出、刷新恢复、素材与手机导航。
 
 导入 Studio 草稿与恢复本浏览器存档时，可选运行参数会按 CLI 默认值补齐；不自动追加导入文件里没有的挂断步骤。

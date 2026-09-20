@@ -1,11 +1,14 @@
 import csv
+import hashlib
 import json
 from pathlib import Path
 import tempfile
 import unittest
+import wave
 
 import numpy as np
 
+from tests.html_fixtures import Page
 from voice_tools.audio.io import write_wav
 from voice_tools.core.files import read_json
 from voice_tools.tools.recording_qa.batch import analyze_batch
@@ -58,14 +61,32 @@ class P0WorkflowTests(unittest.TestCase):
         self.assertIn("createReviewPlayback", page)
         self.assertIn("WaveSurfer.js 7.12.12", page)
         self.assertIn("Redistribution and use", page)
-        from html.parser import HTMLParser
-        class Scripts(HTMLParser):
-            external = []
-            def handle_starttag(self, tag, attrs):
-                if tag == "script" and "src" in dict(attrs):
-                    self.external.append(dict(attrs)["src"])
-        scripts = Scripts(); scripts.feed(page)
-        self.assertEqual(scripts.external, [], "Offline review must embed its waveform dependencies")
+        parsed = Page(page)
+        external = [script['attrs']['src'] for script in parsed.scripts if 'src' in script['attrs']]
+        self.assertEqual(external, [], "Offline review must embed its waveform dependencies")
+        payloads = [script for script in parsed.scripts if script['attrs'].get('id') == 'reviewData']
+        self.assertEqual(len(payloads), 1)
+        self.assertEqual(payloads[0]['attrs']['type'], 'application/json')
+        data = json.loads(payloads[0]['text'])
+        self.assertEqual(len(data['records']), 1)
+        embedded = data['records'][0]
+        self.assertEqual(embedded['input'], 'normal.wav')
+        for name in ('sample_id', 'audio_sha256', 'playback_sources', 'clips'):
+            self.assertEqual(embedded[name], record[name])
+        for role, name in embedded['playback_sources'].items():
+            with wave.open(str(output / name)) as audio:
+                self.assertEqual(audio.getnchannels(), 2 if role == 'both' else 1)
+                self.assertEqual((audio.getframerate(), audio.getnframes()), (8000, 18 * 8000))
+        with wave.open(str(output / clip['audio'])) as audio:
+            self.assertEqual(audio.getnframes(), 14 * 8000)
+        from voice_tools.core.review import page as shared_page
+        vendor = Path(shared_page.__file__).parent / 'vendor'
+        manifest = read_json(vendor / 'manifest.json')
+        for name, digest in manifest['files'].items():
+            content = (vendor / name).read_bytes()
+            self.assertEqual(hashlib.sha256(content).hexdigest(), digest, name)
+            self.assertTrue(content.decode().replace('</script', '<\\/script') in page, name)
+        self.assertNotIn('__REVIEW_SCRIPT__', page)
 
     def test_freeze_keeps_windows_fixed_when_threshold_changes(self):
         samples, _ = fixture("missing")
