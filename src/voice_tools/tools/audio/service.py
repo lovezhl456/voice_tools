@@ -52,6 +52,8 @@ def process(inputs, output, action, raw=None, sample_rate=16000, threshold_db=-4
                     events = read_json(event_path)
                     if not isinstance(events, dict):
                         raise ValueError("事件文件必须为 JSON 对象")
+                    from voice_tools.core.output_events import rebind_prepared
+                    events = rebind_prepared(events, item["input_sha256"], item["output_sha256"], sha256(event_path))
                     # 身份/角色仍来自原始事件；准备操作不替用户验证角色。
                     write_json(target.with_suffix(".events.json"), events)
                     item["source_events_sha256"] = sha256(event_path)

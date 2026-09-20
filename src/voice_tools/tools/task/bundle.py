@@ -46,6 +46,29 @@ def json_references(data):
         for job in data.get('jobs', []): yield from json_references(job.get('scenario'))
     if data.get('kind') == 'sipp_load': yield from json_references(data.get('scenario'))
     if 'audio_sha256' in data and isinstance(data.get('audio'), str): yield data['audio']
+    if data.get('kind') == 'gap_evidence':
+        recordings = data.get('recordings')
+        if not isinstance(recordings, list): raise ValueError('间隙关联清单 recordings 无效')
+        for recording in recordings:
+            if not isinstance(recording, dict): raise ValueError('间隙录音绑定须为对象')
+            for kind in ('rtp', 'nisqa'):
+                bindings = recording.get(kind, [])
+                if not isinstance(bindings, list): raise ValueError('间隙旁证绑定须为列表')
+                for binding in bindings:
+                    if not isinstance(binding, dict): raise ValueError('间隙旁证须为对象')
+                    for key in ('report', 'timeline', 'results', 'provenance'):
+                        if key in binding: yield binding[key]
+        return
+    if data.get('kind') == 'rtp_timeline':
+        chunks = data.get('chunks')
+        if not isinstance(chunks, list): raise ValueError('RTP 分片清单无效')
+        for chunk in chunks:
+            if not isinstance(chunk, dict) or 'path' not in chunk: raise ValueError('RTP 分片引用无效')
+            yield chunk['path']
+        return
+    if data.get('kind') == 'nisqa_provenance':
+        yield data.get('results')
+        return
     # QA records and frozen event manifests carry the original local input identity.
     if 'sample_id' in data and isinstance(data.get('input'), str): yield data['input']
     for entry in data.get('recordings', []) if isinstance(data.get('recordings'), list) else []:
@@ -226,8 +249,27 @@ def relocate_inputs(root, mapping):
         if isinstance(value, list): return [change(v) for v in value]
         if isinstance(value, dict): return {k: change(v) for k, v in value.items()}
         return value
+    # New evidence references are relative; their content hashes must survive relocation.
+    protected = set()
+    for candidate in (root / 'inputs').rglob('*.json'):
+        if candidate.stat().st_size > MAX_METADATA:
+            continue
+        try:
+            value = read_json(candidate)
+        except (ValueError, UnicodeError):
+            continue
+        preserve_evidence = isinstance(value, dict) and (
+            value.get('kind') in ('gap_evidence', 'rtp_timeline', 'nisqa_provenance')
+            or 'output_events' in value
+            or ('output_sha256' in value and 'time_mapping' in value))
+        if preserve_evidence:
+            protected.add(candidate.resolve())
+            for ref in json_references(value):
+                protected.add((candidate.parent / ref).resolve())
     modified = []
     for path in (root / 'inputs').rglob('*') if (root / 'inputs').exists() else []:
+        if path.resolve() in protected:
+            continue
         if path.suffix in ('.json', '.jsonl') and path.stat().st_size <= MAX_METADATA:
             try:
                 if path.suffix == '.json':

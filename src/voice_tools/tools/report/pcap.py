@@ -94,7 +94,7 @@ class RTPStream:
                 "packets_per_second": [[k, v] for k, v in sorted(self.timeline.items())]}
 
 
-def analyze_rows(rows, clock_rates=None, max_packets=250000, media_mappings=()):
+def analyze_rows(rows, clock_rates=None, max_packets=250000, media_mappings=(), timeline_writer=None):
     clocks = {**STATIC_CLOCKS, **(clock_rates or {})}
     streams = {}
     count = truncated = negative_time = 0
@@ -130,13 +130,17 @@ def analyze_rows(rows, clock_rates=None, max_packets=250000, media_mappings=()):
                 streams[key].clocks = {**streams[key].clocks, int(pt): codec['clock_rate']}
             else:
                 streams[key].clocks = {**streams[key].clocks, int(pt): clocks.get(int(pt))}
+        if timeline_writer is not None:
+            timeline_writer.write({"epoch": when, "src": key[0], "src_port": key[1], "dst": key[2],
+                "dst_port": key[3], "ssrc": key[4], "seq": int(seq), "timestamp": int(stamp), "pt": int(pt),
+                "clock_rate": streams[key].clocks.get(int(pt))})
         streams[key].add(when, int(seq), int(stamp), int(pt))
     return {"packets_examined": count, "truncated_packets": truncated, "packet_limit_reached": limited,
             "out_of_order_capture_timestamps": negative_time, "first_epoch": first, "last_epoch": last,
             "streams": [stream.result() for stream in streams.values()]}
 
 
-def analyze(path, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="tshark", media_mappings=()):
+def analyze(path, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="tshark", media_mappings=(), timeline_output=None):
     if not 1 <= max_packets <= 1000000:
         raise ValueError("max-packets 须为 1–1000000")
     executable = shutil.which(tshark)
@@ -163,8 +167,21 @@ def analyze(path, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="ts
         # tshark can emit useful rows before failing; do not label a corrupt file successful.
         if result.returncode:
             raise ValueError(f"tshark 无法完整读取 PCAP ({result.returncode})：{warnings}")
-        with table.open(encoding="utf-8") as stream:
-            data = analyze_rows(csv.reader(stream, delimiter="\t", quoting=csv.QUOTE_NONE), clock_rates, max_packets, media_mappings)
+        writer = None
+        if timeline_output is not None:
+            from voice_tools.core.rtp_timeline import TimelineWriter
+            writer = TimelineWriter(timeline_output)
+        try:
+            with table.open(encoding="utf-8") as stream:
+                data = analyze_rows(csv.reader(stream, delimiter="\t", quoting=csv.QUOTE_NONE), clock_rates, max_packets, media_mappings, writer)
+            if writer is not None:
+                data["timeline"] = writer.finish(data)
+        finally:
+            if writer is not None:
+                if not (writer.directory / "timeline.json").exists():
+                    writer.abort()
+                else:
+                    writer.close_chunk()
     data["tshark_warnings"] = warnings
     data["decode_as_ports"] = sorted(set(rtp_ports))
     data["warnings"] = ["序号缺口是抓包点的缺失候选，可能来自网络、抓包丢弃、过滤或截断；不能直接等同网络丢包率。",
@@ -180,7 +197,7 @@ def analyze(path, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="ts
 
 
 def analyze_group(paths, rtp_ports=(), clock_rates=None, max_packets=250000, tshark="tshark",
-                  rtcp_ports=(), mappings=(), audio_output=None, prefix='rtp', audio_budget=256*1048576):
+                  rtcp_ports=(), mappings=(), audio_output=None, prefix='rtp', audio_budget=256*1048576, timeline_output=None):
     from voice_tools.core.packets import merge_packets
     from .media import analyze as analyze_media
     with tempfile.TemporaryDirectory(prefix='voice-group-') as folder:
@@ -189,7 +206,7 @@ def analyze_group(paths, rtp_ports=(), clock_rates=None, max_packets=250000, tsh
             originals = merge_packets(paths, path)
         else:
             path = paths[0]; originals = []
-        result = analyze(path, rtp_ports, clock_rates, max_packets, tshark, mappings)
+        result = analyze(path, rtp_ports, clock_rates, max_packets, tshark, mappings, timeline_output)
         clocks = {}
         ambiguous = set()
         for stream in result['streams']:

@@ -15,7 +15,7 @@
 ## 实现与来源
 
 - 固定 [7.12.12 发布版](https://github.com/katspaugh/wavesurfer.js/releases/tag/7.12.12)，从官方 npm tarball 取得 core、Regions、Timeline 的 UMD 文件，校验 npm 的 SHA-512 integrity。
-- 文件、版本、来源与 SHA-256 位于 `src/voice_tools/tools/recording_qa/vendor/manifest.json`；BSD 许可证在相邻的 `wavesurfer.LICENSE.txt`。生成 HTML 时内嵌组件和许可证，无 CDN 请求。
+- 文件、版本、来源与 SHA-256 位于 `src/voice_tools/core/review/vendor/manifest.json`；BSD 许可证在相邻的 `wavesurfer.LICENSE.txt`。生成 HTML 时内嵌组件和许可证，无 CDN 请求。
 - 左右轨来自原录音的独立声道，共用一个播放器与时间轴。单声道只显示一轨；声道选择使用已有逐轨试听副本。
 - 使用已有 min/max 波形摘要，不要求浏览器再次解码整份录音。摘要分辨率显示在图下；放大视图不增加原始数据细节。
 - 关闭自动归一化。显示增益只影响图形，左右轨按同一比例缩放，不改变音频、分析参数、片段或标注窗口。

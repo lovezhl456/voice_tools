@@ -131,3 +131,7 @@ PT 0/8 的 RTP 时钟按 8000 Hz，PT 9（G.722）也按 RTP 规范使用 **8000
 测试使用合成录音/PCAP 和模拟 SSH/SCP，验证 BPF、桥接查询、传输失败恢复、摘要校验、序号算法、HTML 转义、多文件隔离与机器入口；有 tshark 时执行真实离线解码，有 tcpdump 时执行离线 BPF 编译。没有配置或连接任何生产主机。实际 FS 版本、ESL 权限、NAT 端点、tcpdump/sudo 和 SCP 仍需用活动通话在目标主机验证。
 
 1.0 历史验收：2026-09-19 基于当时 `main` 的独立 PR 工作树执行 156 项测试，全部通过；其中抓包、会话检索、HOMER 联动及报告新增 41 项。使用真实 tshark、FFmpeg 和 tcpdump 做离线验证。桌面/手机渲染和实际试听尚未验收；本地浏览器此前因 URL 策略拒绝 `file://`，资源检查不等于播放成功。
+
+## 可选 RTP 时序导出
+
+`voice-tools report build --rtp-timeline` 在原解析过程中额外写 `rtp-timeline-NNN/timeline.json` 和每片最多 8 MiB 的 packet JSONL，供 gaps 文件关联。未启用时不生成时序或增加解析遍历。必须显式核对采集点、方向、SSRC、录音 epoch；旧 report.json 只能作整流旁证。完整命令、映射和异常状态见 [间隙指南](output-gaps.md) 与 [合同](output-gaps-contract.md)。

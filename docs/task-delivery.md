@@ -114,3 +114,7 @@ export VT_EXECUTOR_DIR=/absolute/path/to/executor-config
 ```
 
 示例生成合成录音、分析候选问题并检查格式。它能验收打包/迁移/执行/复查流程，不证明真实录音准确率、SIP 线路、HOMER 服务、SSH 采集或执行机容量。实际检查结果见 [本版验证记录](task-validation.md)。
+
+## gaps 依赖与可信复核
+
+gaps 的 evidence 清单、NISQA provenance 与其原结果、RTP timeline 与分片由打包器显式收集，必须落在打包根内。新类型证据及其引用的内容保持字节和摘要，执行路径映射单独处理；不可重写后重新计算摘要冒充原始证据。每片 <=8 MiB，沿用结构化文件 16 MiB 和总包额度。RTP 包行不进入普通记录列表。结果页“人工标签”重建 gaps 复核页，独立导入/导出间隙标签；包内 HTML 不执行。示例命令见 [间隙使用指南](output-gaps.md)。
