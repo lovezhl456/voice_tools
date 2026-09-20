@@ -168,7 +168,8 @@ class BatchLoadTests(unittest.TestCase):
         ended = {}
         for line in decoded.stdout.splitlines():
             stamp, digit, end, duration = line.split('\t')
-            if end == 'True': ended.setdefault(stamp, []).append((digit, duration))
+            # tshark 4.0 uses 1/0 for FT_BOOLEAN; newer versions use True/False.
+            if end.lower() in ('true', '1'): ended.setdefault(stamp, []).append((digit, duration))
         self.assertEqual(list(ended), ['0', '2080', '4160'])
         self.assertEqual(list(ended.values()), [[('1', '1280')]*3, [('1', '1280')]*3, [('11', '1280')]*3])
 

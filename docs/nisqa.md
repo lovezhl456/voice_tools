@@ -10,6 +10,8 @@
 
 ## 安装
 
+Docker 部署见 [Linux CPU 容器指南](nisqa-docker.md)，可将 Python 及依赖封装在镜像中，权重和录音单独挂载。
+
 基础工具仍支持 Python 3.9+；**NISQA 可选依赖要求 Python 3.10+**，建议独立的 Python 3.11/3.12 环境。在仓库根目录执行。
 
 Linux CPU（以下假设已安装 Python 3.11 和 venv 支持）：
@@ -37,7 +39,7 @@ python -m pip check
 
 当前封装在 CPU 上执行，不会自动使用 MPS/CUDA。基础 `pip install -e .` 不安装 Torch 或其他 NISQA 依赖；普通 `--help`、`schema` 和 `nisqa doctor` 不导入推理运行库。
 
-实现固定使用 `torchmetrics==1.9.0` 的模型与前处理函数，经过真实模型对齐测试后再升级该依赖。其余依赖版本可用 `python -m pip freeze` 保存到本地锁定清单。Mac 的已测环境不代表 Linux 已经实测，参见[本地验收记录](nisqa-validation.md)。
+实现固定使用 `torchmetrics==1.9.0` 的模型与前处理函数，经过真实模型对齐测试后再升级该依赖。其余依赖版本可用 `python -m pip freeze` 保存到本地锁定清单。已测环境分别记录在 [Mac 验收](nisqa-validation.md)和 [Linux Docker 验收](nisqa-linux-validation.md)；容器及模拟架构结果不代表真实服务器容量。
 
 ## 显式下载与离线检查
 
@@ -158,7 +160,7 @@ python -m unittest tests.nisqa.test_real_model -v
 
 ## 资源与部署建议
 
-优先 CPU 单进程、2 线程、小片段。Linux 可先以 4 vCPU/8 GB 内存作为验证预算，不是官方最低配置或吞吐承诺；是否加进程由自己的音频量、处理时窗、内存和吞吐测量决定。M1 Max/32 GiB 的实际执行证据见[验收记录](nisqa-validation.md)。
+优先 CPU 单进程、2 线程、小片段。Linux 可先以 4 vCPU/8 GB 内存作为验证预算，不是官方最低配置或吞吐承诺；是否加进程由自己的音频量、处理时窗、内存和吞吐测量决定。M1 Max/32 GiB 的实际执行证据见 [Mac 验收记录](nisqa-validation.md)；2 核/2 GiB 容器的执行记录见 [Linux 验收](nisqa-linux-validation.md)。
 
 Linux 可把隔离环境或容器、已校验权重和 CLI 放在批量任务中；不需要先包装 HTTP 服务。一次 CLI 处理整批文件，在进程中只加载一个模型。多进程会分别加载运行库和权重，不应无限并发。原始录音常比模型更占磁盘，16 kHz/16-bit/单声道 PCM 约 115.2 MB/小时。
 
