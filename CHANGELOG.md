@@ -1,8 +1,18 @@
 # 版本记录与迭代规则
 
+## 0.10.2 · NISQA Linux Docker 部署与验收
+
+- **状态：实现与 Linux Docker 验收完成，[PR #19](https://github.com/lovezhl456/voice_tools/pull/19) 待审阅，尚未合并交付。**
+- 分支：`enhance/v0.10.2-nisqa-docker`；从已同步主线 `14ed371`（NISQA PR #17）创建。
+- 范围：CPU Docker 镜像定义、构建上下文排除权重/录音、Linux 安装和断网真实推理验证、Docker 使用文档与资源记录。
+- 两架构构建及真实断网评分通过：`linux/arm64` 原生虚拟化，`linux/amd64` 本机模拟；独立完成 Linux CLI 权重下载、哈希校验、多采样率/声道批量及失败路径验证。
+- ARM64 全仓 337 项测试，313 项执行通过、24 项可选测试跳过；amd64 NISQA 专项 22 项全部通过，包含真实模型对齐。兼容已有测试中 tshark 的 `1/0` 与 `True/False` 布尔表示；Mac 的 16 项 SIP 批量回归通过。
+- 2 核/2 GiB 容器预热后处理 286.017 秒重复合成语音：墙钟 7.427 秒，子进程峰值 RSS 560.250 MiB；首次空缓存短素材测量及适用边界见 [Linux 验收记录](docs/nisqa-linux-validation.md)。未测物理服务器容量或真实通话准确度。
+- [Docker 部署指南](docs/nisqa-docker.md)提供构建、显式下载、断网评分和专项回归命令；权重、录音、环境与结果不进入 Git/镜像。运行镜像未增加全仓测试用系统工具。
+
 ## 0.10.1 · NISQA 本地听感评分
 
-- **状态：实现与本地验收完成，[PR #17](https://github.com/lovezhl456/voice_tools/pull/17) 待审阅，尚未合并交付。**
+- **状态：已随 [PR #17](https://github.com/lovezhl456/voice_tools/pull/17) 合入主线，合并提交 `14ed371`。** 以下保留当轮 Mac 验收范围。
 - 开发分支：`feat/v0.10.1-nisqa`，从已同步的 `origin/main`（`d44599c`）创建。
 - `0.9.1` 已随 SIP 批量队列 PR #16 合入主线（`374456f`），本分支已同步该更新，新功能使用 `0.10.1`。
 - 目标：可选 CPU NISQA 依赖、离线诊断、显式下载/哈希校验、按声道分段批量评分、JSON/JSONL/CSV 输出和 Linux/Mac 文档。权重、录音、环境和结果不入 Git。
@@ -48,9 +58,9 @@
 
 ## 当前状态与编号迁移
 
-- 当前已合入主线的基线为 **`0.9.1`**，对应 [PR #16](https://github.com/lovezhl456/voice_tools/pull/16) 合并提交 `374456f`；NISQA 分支已同步该基线。
-- 当前 NISQA 开发分支源码、CLI 和机器接口文档统一为 **`0.10.1`**；合并前不标为已交付。
-- 本次功能交付目标：**`0.10.1`**，待 PR 验证及合并。
+- 当前已合入主线的基线为 **`0.10.1`**，对应 [PR #17](https://github.com/lovezhl456/voice_tools/pull/17) 合并提交 `14ed371`；Docker 验证分支已同步该基线。
+- 当前 NISQA 开发分支源码、CLI 和机器接口文档统一为 **`0.10.2`**；合并前不标为已交付。
+- 本次功能交付目标：**`0.10.2`**，待 PR 验证及合并。
 - 下表是根据现有 Git 合并历史重新编排的版本，不表示过去实际发布过这些版本号；建立台账时仓库没有发布标签。不补打历史发布标签，不改写旧报告中的原版本号。
 
 ## 历史迭代编排
@@ -70,6 +80,7 @@
 | `0.7.1` | SIP 用例编排工作台原型 | [PR #12](https://github.com/lovezhl456/voice_tools/pull/12) · `4d003a6` |
 | `0.8.1` | SIP 结构化测试断言 | [PR #14](https://github.com/lovezhl456/voice_tools/pull/14) · `d44599c` |
 | `0.9.1` | SIP 批量队列与 SIPp 压力测试 | [PR #16](https://github.com/lovezhl456/voice_tools/pull/16) · `374456f` |
+| `0.10.1` | NISQA 本地 CPU 听感评分 CLI | [PR #17](https://github.com/lovezhl456/voice_tools/pull/17) · `14ed371` |
 
 历史功能的验证范围以各 PR 和当时的验收记录为准；此表只记录功能归属与合入证据。
 
