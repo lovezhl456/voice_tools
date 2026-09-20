@@ -2,6 +2,8 @@
 
 `capture by-number` 在一台或多台服务器持续采集指定时长，结束后在各服务器检索号码、按 Call-ID 拆分 SIP/RTP/RTCP，再通过 SCP 下载会话 ZIP。本机只接收匹配会话的包；服务器原始分片与处理目录保留，便于检查或恢复。
 
+下载后可按 [sngrep 联动快速说明](sngrep-workflow.md)解包、查看 SIP 呼叫时序，再对原始会话目录生成媒体报告。
+
 ## 使用
 
 使用已有[主机清单](../examples/capture/hosts.esl.example.json)，配置 SSH、抓包接口、服务器地址、SIP 端口和 RTP 范围。只放一台主机即可单机采集。每台服务器须有 Python 3.9+、dumpcap、tshark、mergecap；FS 快照使用 fs_cli，ESL 可按 [2.0 指南](capture-v2.md) 配置。无需在服务器安装 voice_tools 或 NumPy，命令会上传本次所需的标准库 Python 模块。

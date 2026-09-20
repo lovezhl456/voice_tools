@@ -6,6 +6,8 @@
 
 **2.0 文档入口：** [采集 2.0 与长期排障方案](docs/capture-v2.md) · [人工使用手册](docs/manual.md) · [大模型接入协议](docs/ai-usage.md) · [命令 schema](docs/cli-schema.json)。运行 `voice-tools schema` 发现参数，再用 `voice-tools --json …` 获取结构化结果。
 
+**sngrep 辅助排障：** [与 voice_tools 联动的快速说明](docs/sngrep-workflow.md) · [安装与常用操作](docs/sngrep.md)。沿用现有采集流程，在本机打开导出的通话包查看 SIP 时序。
+
 ## 工具列表
 
 | 工具 | 适用场景 | 命令入口 | 使用文档 |
