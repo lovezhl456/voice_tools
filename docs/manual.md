@@ -171,3 +171,7 @@ HOMER 有独立退出码，6 表示部分搜索结果，见 [HOMER 手册](homer
 ## 中文电话时序（0.13.1）
 
 SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](benchmark.md)。
+
+## 双轨录音延迟
+
+新增独立 `latency` 工具，声道角色必填，执行状态和测量状态分开解释。请按 [latency 使用说明](latency.md)、[外部依赖说明](latency-install.md) 和 [验收边界](latency-validation.md) 操作。原有 QA、SIP 和时序评测流程保持不变。

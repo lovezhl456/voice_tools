@@ -1,0 +1,115 @@
+--- a/src/latency_checker/detector.py
++++ b/src/latency_checker/detector.py
+@@ -1005,6 +1005,30 @@
+         # produce a bogus latency that spans a mid-sentence pause).
+         min_ai_dur = self.min_ai_response_ms / 1000.0
+         min_human_dur = self.min_human_speech_ms / 1000.0
++        # voice_tools patch 1: initialize pairing constants even with only short AI.
++        barge_window = 0.6
++        min_resumption_dur = 1.0
++        # Keep both roles of a segment: response to a prior turn and source of a next turn.
++        audit = {}
++        for speaker, segments, minimum in (("ai", ai_segments, min_ai_dur),
++                                            ("human", human_segments, min_human_dur)):
++            for index, segment in enumerate(segments):
++                eligible = segment.full_duration >= minimum
++                audit[id(segment)] = {
++                    "id": f"{speaker}-{index + 1}", "speaker": speaker,
++                    "start": segment.start_time, "end": segment.end_time,
++                    "duration": segment.duration, "full_duration": segment.full_duration,
++                    "eligible": eligible,
++                    "outgoing": "unpaired" if eligible else "short_filtered",
++                    "incoming": "unpaired" if eligible else "short_filtered",
++                }
++
++        def consume(segments, stop, reason):
++            for segment in segments[:stop + 1]:
++                row = audit[id(segment)]
++                if row["outgoing"] == "unpaired":
++                    row["outgoing"] = reason if segment is segments[stop] else "superseded"
++
+         h_ptr = 0
+         for a_seg in ai_segments:
+             # Skip short AI segments — likely barges or noise, not real responses.
+@@ -1022,14 +1046,14 @@
+             #      earlier human segment ending was a pause, not a real stop.
+             # In both cases, pairing with the prior human segment would count
+             # a pause as wait time.
+-            barge_window = 0.6  # if user resumes within 600ms, it was a pause/collision
++            # Pairing constants are initialized before either direction.
+             # Resumption-vs-back-channel distinguisher: a real "user was
+             # talking, AI cut in, user kept going" segment is substantial
+             # (multi-word). A back-channel ("yeah", "mm-hmm") during the
+             # AI's response is short and shouldn't suppress the latency
+             # for the prior real turn. 1s is comfortably longer than any
+             # typical back-channel but shorter than a real continuation.
+-            min_resumption_dur = 1.0
++
+             ai_overlaps_human = False
+             for h in human_segments:
+                 if h.start_time > a_seg.start_time + barge_window:
+@@ -1049,6 +1073,9 @@
+                     ai_overlaps_human = True
+                     break
+             if ai_overlaps_human:
++                audit[id(a_seg)]["incoming"] = "overlap"
++                if audit[id(h)]["outgoing"] == "unpaired":
++                    audit[id(h)]["outgoing"] = "overlap"
+                 continue
+ 
+             # Advance h_ptr to the last SIGNIFICANT human segment ending
+@@ -1056,13 +1083,16 @@
+             best_idx = None
+             while h_ptr < len(human_segments) and human_segments[h_ptr].end_time < a_seg.start_time:
+                 if human_segments[h_ptr].full_duration >= min_human_dur:
++                    audit[id(human_segments[h_ptr])]["outgoing"] = "superseded"
+                     best_idx = h_ptr
+                 h_ptr += 1
+ 
+             if best_idx is not None:
+                 h_seg = human_segments[best_idx]
+                 latency = a_seg.start_time - h_seg.end_time
+-                if 0 < latency < 10:
++                if latency > 0:
++                    audit[id(h_seg)]["outgoing"] = "paired"
++                    audit[id(a_seg)]["incoming"] = "paired"
+                     latencies.append(ResponseLatency(
+                         human_stop_time=h_seg.end_time,
+                         ai_start_time=a_seg.start_time,
+@@ -1112,21 +1142,26 @@
+                     human_overlaps_ai = True
+                     break
+             if human_overlaps_ai:
++                audit[id(h_seg)]["incoming"] = "overlap"
+                 # Consume the AI turn the human barged (and anything before
+                 # it) so no later human fragment can pair back to it.
+                 if barged_ai_idx is not None:
++                    consume(ai_segments, barged_ai_idx, "overlap")
+                     a_ptr = max(a_ptr, barged_ai_idx + 1)
+                 continue
+             best_idx = None
+             while a_ptr < len(ai_segments) and ai_segments[a_ptr].end_time < h_seg.start_time:
+                 if ai_segments[a_ptr].full_duration >= min_ai_dur:
++                    audit[id(ai_segments[a_ptr])]["outgoing"] = "superseded"
+                     best_idx = a_ptr
+                 a_ptr += 1
+             if best_idx is not None:
+                 a = ai_segments[best_idx]
+-                # Humans can reasonably take up to ~30s to reply; cap there
++                # voice_tools patch 1: retain all strictly positive delays.
+                 latency = h_seg.start_time - a.end_time
+-                if 0 < latency < 30:
++                if latency > 0:
++                    audit[id(a)]["outgoing"] = "paired"
++                    audit[id(h_seg)]["incoming"] = "paired"
+                     human_response_latencies.append(HumanResponseLatency(
+                         ai_stop_time=a.end_time,
+                         human_start_time=h_seg.start_time,
+@@ -1138,6 +1173,7 @@
+         stats = self._build_latency_stats(ai_segments, human_segments, latencies)
+         human_resp_stats = self._build_human_response_stats(human_response_latencies)
+         return {
++            'segment_audit': list(audit.values()),
+             'ai_segments': [{
+                 'start': s.start_time,
+                 'end': s.end_time,

@@ -102,3 +102,7 @@ VAD、降噪等重依赖放在可选 extra 中，并在使用时导入。`--help
 ## ViSQOL 可选后端
 
 `tools/visqol` 独立维护 doctor/score/batch；仅依赖公共 audio/core，不导入其他工具。原生 ViSQOL 作为可选本地子进程，安装步骤在 `scripts/install_visqol.py`，不进入主包依赖。输入快照、官方 JSON、命令参数、二进制/模型校验值和逐对失败状态组成可追溯记录；顶层 CLI 的 JSON 协议保持一致。
+
+## 可选 latency 引擎
+
+`tools/latency` 负责独立 CLI、输入预检、外部环境校验、子进程生命周期及结果协议。固定上游源码与 NumPy 在单独前缀，worker 不导入主包；完整检测数组仅在子进程。工具注册、schema、task runtime/依赖/profile 和共享报告资源作加法接入。独立报告与任务复查复用 latency.js/css，任务仍只读取包内数据。默认执行镜像和既有业务算法不改。参见 [集成协议](latency-integration.md)。

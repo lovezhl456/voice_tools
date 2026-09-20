@@ -21,6 +21,8 @@ def embedded(value):
 def page(output, name, data):
     for asset in ('style.css', 'app.js', 'benchmark.js'):
         shutil.copyfile(WEB / asset, output / asset)
+    from voice_tools.tools.latency.report import copy_assets
+    copy_assets(output)
     html = (WEB / 'index.html').read_text()
     (output / 'index.html').write_text(html.replace('/*__DATA__*/', 'window.VT_DATA=' + embedded({'mode': name, **data}) + ';'))
 
@@ -66,7 +68,7 @@ def review(package, output):
     rows = []
     for step in receipt['steps']:
         if not isinstance(step.get('id'), str) or not ID.fullmatch(step['id']): raise ValueError('回执步骤 ID 无效')
-        item = dict(step); item.update(files=[], assertions=[], scores=[], records=[], audio=[], benchmarks=[], benchmark_summaries=[])
+        item = dict(step); item.update(files=[], assertions=[], scores=[], records=[], audio=[], benchmarks=[], benchmark_summaries=[], latency=[])
         folder = root / 'steps' / step['id']
         if folder.exists():
             for path in sorted(folder.rglob('*')):
@@ -78,6 +80,12 @@ def review(package, output):
                 if path.name == 'assertions.json':
                     try: item['assertions'] += read_json(path).get('items', [])
                     except (ValueError, OSError): pass
+                if step.get('tool') == 'latency' and path.name == 'run.json' and path.stat().st_size < 4 * 1024**2:
+                    try:
+                        summary = read_json(path)
+                        if isinstance(summary, dict) and summary.get('kind') == 'latency_run' and summary.get('schema_version') == '1.0':
+                            item['latency_summary'] = summary
+                    except (OSError, ValueError): pass
                 if path.name == 'benchmark.json' and path.stat().st_size < 4 * 1024**2:
                     try:
                         timing = read_json(path)
@@ -107,6 +115,22 @@ def review(package, output):
                             if not isinstance(row, dict): continue
                             match = aliases.get(str(row.get('file') or row.get('degraded') or row.get('input')))
                             if match: row['playback'] = match['path']
+                            if step.get('tool') == 'latency' and path.name == 'files.jsonl':
+                                latency_row = dict(row)
+                                detail_name = row.get('detail')
+                                if isinstance(detail_name, str):
+                                    detail_path = (path.parent / detail_name).resolve()
+                                    if folder.resolve() in detail_path.parents and detail_path.is_file():
+                                        latency_row['detail'] = quote(detail_path.relative_to(output).as_posix())
+                                    else:
+                                        latency_row.pop('detail', None)
+                                else:
+                                    latency_row.pop('detail', None)
+                                # Rebuild playback from verified bundle assets, never trust arbitrary URLs in result JSON.
+                                latency_row.pop('playback', None)
+                                if match:
+                                    latency_row['playback'] = match['path']
+                                item['latency'].append(latency_row)
                             item['records'].append(row)
                             if isinstance(row, dict) and ('scores' in row or 'moslqo' in row):
                                 match = aliases.get(str(row.get('file') or row.get('degraded') or row.get('input')))

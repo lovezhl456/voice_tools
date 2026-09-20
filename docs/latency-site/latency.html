@@ -1,0 +1,62 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>latency · latency</title><style>*{box-sizing:border-box}body{margin:0;background:#f2f6f7;color:#183347;font:16px/1.8 system-ui,sans-serif}header{background:#15394b;color:white;padding:32px max(20px,calc((100vw - 1040px)/2))}header p{color:#c0e1e6}nav{display:flex;flex-wrap:wrap;gap:12px}nav a{color:#d9f1f2;font-size:14px}main{max-width:1040px;margin:28px auto;background:white;padding:32px;border-radius:16px}h1{font-size:30px}h2{margin-top:32px;border-top:1px solid #dce8ec;padding-top:20px}a{color:#14727a;overflow-wrap:anywhere}pre{overflow:auto;padding:18px;background:#eef4f6;border-radius:10px;font-size:13px}code{font-family:ui-monospace,monospace;overflow-wrap:anywhere}table{display:block;max-width:100%;overflow:auto;border-collapse:collapse;font-size:14px}th,td{border:1px solid #dae5e8;padding:10px;text-align:left;min-width:100px}blockquote{border-left:4px solid #19818b;padding-left:16px}footer{max-width:1040px;margin:20px auto;color:#526976}@media(max-width:650px){main{padding:18px;margin:12px}header{padding:24px 18px}h1{font-size:24px}}</style></head><body><header><p>VOICE_TOOLS 0.15.1 · 可选外部引擎</p><h1>双轨录音延迟说明书</h1><nav><a href="/">← 本地总导航</a><a href="latency.html">使用与结果</a><a href="latency-install.html">安装与回退</a><a href="latency-integration.html">任务与协议</a><a href="latency-validation.html">验收记录</a><a href="demo/">合成录音演示 ↗</a><a href="task-review/">任务复查演示 ↗</a></nav></header><main><h1>双轨录音延迟分析</h1>
+<p><code>latency</code> 是可选的独立工具：在已有双声道录音中，测量 Human → AI 与 AI → Human 的相邻有效片段间隔。它使用固定版本的 latency_checker 及受控补丁，不替代 QA、SIP 或 benchmark，不更改黄金标签、业务 SLA 或场景。</p>
+<p>先阅读 <a href="latency-install.html">安装说明</a>，实现约定见 <a href="latency-integration.html">集成协议</a>，实际验证范围见 <a href="latency-validation.html">验收记录</a>。</p>
+<h2>输入与声道</h2>
+<p>仅接受双声道 PCM16 WAV，采样率为 8、16、24、32、44.1、48 kHz。每份最长 3600 秒，同时必须满足解码 float32 双声道数组不超过 512 MiB；例如 48 kHz 的大小限制先于时长限制生效。这不是总进程内存上限。</p>
+<p>必须显式提供 <code>--system-channel left|right</code>，另一轨为人声。同批输入使用相同映射。其他格式先用 <code>voice-tools audio prepare --help</code> 按实际合同显式转换；工具不自动混音，不拼接 SIP 收发录音，不推断声道身份。不同采集点、失配的两轨或漂移时钟，不能据此得到可靠的业务延迟。</p>
+<pre><code class="language-sh">voice-tools latency doctor
+voice-tools --json latency analyze demo/audio/normal.wav --system-channel right --out results/one --include-audio
+voice-tools --json latency batch demo/audio demo/audio/normal.wav --system-channel right --out results/batch --include-audio
+voice-tools schema --tool latency
+</code></pre>
+<p>目录递归收集 WAV。规范化后的相同路径仅处理一次，并按路径排序。不同路径的相同 PCM 内容保留，标记 <code>duplicate_of_file_index</code>，按实际处理的文件和轮次参与汇总；这不是独立样本量的证明。无 WAV 的目录记为文件错误。</p>
+<h2>参数的唯一来源</h2>
+<p><a href="https://github.com/lovezhl456/voice_tools/blob/feat/v0.15.1-latency/src/voice_tools/tools/latency/contract.py">代码契约</a> 是参数单位、范围、默认值与退出码的唯一维护来源。<code>voice-tools schema --tool latency</code> 的 <code>latency_contract</code> 输出完整表；<code>cli.arguments</code> 的 <code>null</code> 表示未显式覆盖，实际默认值由该契约解析。结果保存全部有效参数、<code>default/explicit</code> 来源以及固定算法常量。</p>
+<p>能量阈值的单位是归一化采样的 <strong>均方能量 × 10⁶</strong>，不能直接使用 QA 的 dBFS 参数。毫秒参数必须为 10ms 的整数倍，否则拒绝；不会悄悄截断。每文件超时用 <code>--timeout</code>，任务步骤自己的 <code>timeout_s</code> 同时有效，以先触发者为准。</p>
+<h2>结果与解释</h2>
+<table>
+<thead>
+<tr>
+<th>文件</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>run.json</code></td>
+<td>运行状态、参数、算法来源、完整批次统计与索引引用</td>
+</tr>
+<tr>
+<td><code>files.jsonl</code></td>
+<td>每文件成功、错误、中断、摘要、重复标记和详情的相对路径</td>
+</tr>
+<tr>
+<td><code>turns.csv</code></td>
+<td>全部有效轮次，两个方向独立标记</td>
+</tr>
+<tr>
+<td><code>recordings/000001/recording.json</code></td>
+<td>录音身份、逐片段去向、逐轮数据、完整参数和资源记录</td>
+</tr>
+<tr>
+<td><code>recordings/000001/audio.wav</code></td>
+<td>仅在 <code>--include-audio</code> 时复制的试听音频</td>
+</tr>
+<tr>
+<td><code>index.html</code>、<code>latency.js/css</code></td>
+<td>本地报告；详情按需加载，不使用 CDN</td>
+</tr>
+</tbody></table>
+<p>录音身份为文件 SHA-256，与机器路径无关；PCM SHA-256 还用于识别音频内容重复。结果保留输入路径用于追溯，公开分享前需要考虑路径和音频信息。</p>
+<p>两个方向分别计算均值、中位数、P95、最小和最大值。分位数采用排序样本上的线性插值；跨文件直接汇总逐轮数据。无有效轮次时为 <code>null</code>，不会显示零延迟。</p>
+<p>Human → AI 配对覆盖率的分母是满足最短时长条件的全部人声片段，分子是完成配对的这些片段。零分母为 <code>null</code>。重叠、被后续片段替代、未配对和短片段均有去向；<strong>配对覆盖率不等于应答成功率</strong>。双轨完全相同、全静音或无有效配对时为 <code>insufficient_evidence</code>，不会显示“通过”。</p>
+<p>执行完成、存在有效测量、业务正确性是三个不同结论。退出码的精确定义见上述代码契约和 CLI schema；退出 0 也可能没有有效测量，退出 3 要检查文件错误和已完成产物。Ctrl-C/任务停止保留中断记录。输出目录必须不存在，异常不回退成成功。</p>
+<h2>报告查看</h2>
+<p>通过支持 HTTP Range 的本地服务器查看。仓库提供：</p>
+<pre><code class="language-sh">python scripts/serve_latency.py --root results --port 8088
+# 打开 http://127.0.0.1:8088/one/
+</code></pre>
+<p>报告支持双轨波形、逐轮试听、录音和轮次分页、延迟图表及完整下载。波形最多每轨 1600 格，列表每页 50 条；不会影响统计或导出。没有复制音频时仍可查看测量数据，但无法试听。验收使用 HTTP/206，不承诺 <code>file://</code> 双击行为。</p>
+<p>独立报告的音频开关不改变任务包收集输入录音、结果包保留工作输入的既有行为。任务复查从结构化 JSON 重新渲染，不执行包内 HTML/脚本。</p>
+<h2>与现有功能的关系</h2>
+<p>QA 保留自己的检测、机会定义与黄金标签。benchmark 使用 SIP 媒体桥运行时钟，latency 时间原点是被分析录音起点，两者不能自动合并。NISQA/ViSQOL 的听感评分不是时序延迟。这些工具的算法和默认行为保持原样。合成信号上 20ms 的验收界限，不是中文真实通话准确率承诺。</p>
+</main><footer>此站只展示说明书和合成音频；业务报告保留在各自结果目录。内容源为仓库四份 latency 文档。</footer></body></html>

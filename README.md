@@ -160,3 +160,7 @@ SIP 0.8.1：[结构化断言](docs/sip-assertions.md)支持应答码、接收 RT
 ## 中文电话时序（0.13.1）
 
 SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](docs/benchmark.md)。
+
+## 双轨录音延迟（可选）
+
+`voice-tools latency doctor / analyze / batch` 通过独立环境分析双向逐轮延迟，不改变现有 QA/SIP/benchmark。入口：[使用](docs/latency.md) · [安装](docs/latency-install.md) · [集成](docs/latency-integration.md) · [验收](docs/latency-validation.md)。`python scripts/latency_demo.py --out demo` 生成合成录音和可迁移任务；真实语音准确率另行验收。

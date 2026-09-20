@@ -114,3 +114,7 @@ export VT_EXECUTOR_DIR=/absolute/path/to/executor-config
 ```
 
 示例生成合成录音、分析候选问题并检查格式。它能验收打包/迁移/执行/复查流程，不证明真实录音准确率、SIP 线路、HOMER 服务、SSH 采集或执行机容量。实际检查结果见 [本版验证记录](task-validation.md)。
+
+## latency 可选步骤
+
+新版本 catalog 提供 latency doctor/analyze/batch；`latency_dir` 是执行端 runtime 路径，不作为输入打包。旧配置可省略，只有 latency 步骤检查引擎。通过 `VT_IMAGE=voice-tools-latency:0.15.1` 显式选择专用镜像，原 prepare/default image 不变。示例、迁移命令及路径优先级见 [latency 集成](latency-integration.md)，镜像离线导入见 [安装说明](latency-install.md)。独立报告 include_audio 不改变任务/结果包原本携带输入音频的行为。

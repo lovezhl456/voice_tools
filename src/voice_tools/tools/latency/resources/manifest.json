@@ -1,0 +1,14 @@
+{
+  "upstream_commit": "0d71ca1f42a59744258420e4074ae0378f86c857",
+  "patch_version": "1",
+  "algorithm": "voice-tools-latency-checker-adapted",
+  "archive_sha256": "075cfd13f28b307a329493c3a92aff4e67dbd2f315e3b27df84a7f95c0037e6d",
+  "original_detector_sha256": "edfb3ac76bc25d08a8049eadda44c6344a71af67d597c1fdaa96970d7f28d917",
+  "patched_detector_sha256": "1d47566d1d6af3cd18eaea8658fb41d6dd8b158be6301804dc170793aae5bca6",
+  "resources": {
+    "detector.patch": "6d2a80892034bc3e0df09f26f7c316857533750dfe99f3b88f1e11b8e8004e51",
+    "requirements.txt": "a23aaf94250a9f53031a592980142245a848e2372b6c6c3093e8260b129265b8",
+    "upstream-LICENSE.txt": "2fa32025d7bb3d3abaf09783040a306dd46228b772e065bbd9d0e1129f2ffac1",
+    "detector-edits.json": "21a70b914f42ce0c6a222df7349f92a7263c4278b59374547d16972b6656cc1e"
+  }
+}

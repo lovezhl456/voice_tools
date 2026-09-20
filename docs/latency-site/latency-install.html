@@ -1,0 +1,78 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>latency · latency-install</title><style>*{box-sizing:border-box}body{margin:0;background:#f2f6f7;color:#183347;font:16px/1.8 system-ui,sans-serif}header{background:#15394b;color:white;padding:32px max(20px,calc((100vw - 1040px)/2))}header p{color:#c0e1e6}nav{display:flex;flex-wrap:wrap;gap:12px}nav a{color:#d9f1f2;font-size:14px}main{max-width:1040px;margin:28px auto;background:white;padding:32px;border-radius:16px}h1{font-size:30px}h2{margin-top:32px;border-top:1px solid #dce8ec;padding-top:20px}a{color:#14727a;overflow-wrap:anywhere}pre{overflow:auto;padding:18px;background:#eef4f6;border-radius:10px;font-size:13px}code{font-family:ui-monospace,monospace;overflow-wrap:anywhere}table{display:block;max-width:100%;overflow:auto;border-collapse:collapse;font-size:14px}th,td{border:1px solid #dae5e8;padding:10px;text-align:left;min-width:100px}blockquote{border-left:4px solid #19818b;padding-left:16px}footer{max-width:1040px;margin:20px auto;color:#526976}@media(max-width:650px){main{padding:18px;margin:12px}header{padding:24px 18px}h1{font-size:24px}}</style></head><body><header><p>VOICE_TOOLS 0.15.1 · 可选外部引擎</p><h1>双轨录音延迟说明书</h1><nav><a href="/">← 本地总导航</a><a href="latency.html">使用与结果</a><a href="latency-install.html">安装与回退</a><a href="latency-integration.html">任务与协议</a><a href="latency-validation.html">验收记录</a><a href="demo/">合成录音演示 ↗</a><a href="task-review/">任务复查演示 ↗</a></nav></header><main><h1>latency 外部依赖安装说明</h1>
+<p>本说明适用于 voice_tools 0.15.1 的受控适配版。先了解 <a href="latency.html">输入与结果</a>，再按平台选择环境；<a href="latency-validation.html">实际验证记录</a> 区分已执行与未验证范围。</p>
+<h2>原生 macOS / Linux</h2>
+<p>主包仍支持 Python 3.9+，引擎单独使用 Python 3.11 或 3.12。已有 Python 3.11/3.12 和可用的依赖来源是首次安装前提。安装器随 wheel/sdist 分发，仓库 <code>scripts/install_latency.py</code> 只是入口。</p>
+<pre><code class="language-sh">python -m pip install ./dist/voice_tools-0.15.1-py3-none-any.whl
+python -m voice_tools.tools.latency.install --python /absolute/path/to/python3.12
+voice-tools latency doctor
+</code></pre>
+<p>默认前缀 <code>~/.local/share/voice-tools/latency</code>；参数应使用最终规范路径，不能是符号链接。源码固定于 <code>0d71ca1f42a59744258420e4074ae0378f86c857</code>。安装器校验源码归档、检测器原文、补丁和许可，创建最终位置的 venv，安装固定 NumPy 2.2.6，检查可导入性后原子写入 <code>ready.json</code>。不移动已经创建的 venv。</p>
+<p>本适配器直接加载固定源码中的 <code>FinalDetector</code>，PCM 由标准库读取，检测运算仅用 NumPy。上游完整 CLI、librosa 加载器、Web 服务和单声道说话人分类未启用，因此不安装其 librosa/scipy/click/pydub/resemblyzer 依赖，也不提供上游 <code>audio-analyze</code> 命令。固定依赖清单在包内 <code>latency/resources/requirements.txt</code>。</p>
+<pre><code class="language-sh">python -m voice_tools.tools.latency.install --python /absolute/path/to/python3.11 --prefix /absolute/path/to/latency-v1
+voice-tools --json latency doctor --latency-dir /absolute/path/to/latency-v1
+</code></pre>
+<p>路径优先级：命令 <code>--latency-dir</code> → <code>VOICE_TOOLS_LATENCY_DIR</code> → 默认前缀。doctor 检查版本、摘要、路径、Python/NumPy 和当前架构，但不做录音测量。只有显式安装联网；doctor/analyze/batch 不下载、不修复。引擎使用 <code>-I</code>、独立进程组和进程内线程/缓存配置，不修改主进程的 Python 搜索路径。临时文件位于系统临时目录，结果目录不收集缓存或虚拟环境。</p>
+<h2>升级、回退、卸载</h2>
+<p>一个前缀对应一个固定版本。同版本重复安装且 doctor 通过时为幂等检查；未知、未完成、校验损坏的目录一律拒绝覆盖。同前缀用独占 <code>.install.lock</code> 防止并发。失败保留 <code>installing.json</code> 供排错，不写成功标记。</p>
+<p>升级安装到新前缀，先 doctor，再实际分析固定样本，然后显式切换：</p>
+<pre><code class="language-sh">python -m voice_tools.tools.latency.install --python /absolute/path/to/python3.12 --prefix /absolute/path/to/latency-next
+voice-tools latency doctor --latency-dir /absolute/path/to/latency-next
+voice-tools latency analyze demo/audio/normal.wav --system-channel right --latency-dir /absolute/path/to/latency-next --out results/upgrade-check
+export VOICE_TOOLS_LATENCY_DIR=/absolute/path/to/latency-next
+# 回退：重新指定保留的旧前缀，再检查和分析；不移动环境。
+export VOICE_TOOLS_LATENCY_DIR=/absolute/path/to/latency-v1
+</code></pre>
+<p>卸载时先停止使用该前缀的任务，只删除明确属于该安装的前缀目录并取消对应环境变量/执行机配置；不要删除仍在用的旧前缀。残留安装锁须先确认没有安装进程，再人工移除；安装器不会擅自判断和删锁。</p>
+<h2>Docker 与跨机离线运行</h2>
+<p>专用 Dockerfile 以已有任务执行镜像为基础，安装当前 voice_tools 与独立引擎；原 Dockerfile 与默认镜像不新增 latency 依赖。需要先按 <a href="https://github.com/lovezhl456/voice_tools/blob/feat/v0.15.1-latency/docs/task-delivery.md">任务手册</a> 准备对应架构的基础镜像。</p>
+<pre><code class="language-sh">docker build -f docker/latency/Dockerfile --build-arg EXECUTOR_IMAGE=voice-tools-executor:0.13.1 -t voice-tools-latency:0.15.1 .
+docker run --rm --network none --read-only --tmpfs /tmp:rw,exec,size=512m --user 10001:10001 voice-tools-latency:0.15.1 --json latency doctor
+VT_IMAGE=voice-tools-latency:0.15.1 ./vt --help
+</code></pre>
+<p><code>VT_IMAGE</code> 显式选择镜像，不改变 <code>vt prepare</code> 的原有行为。镜像内固定前缀 <code>/opt/latency</code>，可在执行机配置填 <code>latency_dir</code>，或使用镜像设置的环境变量。挂载的结果目录应允许执行用户写入；只读根文件系统时必须给 <code>/tmp</code> 可写空间。普通录音分析不需要业务网络。</p>
+<p>离线跨机首版采用<strong>相同架构的已构建镜像</strong>：</p>
+<pre><code class="language-sh">docker image inspect voice-tools-latency:0.15.1 --format &#39;{{.Os}}/{{.Architecture}}&#39;
+docker save -o voice-tools-latency-0.15.1.tar voice-tools-latency:0.15.1
+# 在同架构目标机：
+docker load -i voice-tools-latency-0.15.1.tar
+docker run --rm --network none voice-tools-latency:0.15.1 --json latency doctor
+</code></pre>
+<p>原生 venv 不作为跨机或跨架构部署包。Docker 禁网运行、镜像导入后的首次运行，与“在离线机器上首次安装原生依赖”不同。安装器 <code>--archive</code> 仅接受已下载且摘要匹配的源码；依赖仍需完整可用来源。pip 的普通缓存不保证完整离线 wheelhouse，首版不承诺原生离线首次安装。</p>
+<h2>排错</h2>
+<table>
+<thead>
+<tr>
+<th>表现</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>依赖缺失/doctor 失败</td>
+<td>核对选中的前缀、Python 版本、NumPy、ready.json 及错误明细；安装到新前缀</td>
+</tr>
+<tr>
+<td>前缀已存在、缺少 ready.json</td>
+<td>检查 installing.json/安装日志；保留证据并改用新前缀</td>
+</tr>
+<tr>
+<td>归档或补丁摘要错误</td>
+<td>停止使用该下载，核对固定提交与包内 manifest；不要忽略校验</td>
+</tr>
+<tr>
+<td>命令行安装成功但任务失败</td>
+<td>检查执行端路径和架构；本机路径不随任务包搬运</td>
+</tr>
+<tr>
+<td>原生下载失败</td>
+<td>检查依赖来源可达性；已建 venv 不会被移动或静默复用</td>
+</tr>
+<tr>
+<td>超时、取消、崩溃</td>
+<td>看 files.jsonl 的错误、中断与已完成记录；需要时调文件/步骤超时</td>
+</tr>
+<tr>
+<td>页面可见但不能跳转</td>
+<td>检查是否包含音频，服务器是否支持 Range/206；使用仓库服务器</td>
+</tr>
+</tbody></table>
+</main><footer>此站只展示说明书和合成音频；业务报告保留在各自结果目录。内容源为仓库四份 latency 文档。</footer></body></html>

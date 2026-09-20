@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice-tools"
-version = "0.13.1"
+version = "0.15.1"
 description = "本地运行、CPU 优先的语音工具集"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -22,7 +22,7 @@ homerctl = "voice_tools.tools.homer.client:main"
 voice-sip = "voice_tools.tools.sip.cli:main"
 
 [tool.setuptools]
-license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/voice_tools/tools/recording_qa/vendor/wavesurfer.LICENSE.txt"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/voice_tools/tools/recording_qa/vendor/wavesurfer.LICENSE.txt", "src/voice_tools/tools/latency/resources/upstream-LICENSE.txt"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -30,3 +30,5 @@ where = ["src"]
 [tool.setuptools.package-data]
 "voice_tools.tools.recording_qa" = ["*.html", "*.js", "vendor/*.js", "vendor/*.txt", "vendor/*.json"]
 "voice_tools.tools.task" = ["web/*.html", "web/*.css", "web/*.js", "web/*.json"]
+
+"voice_tools.tools.latency" = ["resources/*.json", "resources/*.patch", "resources/*.txt", "web/*.js", "web/*.css", "web/*.html"]
