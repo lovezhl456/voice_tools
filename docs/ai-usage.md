@@ -1,6 +1,6 @@
 # voice_tools · 大模型 / Agent 接入协议
 
-Version 2.0.0. The CLI is the primary interface. Use a local subprocess with an argv array; no MCP server is required. Audio/QA are offline CPU tools. HOMER online commands contact only the configured instance; offline schema and analyze --input need no credentials.
+Version 0.8.1. The CLI is the primary interface. Use a local subprocess with an argv array; no MCP server is required. Audio/QA are offline CPU tools. HOMER online commands contact only the configured instance; offline schema and analyze --input need no credentials.
 
 ## Discovery
 
@@ -33,7 +33,7 @@ Audio/QA emit one JSON object on stdout, including handled errors. No progress p
 
 ```json
 {
-  "schema_version": "1.0", "tool_version": "2.0.0",
+  "schema_version": "1.0", "tool_version": "0.8.1",
   "tool": "qa", "action": "analyze", "ok": true,
   "exit_code": 0, "status": "completed",
   "summary": {"files": 20, "errors": 0, "candidates": 11},
