@@ -178,6 +178,22 @@ class BatchLoadTests(unittest.TestCase):
             with self.assertRaises(OSError): run_load(package, self.root / 'out', sys.executable)
         self.assertEqual(read_json(self.root / 'out/result.json')['status'], 'failed')
 
+    def test_batch_preserves_mainline_assertions_in_each_job(self):
+        self.spec['assertions'] = [{'type': 'response_code', 'codes': [200]}, {'type': 'received_rtp', 'min_packets': 1}]
+        result = run_queue(self.queue_path(), self.root / 'out', True)
+        from voice_tools.tools.sip.scenario import load_scenario
+        for row in result['jobs']:
+            scenario = self.root / 'out' / row['scenario']
+            self.assertEqual(read_json(scenario)['assertions'], self.spec['assertions'])
+            self.assertEqual(len(load_scenario(scenario)['assertions']), 2)
+
+    def test_sipp_rejects_mainline_assertions_without_dropping_them(self):
+        self.spec['assertions'] = [{'type': 'response_code', 'codes': [200]}]
+        with self.assertRaisesRegex(ValueError, '不执行功能断言'):
+            validate_request(self.request, self.root)
+        self.spec['assertions'] = []
+        self.assertEqual(validate_request(self.request, self.root)[1]['assertions'], [])
+
     def test_existing_output_preserved(self):
         output = self.root / 'out'; output.mkdir(); (output / 'keep').write_text('keep')
         with self.assertRaises(ValueError): run_queue(self.queue_path(), output, True)

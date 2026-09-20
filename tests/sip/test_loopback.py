@@ -24,7 +24,7 @@ class LoopbackTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
 
-    def call(self, mode="answer", early=False, steps=None, interrupt=False, interrupt_signal=signal.SIGINT, audio_seconds=.4):
+    def call(self, mode="answer", early=False, steps=None, interrupt=False, interrupt_signal=signal.SIGINT, audio_seconds=.4, assertions=None):
         peer_dir = self.root / "peer"
         log = (self.root / "peer.log").open("w"); self.addCleanup(log.close)
         peer = subprocess.Popen([sys.executable, "-m", "tests.sip.loopback_peer", "--out", str(peer_dir), "--mode", mode, "--duration", "8"], stdout=log, stderr=log)
@@ -51,6 +51,7 @@ class LoopbackTests(unittest.TestCase):
         spec["connect_timeout_s"] = 2; spec["max_call_s"] = 5; spec["record_early"] = early
         spec["steps"] = steps or [{"action": "play", "file": "audio.wav"}, {"action": "dtmf", "digits": "1#"},
                                   {"action": "dtmf", "digits": "2", "method": "sip_info"}, {"action": "wait", "seconds": .2}, {"action": "hangup"}]
+        if assertions is not None: spec["assertions"] = assertions
         env = dict(os.environ)
         if mode in ("auth", "register_auth"):
             spec["account"]["auth"] = {"username": "tester", "realm": "local-test", "password_env": "VOICE_TOOLS_TEST_SECRET"}
@@ -81,6 +82,59 @@ class LoopbackTests(unittest.TestCase):
         peer.wait(timeout=10)
         report = json.loads((peer_dir / "report.json").read_text())
         return proc, result, report
+
+    def test_structured_assertions_receive_evidence(self):
+        proc, result, report = self.call(assertions=[
+            {"type": "response_code", "codes": [200]},
+            {"type": "received_rtp", "min_packets": 5},
+            {"type": "effective_audio", "min_duration_s": .1},
+            {"type": "dtmf", "digits": "1#"}])
+        self.assertEqual(proc.returncode, 3, proc.stderr)
+        rows = result["assertions"]["items"]
+        self.assertEqual([r["status"] for r in rows], ["passed", "passed", "passed", "failed"], result)
+        self.assertEqual(rows[3]["actual"]["digits"], "")
+        self.assertEqual(result["execution_status"], "completed")
+
+    def test_expected_busy_is_successful_response_test(self):
+        proc, result, report = self.call(mode="reject", assertions=[{"type": "response_code", "codes": [486]}])
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertTrue(result["expected_rejection"])
+        self.assertEqual(result["assertions"]["status"], "passed")
+
+    def test_received_dtmf_repeated_digits(self):
+        proc, result, report = self.call(mode="echo_dtmf", steps=[
+            {"action": "wait", "seconds": .2}, {"action": "dtmf", "digits": "11#"},
+            {"action": "wait", "seconds": .3}, {"action": "hangup"}],
+            assertions=[{"type": "dtmf", "digits": "11#"}])
+        self.assertEqual(proc.returncode, 0, result)
+        self.assertEqual(result["assertions"]["items"][0]["actual"]["digits"], "11#")
+
+    def test_silent_rtp_is_not_effective_audio(self):
+        proc, result, report = self.call(mode="silence", assertions=[
+            {"type": "received_rtp"}, {"type": "effective_audio", "min_duration_s": .1}])
+        self.assertEqual(proc.returncode, 3, result)
+        self.assertEqual([r["status"] for r in result["assertions"]["items"]], ["passed", "failed"])
+
+    def test_received_sip_info_dtmf(self):
+        proc, result, report = self.call(mode="echo_info", assertions=[{"type": "dtmf", "digits": "2"}])
+        self.assertEqual(proc.returncode, 0, result)
+        self.assertEqual(result["assertions"]["status"], "passed")
+
+    def test_received_dual_tone(self):
+        proc, result, report = self.call(mode="tone", assertions=[
+            {"type": "tone", "frequencies_hz": [440, 480], "min_duration_s": .2}])
+        self.assertEqual(proc.returncode, 0, result)
+        self.assertEqual(result["assertions"]["status"], "passed")
+
+    def test_no_rtp_is_failure_even_with_recording(self):
+        proc, result, report = self.call(mode="no_rtp", assertions=[{"type": "received_rtp"}])
+        self.assertEqual(proc.returncode, 3, result)
+        self.assertEqual(result["assertions"]["status"], "failed", result)
+
+    def test_no_response_is_not_expected_408(self):
+        proc, result, report = self.call(mode="drop", assertions=[{"type": "response_code", "codes": [408]}])
+        self.assertEqual(proc.returncode, 3, result)
+        self.assertEqual(result["assertions"]["status"], "insufficient_evidence")
 
     def test_real_udp_play_dtmf_info_record_and_bye(self):
         proc, result, peer = self.call()

@@ -6,6 +6,8 @@
 
 **2.0 文档入口：** [采集 2.0 与长期排障方案](docs/capture-v2.md) · [人工使用手册](docs/manual.md) · [大模型接入协议](docs/ai-usage.md) · [命令 schema](docs/cli-schema.json)。运行 `voice-tools schema` 发现参数，再用 `voice-tools --json …` 获取结构化结果。
 
+**sngrep 辅助排障：** [与 voice_tools 联动的快速说明](docs/sngrep-workflow.md) · [安装与常用操作](docs/sngrep.md)。沿用现有采集流程，在本机打开导出的通话包查看 SIP 时序。
+
 ## 工具列表
 
 | 工具 | 适用场景 | 命令入口 | 使用文档 |
@@ -118,6 +120,8 @@ python -m unittest discover -s tests -v
 新增工具时提供独立模块、文档和测试，注册命令后在本页工具列表增加入口。详细操作放在各工具手册，首页持续作为导航。
 
 真实录音、通话导出、凭据、虚拟环境和运行结果不提交；本地数据与输出放在忽略的 `data/`、`outputs/` 中。`--include-audio` 会将原录音复制到质检报告，分享时按原录音的权限处理。
+
+SIP 0.8.1：[结构化断言](docs/sip-assertions.md)支持应答码、接收 RTP、最小有效音频和预期 DTMF／音调，统一输出三态结果与失败退出码。
 
 ### SIP 批量与压力测试
 

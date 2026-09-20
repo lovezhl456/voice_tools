@@ -16,6 +16,10 @@ class CallFailure(Exception):
         self.code = code
 
 
+class ExpectedRejection(Exception):
+    """A configured negative SIP test ended before the media strategy."""
+
+
 class Journal:
     def __init__(self, path, clock):
         self.clock, self.start = clock, clock()
@@ -64,6 +68,12 @@ def execute(plan, output, backend_factory, clock=time.monotonic):
         if backend.failure:
             raise CallFailure("MEDIA_ERROR", backend.failure)
         if backend.disconnected:
+            response_checks = [s for s in plan.get("assertions", []) if s["type"] == "response_code"]
+            code = getattr(backend, "invite_final_code", None)
+            if (not getattr(backend, "ever_connected", True) and code is not None and code >= 300
+                    and getattr(backend, "last_code", None) == code
+                    and response_checks and all(code in s["codes"] for s in response_checks)):
+                raise ExpectedRejection()
             raise CallFailure("REMOTE_HANGUP", "对端在策略完成前结束通话")
 
     def finalization_error(code, exc):
@@ -135,6 +145,10 @@ def execute(plan, output, backend_factory, clock=time.monotonic):
             result["steps_completed"] += 1
             journal.emit("step_complete", index=index, action=action)
         result["status"] = "completed"
+    except ExpectedRejection:
+        result["status"] = "completed"
+        result["expected_rejection"] = True
+        result["steps_skipped"] = len(plan["steps"])
     except KeyboardInterrupt:
         result["status"] = "interrupted"
         result["error"] = {"code": "INTERRUPTED", "message": "操作者终止通话"}
@@ -155,6 +169,10 @@ def execute(plan, output, backend_factory, clock=time.monotonic):
                 backend.close()
             except Exception as exc:
                 finalization_error("CLEANUP_ERROR", exc)
+            try:
+                result["call"] = backend.details()
+            except Exception as exc:
+                finalization_error("CALL_DETAILS_ERROR", exc)
             # Close native resources before any post-processing that can fail.
             if recording_start is not None:
                 try:
