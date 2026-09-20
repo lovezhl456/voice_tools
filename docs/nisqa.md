@@ -6,6 +6,8 @@
 
 ## 权重许可
 
+本项目自有代码的 Apache-2.0 授权不覆盖 NISQA 官方模型权重。权重不随本项目源码、安装包或 Docker 镜像分发，由用户显式下载。
+
 原 NISQA 代码为 MIT，但官方 `nisqa.tar` 权重是 **CC BY-NC-SA 4.0，含非商业限制**。用于商业客服生产系统前须另行解决授权；换成 TorchMetrics 封装不会改变权重许可。参见[原项目 README](https://github.com/gabrielmittag/NISQA)和[固定版本权重许可](https://github.com/gabrielmittag/NISQA/blob/fe84f0f252abec382b24367d5b22498a7ce34dbb/weights/LICENSE_model_weights)。
 
 ## 安装
