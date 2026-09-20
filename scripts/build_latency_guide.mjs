@@ -2,9 +2,17 @@
 // Generated pages contain no remote runtime dependencies.
 import fs from 'node:fs';
 import path from 'node:path';
-import {pathToFileURL} from 'node:url';
+import {execFileSync} from 'node:child_process';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 const {marked} = await import(process.env.MARKED_MODULE ? pathToFileURL(process.env.MARKED_MODULE).href : 'marked');
-const root = path.resolve(import.meta.dirname, '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// A commit survives feature-branch cleanup. Source archives can supply it explicitly.
+const sourceRevision = process.env.LATENCY_SOURCE_REVISION || execFileSync(
+  'git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'}
+).trim();
+if (!/^[0-9a-f]{40}$/.test(sourceRevision)) {
+  throw new Error('LATENCY_SOURCE_REVISION must be a full, immutable Git commit SHA');
+}
 const output = path.join(root, 'docs/latency-site');
 fs.mkdirSync(output, {recursive:true});
 const docs = [['latency','使用与结果'],['latency-install','安装与回退'],['latency-integration','任务与协议'],['latency-validation','验收记录']];
@@ -17,7 +25,7 @@ for (const [name] of docs) {
     const stem=url.replace(/\.md$/,'');
     if (docs.some(([name])=>name===stem)) return `](${stem}.html)`;
     const resolved=path.posix.normalize('docs/'+url);
-    return `](https://github.com/lovezhl456/voice_tools/blob/feat/v0.15.1-latency/${resolved})`;
+    return `](https://github.com/lovezhl456/voice_tools/blob/${sourceRevision}/${resolved})`;
   });
   const html=`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>latency · ${name}</title><style>${style}</style></head><body><header><p>VOICE_TOOLS 0.15.1 · 可选外部引擎</p><h1>双轨录音延迟说明书</h1>${nav}</header><main>${marked.parse(markdown)}</main><footer>此站只展示说明书和合成音频；业务报告保留在各自结果目录。内容源为仓库四份 latency 文档。</footer></body></html>`;
   fs.writeFileSync(path.join(output,name+'.html'),html);

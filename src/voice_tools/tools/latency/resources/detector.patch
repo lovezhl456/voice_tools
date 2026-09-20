@@ -31,7 +31,7 @@
          h_ptr = 0
          for a_seg in ai_segments:
              # Skip short AI segments — likely barges or noise, not real responses.
-@@ -1022,14 +1046,14 @@
+@@ -1022,20 +1046,23 @@
              #      earlier human segment ending was a pause, not a real stop.
              # In both cases, pairing with the prior human segment would count
              # a pause as wait time.
@@ -46,19 +46,38 @@
 -            min_resumption_dur = 1.0
 +
              ai_overlaps_human = False
++            prior_human = None
              for h in human_segments:
                  if h.start_time > a_seg.start_time + barge_window:
-@@ -1049,6 +1073,9 @@
+                     break  # far enough ahead, sorted so no more candidates
+                 if h.full_duration < min_human_dur:
+                     continue
++                if h.end_time < a_seg.start_time:
++                    prior_human = h
+                 # User was still speaking at AI start (with small tolerance)
+                 if h.start_time <= a_seg.start_time <= h.end_time + 0.005:
+                     ai_overlaps_human = True
+@@ -1049,6 +1076,19 @@
                      ai_overlaps_human = True
                      break
              if ai_overlaps_human:
 +                audit[id(a_seg)]["incoming"] = "overlap"
-+                if audit[id(h)]["outgoing"] == "unpaired":
-+                    audit[id(h)]["outgoing"] = "overlap"
++                if h.start_time <= a_seg.start_time:
++                    overlap_source = h
++                else:
++                    # Resumption responds to the current AI; its next response
++                    # is still unknown. Attribute the interrupted pause to the
++                    # preceding human source, not this later continuation.
++                    audit[id(h)]["incoming"] = "overlap"
++                    overlap_source = prior_human
++                if overlap_source is not None:
++                    source_row = audit[id(overlap_source)]
++                    if source_row["outgoing"] == "unpaired":
++                        source_row["outgoing"] = "overlap"
                  continue
  
              # Advance h_ptr to the last SIGNIFICANT human segment ending
-@@ -1056,13 +1083,16 @@
+@@ -1056,13 +1096,16 @@
              best_idx = None
              while h_ptr < len(human_segments) and human_segments[h_ptr].end_time < a_seg.start_time:
                  if human_segments[h_ptr].full_duration >= min_human_dur:
@@ -76,7 +95,7 @@
                      latencies.append(ResponseLatency(
                          human_stop_time=h_seg.end_time,
                          ai_start_time=a_seg.start_time,
-@@ -1112,21 +1142,26 @@
+@@ -1112,21 +1155,26 @@
                      human_overlaps_ai = True
                      break
              if human_overlaps_ai:
@@ -105,7 +124,7 @@
                      human_response_latencies.append(HumanResponseLatency(
                          ai_stop_time=a.end_time,
                          human_start_time=h_seg.start_time,
-@@ -1138,6 +1173,7 @@
+@@ -1138,6 +1186,7 @@
          stats = self._build_latency_stats(ai_segments, human_segments, latencies)
          human_resp_stats = self._build_human_response_stats(human_response_latencies)
          return {

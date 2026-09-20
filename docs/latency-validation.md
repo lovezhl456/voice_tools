@@ -1,16 +1,16 @@
 # latency 0.15.1 验收记录
 
-日期：2026-09-20。状态：实现及本地分层验收记录，PR 未合并。真实中文录音准确率、指定线路和生产容量不在本次合成验收范围。
+日期：初版 2026-09-20，PR 评审修复 2026-09-21。状态：实现及本地分层验收记录，PR 未合并。真实中文录音准确率、指定线路和生产容量不在本次合成验收范围。
 
 ## 固定来源与环境
 
 - 主线冻结：`92ad27f`，已合入 benchmark PR #25。独立工作树 `feat/v0.15.1-latency`，保留并行 0.14.1 工作；最终收尾再次 fetch 主线仍为该提交。
-- 上游提交、归档、补丁摘要以 [包内 manifest](../src/voice_tools/tools/latency/resources/manifest.json) 为准，补丁版本 1。原始源码和普通样本对照使用相同固定提交。
+- 上游提交、归档、补丁摘要以 [包内 manifest](../src/voice_tools/tools/latency/resources/manifest.json) 为准，当前补丁版本 2。原始源码和普通样本对照使用相同固定提交。
 - macOS ARM64：主 CLI Python 3.9.6；外部引擎 Python 3.12.14 / NumPy 2.2.6。
 - Linux：Docker 的 ARM64 原生虚拟化，Python 3.11，非 root 10001:10001；专用镜像基于原任务镜像 0.13.1。未验证物理 Linux、Intel Mac、Linux amd64 或 amd64 模拟性能。
 - Linux 全仓测试使用另建的 validation 镜像补齐既有测试需要的 Node、procps、tcpdump；这些不是 latency 业务运行依赖，不放进生产镜像。
 
-## 已执行的检查与结果
+## 初版补丁 1 的检查与结果
 
 | 检查 | 预期及实测 |
 | --- | --- |
@@ -57,6 +57,29 @@ python scripts/serve_latency.py --root results --port 8088
 ```
 
 安装、独立前缀切换/回退、镜像离线导入按 [安装说明](latency-install.md)；迁移按 [集成协议](latency-integration.md)。跳过的既有测试主要依赖指定原生/模型/真实环境；不将条件跳过当作通过，不把静态检查代替音频播放。首次全量检查中的 schema 快照遗漏已修正，对应 benchmark 合同测试复跑通过。首次 Linux 全量失败是测试工具缺失，补齐后全量通过。说明书与合成演示已接入 [本地 8080 总导航](http://127.0.0.1:8080/latency-guide/)，桌面/移动端正式地址再次验证。
+
+## PR #27 评审修复：补丁 2
+
+主线重新 fetch 后仍为 `92ad27f`。本轮只改 latency 片段审计、安装资源和文档生成；没有修改共享任务模块或旧业务算法。沿用尚未发布的 0.15.1，旧环境和镜像保留；补丁 2 使用新前缀与单独镜像标签。
+
+| 检查 | 本轮实测 |
+| --- | --- |
+| macOS ARM64 | 新建 Python 3.12.13 / NumPy 2.2.6 前缀，官方 wheel 哈希校验安装成功；16 项 latency 测试全部通过，无跳过 |
+| Linux ARM64 | 从原基础镜像重新构建 patch2 专用镜像；Python 3.11，非 root、禁网、只读源码，16 项 latency 测试全部通过，无跳过 |
+| 续说归属 | 人声 1–2s、4.8–6.3s，AI 4.5–4.9s：前段 outgoing overlap，续说 incoming overlap / outgoing unpaired；覆盖率 0/2，状态不足证据。再加 AI 7–8s，续说 outgoing paired，延迟 0.7s，覆盖率 1/2 |
+| 补丁 1/2 对照 | 正常、长延迟、普通重叠、续说、续说后回复、短片段和静音共 7 组，除 segment_audit 外检测结果逐字段相等；本样本仅无后续回复的续说审计发生预期修正 |
+| 哈希失败路径 | 离线提供同名同版本、不同字节的 wheel，完整安装器退出 2；保留 installing.json，不写 ready.json，释放安装锁。自动测试另验 pip 不接受该 wheel |
+| Node 18 | 在 Linux Node 18.20.4 实际生成 5 个 HTML 页面、8 个固定提交链接；无 Git 的源目录通过显式 SHA 生成，分支名作为 revision 会被拒绝 |
+
+说明书生成使用 Node 18+ 和可导入的 marked ESM 模块；在仓库内默认固定到当前 HEAD。源码包没有 Git 元数据时必须显式传入对应的完整 40 位提交 SHA：
+
+```sh
+# MARKED_MODULE 指向本机已安装的 marked 模块；有本地 node_modules 时可省略。
+MARKED_MODULE=/absolute/path/to/marked/lib/marked.esm.js node scripts/build_latency_guide.mjs
+# 从源码包生成：LATENCY_SOURCE_REVISION=<对应源码的完整提交SHA> MARKED_MODULE=... node scripts/build_latency_guide.mjs
+```
+
+生成前应先提交源码修复，保证页面链接指向已提交内容。构建后仅复制 `docs/latency-site/*.html` 到本地说明书目录；业务报告与音频仍保留在结果目录。本轮没有重新执行初版全仓测试、3600s 性能或镜像跨机导入，不把历史记录当作补丁 2 的重新验收。
 
 ## 未作承诺
 

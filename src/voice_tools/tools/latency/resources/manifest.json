@@ -1,14 +1,15 @@
 {
   "upstream_commit": "0d71ca1f42a59744258420e4074ae0378f86c857",
-  "patch_version": "1",
+  "patch_version": "2",
   "algorithm": "voice-tools-latency-checker-adapted",
   "archive_sha256": "075cfd13f28b307a329493c3a92aff4e67dbd2f315e3b27df84a7f95c0037e6d",
   "original_detector_sha256": "edfb3ac76bc25d08a8049eadda44c6344a71af67d597c1fdaa96970d7f28d917",
-  "patched_detector_sha256": "1d47566d1d6af3cd18eaea8658fb41d6dd8b158be6301804dc170793aae5bca6",
+  "patched_detector_sha256": "99b8b9441ec699376d451c700ef4c9cf1ab672158006a765b933da6e0e62a703",
   "resources": {
-    "detector.patch": "6d2a80892034bc3e0df09f26f7c316857533750dfe99f3b88f1e11b8e8004e51",
-    "requirements.txt": "a23aaf94250a9f53031a592980142245a848e2372b6c6c3093e8260b129265b8",
+    "detector.patch": "ecc4f02740b92cd098c43feac91a724caa651e41c1985757e7361e2483db42d0",
+    "requirements.txt": "88c3591711df7e8863b286028a05a473f3f816b93bd6a5f5e5301126c4476e94",
     "upstream-LICENSE.txt": "2fa32025d7bb3d3abaf09783040a306dd46228b772e065bbd9d0e1129f2ffac1",
-    "detector-edits.json": "21a70b914f42ce0c6a222df7349f92a7263c4278b59374547d16972b6656cc1e"
+    "detector-edits.json": "dde6403a0da93f6be6b73af5849585c26b00d22e7df935c8bbd52bde10bc67e6",
+    "numpy-wheels.json": "f2c0b78e193af7ee1df73c2b438faa72fb631b20cdb69c8d55e84921e0b046f8"
   }
 }

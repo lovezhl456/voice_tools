@@ -86,6 +86,28 @@ class RealEngineTests(unittest.TestCase):
         self.assertEqual(result['coverage']['eligible_human_segments'],3)
         self.assertEqual(result['statistics']['ai_to_human']['max_s'],37)
 
+    def test_resumed_human_keeps_its_next_response_independent(self):
+        for later_response in (False, True):
+            with self.subTest(later_response=later_response):
+                path = self.root / f'resumed-{later_response}.wav'
+                ai = ((4.5, 4.9), (7, 8)) if later_response else ((4.5, 4.9),)
+                demo.recording(path, human=((1, 2), (4.8, 6.3)), ai=ai, duration=11)
+                result, rows, out = self.analyze([path])
+                measurement = read_json(out / rows[0]['detail'])['measurement']
+                human = [s for s in measurement['segments'] if s['speaker'] == 'human']
+                self.assertEqual(len(human), 2)
+                self.assertEqual(human[1]['incoming'], 'overlap')
+                self.assertEqual(human[1]['outgoing'], 'paired' if later_response else 'unpaired')
+                self.assertEqual(result['coverage']['eligible_human_segments'], 2)
+                self.assertEqual(result['coverage']['ratio'], .5 if later_response else 0)
+                if later_response:
+                    self.assertAlmostEqual(result['statistics']['human_to_ai']['mean_s'], .7)
+                else:
+                    self.assertEqual(human[0]['outgoing'], 'overlap')
+                    self.assertEqual(result['coverage']['dispositions'], {'overlap': 1, 'unpaired': 1})
+                    self.assertEqual(measurement['status'], 'insufficient_evidence')
+                    self.assertEqual(measurement['pairs'], [])
+
     def test_pack_remove_inputs_run_collect_review(self):
         source=self.root/'source';source.mkdir();demo.recording(source/'normal.wav')
         task={'schema_version':'1.0','id':'latency-move','title':'迁移','inputs':{'wav':'normal.wav'},'steps':[{'id':'measure','tool':'latency','action':'analyze','params':{'wav':{'input':'wav'},'system_channel':'right'}}]}

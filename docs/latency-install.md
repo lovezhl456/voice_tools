@@ -12,9 +12,11 @@ python -m voice_tools.tools.latency.install --python /absolute/path/to/python3.1
 voice-tools latency doctor
 ```
 
-默认前缀 `~/.local/share/voice-tools/latency`；参数应使用最终规范路径，不能是符号链接。源码固定于 `0d71ca1f42a59744258420e4074ae0378f86c857`。安装器校验源码归档、检测器原文、补丁和许可，创建最终位置的 venv，安装固定 NumPy 2.2.6，检查可导入性后原子写入 `ready.json`。不移动已经创建的 venv。
+默认前缀 `~/.local/share/voice-tools/latency`；参数应使用最终规范路径，不能是符号链接。源码固定于 `0d71ca1f42a59744258420e4074ae0378f86c857`。安装器校验源码归档、检测器原文、补丁和许可，创建最终位置的 venv，通过 `pip --require-hashes --only-binary=:all:` 安装固定 NumPy 2.2.6，检查可导入性后原子写入 `ready.json`。不移动已经创建的 venv。
 
 本适配器直接加载固定源码中的 `FinalDetector`，PCM 由标准库读取，检测运算仅用 NumPy。上游完整 CLI、librosa 加载器、Web 服务和单声道说话人分类未启用，因此不安装其 librosa/scipy/click/pydub/resemblyzer 依赖，也不提供上游 `audio-analyze` 命令。固定依赖清单在包内 `latency/resources/requirements.txt`。
+
+NumPy 允许安装的 wheel 及 SHA-256 记录在包内 [numpy-wheels.json](../src/voice_tools/tools/latency/resources/numpy-wheels.json)，摘要来源为 PyPI 官方 2.2.6 元数据。清单覆盖 CPython 3.11/3.12、macOS x86_64/arm64、Linux manylinux/musllinux x86_64/aarch64；只有其中的 macOS ARM64、Linux manylinux ARM64 经过本地运行验收。镜像源必须返回相同字节，摘要不符直接失败；不回退到源码构建或关闭校验。doctor 检查导入和版本，不重新校验已安装 NumPy 的全部文件，不能证明安装后未被修改。
 
 ```sh
 python -m voice_tools.tools.latency.install --python /absolute/path/to/python3.11 --prefix /absolute/path/to/latency-v1
@@ -29,12 +31,14 @@ voice-tools --json latency doctor --latency-dir /absolute/path/to/latency-v1
 
 升级安装到新前缀，先 doctor，再实际分析固定样本，然后显式切换：
 
+当前引擎补丁为 2。已经安装补丁 1 的用户必须新建前缀；新主包会拒绝旧前缀的 manifest。跨补丁回退应同时恢复相匹配的旧 voice_tools 包和旧前缀，不能只切换路径。
+
 ```sh
 python -m voice_tools.tools.latency.install --python /absolute/path/to/python3.12 --prefix /absolute/path/to/latency-next
 voice-tools latency doctor --latency-dir /absolute/path/to/latency-next
 voice-tools latency analyze demo/audio/normal.wav --system-channel right --latency-dir /absolute/path/to/latency-next --out results/upgrade-check
 export VOICE_TOOLS_LATENCY_DIR=/absolute/path/to/latency-next
-# 回退：重新指定保留的旧前缀，再检查和分析；不移动环境。
+# 回退：先恢复与旧前缀匹配的旧 voice_tools 包，再指定路径；不移动环境。
 export VOICE_TOOLS_LATENCY_DIR=/absolute/path/to/latency-v1
 ```
 
@@ -71,6 +75,7 @@ docker run --rm --network none voice-tools-latency:0.15.1 --json latency doctor
 | 依赖缺失/doctor 失败 | 核对选中的前缀、Python 版本、NumPy、ready.json 及错误明细；安装到新前缀 |
 | 前缀已存在、缺少 ready.json | 检查 installing.json/安装日志；保留证据并改用新前缀 |
 | 归档或补丁摘要错误 | 停止使用该下载，核对固定提交与包内 manifest；不要忽略校验 |
+| pip 报告哈希不匹配 | 停止使用该 wheel，核对官方清单和依赖源；保留失败前缀，不删除或绕过哈希 |
 | 命令行安装成功但任务失败 | 检查执行端路径和架构；本机路径不随任务包搬运 |
 | 原生下载失败 | 检查依赖来源可达性；已建 venv 不会被移动或静默复用 |
 | 超时、取消、崩溃 | 看 files.jsonl 的错误、中断与已完成记录；需要时调文件/步骤超时 |

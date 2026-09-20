@@ -6,9 +6,10 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+import zipfile
 
 from voice_tools.tools.latency.contract import validate_parameters
-from voice_tools.tools.latency.runtime import doctor, prefix, invoke
+from voice_tools.tools.latency.runtime import doctor, prefix, invoke, RESOURCES
 from voice_tools.tools.latency.service import distribution, inputs_in_order, process
 from voice_tools.tools.latency.install import installation_lock
 from voice_tools.tools.task.catalog import catalog, capabilities
@@ -60,6 +61,27 @@ class ContractTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     with installation_lock(dest): pass
             self.assertFalse(dest.with_name('prefix.install.lock').exists())
+
+    def test_hash_lock_rejects_same_version_repacked_wheel(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            wheel = root / 'numpy-2.2.6-py3-none-any.whl'
+            with zipfile.ZipFile(wheel, 'w') as archive:
+                archive.writestr('numpy/__init__.py', '__version__ = "2.2.6"\n')
+                archive.writestr('numpy-2.2.6.dist-info/METADATA',
+                                 'Metadata-Version: 2.1\nName: numpy\nVersion: 2.2.6\n')
+                archive.writestr('numpy-2.2.6.dist-info/WHEEL',
+                                 'Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n')
+                archive.writestr('numpy-2.2.6.dist-info/RECORD', '')
+            result = subprocess.run(
+                [sys.executable, '-m', 'pip', '--isolated', 'download', '--no-index',
+                 '--find-links', str(root), '--only-binary=:all:', '--require-hashes',
+                 '-r', str(RESOURCES / 'requirements.txt'), '--dest', str(root / 'downloads')],
+                capture_output=True, text=True, timeout=30,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn('DO NOT MATCH THE HASHES', result.stderr)
+            self.assertFalse(list((root / 'downloads').glob('*.whl')))
 
 
     def test_corrupt_ready_is_a_dependency_error(self):

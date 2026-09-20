@@ -6,6 +6,7 @@
 - 分支：`feat/v0.15.1-latency`；冻结兼容基线 `92ad27f`（已合入 benchmark PR #25）。
 - 版本：0.14.1 已由独立 output-gaps 工作登记，本功能使用 0.15.1。
 - 范围：可选隔离 latency_checker 引擎、双向逐轮统计、任务迁移、共享可视化及安装说明。
+- PR #27 评审修正：引擎补丁 2 修正续说片段去向，NumPy wheel 启用官方摘要校验，说明书链接固定提交且生成器兼容 Node 18；沿用尚未发布的 0.15.1，验收见下方记录。
 - 保持现有 QA、SIP、benchmark、NISQA 和 ViSQOL 算法及默认行为。
 - 验证：Mac / Linux ARM64 各 449 项全仓回归及 14 项 latency 最终专项；固定上游对照、任务迁移、中断清理、wheel/sdist、非 root 禁网镜像及浏览器 Range 试听。条件跳过和实测见 [验证记录](docs/latency-validation.md)。
 - 说明书与合成演示：http://127.0.0.1:8080/latency-guide/；真实中文录音准确率、其他架构、物理执行机和生产容量另验。

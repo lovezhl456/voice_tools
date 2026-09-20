@@ -93,7 +93,8 @@ def install(directory, python, archive=None):
             shutil.copytree(RESOURCES, directory / "provenance")
             shutil.copyfile(ROOT / "worker.py", directory / "worker.py")
             subprocess.run([str(python), "-I", "-m", "venv", str(directory / "venv")], check=True)
-            subprocess.run([str(directory / "venv/bin/python"), "-I", "-m", "pip", "install", "--only-binary=:all:",
+            subprocess.run([str(directory / "venv/bin/python"), "-I", "-m", "pip", "install",
+                            "--require-hashes", "--only-binary=:all:",
                             "-r", str(RESOURCES / "requirements.txt")], check=True)
             runtime = invoke(directory, ["--doctor"], 30)
             write_json(directory / "ready.tmp", {"manifest": expected, "prefix": str(directory), **runtime})
