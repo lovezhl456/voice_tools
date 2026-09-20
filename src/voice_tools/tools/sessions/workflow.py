@@ -33,7 +33,8 @@ def investigate(job, start, end, call_id, output, audio=(), profile='1_call', no
         raise ValueError('需要有效窗口、Call-ID，单步骤时限为 30–7200 秒')
     if not 1 <= max_requests <= 1000:
         raise ValueError('max-requests 须为 1–1000')
-    output = new_output(output); output.chmod(0o700)
+    output = new_output(output)
+    output.chmod(0o700)
     state = {'schema_version': '1.0', 'tool': 'sessions-investigation', 'call_id': call_id,
              'window': {'from': start, 'to': end}, 'steps': [], 'partial': False,
              'warning': '流程完成不代表抓包完整或故障根因已确认；保留每个工具的状态与证据。'}
@@ -42,10 +43,14 @@ def investigate(job, start, end, call_id, output, audio=(), profile='1_call', no
     def step(name, args):
         command = [sys.executable, '-m', 'voice_tools', '--json', *map(str, args)]
         record = {'name': name, 'argv': command[3:]}
-        state['steps'].append(record); save()
+        state['steps'].append(record)
+        save()
         if dry_run:
-            record.update(status='planned'); save(); return True
-        stdout = output / (name + '.stdout.json'); stderr = output / (name + '.stderr.txt')
+            record.update(status='planned')
+            save()
+            return True
+        stdout = output / (name + '.stdout.json')
+        stderr = output / (name + '.stderr.txt')
         with stdout.open('wb') as out, stderr.open('wb') as err:
             try:
                 code = run_command(command, out, err, timeout)
@@ -53,7 +58,8 @@ def investigate(job, start, end, call_id, output, audio=(), profile='1_call', no
             except subprocess.TimeoutExpired:
                 record.update(exit_code=124, status='failed', error='步骤超时；远端任务仍受自己的时限控制，可用 job 状态/恢复命令继续')
         record.update(stdout=stdout.name, stderr=stderr.name)
-        state['partial'] |= record['status'] != 'complete'; save()
+        state['partial'] |= record['status'] != 'complete'
+        save()
         return record['status'] != 'failed'
     # Freeze media first so a slow HOMER request cannot consume its ring retention window.
     step('capture', ['capture', 'ring-fetch', '--job', job, '--from', start, '--to', end, '--out', output/'capture'])
@@ -70,7 +76,9 @@ def investigate(job, start, end, call_id, output, audio=(), profile='1_call', no
     if not skip_homer and (dry_run or (search_file.is_file() and search_file.stat().st_size)):
         inputs += ['--homer-json', search_file]
     if not inputs:
-        state.update(partial=True, status='partial'); save(); return state
+        state.update(partial=True, status='partial')
+        save()
+        return state
     step('index', ['sessions', 'index', *inputs, '--out', output/'index'])
     step('export', ['sessions', 'export', '--index', output/'index', '--call-id', call_id,
                      '--include-media', '--out', output/'session'])
@@ -88,4 +96,5 @@ def investigate(job, start, end, call_id, output, audio=(), profile='1_call', no
         report_args += ['--decode-rtp']
     step('report', report_args)
     state['status'] = 'planned' if dry_run else 'partial' if state['partial'] else 'complete'
-    save(); return state
+    save()
+    return state

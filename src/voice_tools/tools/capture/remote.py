@@ -96,7 +96,8 @@ def copy_stable(source, target, owner=None, signature=None):
             block = reader.read(1024 * 1024)
             if not block:
                 break
-            writer.write(block); digest.update(block)
+            writer.write(block)
+            digest.update(block)
         after = os.fstat(reader.fileno())
     if (before.st_size, before.st_mtime_ns) != (after.st_size, after.st_mtime_ns):
         temporary.unlink()
@@ -144,7 +145,9 @@ class Agent:
         self.errors = []
         self.forced_reason = None
         for name in ('spool', 'requests', 'replies', 'frozen'):
-            p = self.root / name; p.mkdir(exist_ok=True); p.chmod(0o700)
+            p = self.root / name
+            p.mkdir(exist_ok=True)
+            p.chmod(0o700)
             self.own(p)
 
     def own(self, path):
@@ -174,16 +177,19 @@ class Agent:
                     except queue.Full:
                         self.event_truncated = True
             if len(self.states) > 20000:
-                self.states.pop(next(iter(self.states))); self.event_truncated = True
+                self.states.pop(next(iter(self.states)))
+                self.event_truncated = True
             path = self.root / 'events.jsonl'
             if path.exists() and path.stat().st_size > 8 * 1048576:
                 old = self.root / 'events.previous.jsonl'
                 if old.exists():
-                    old.unlink(); self.event_truncated = True
+                    old.unlink()
+                    self.event_truncated = True
                 path.replace(old)
             with path.open('a') as stream:
                 stream.write(json.dumps(value, ensure_ascii=False) + '\n')
-            path.chmod(0o600); self.own(path)
+            path.chmod(0o600)
+            self.own(path)
 
     def snapshot(self, selected=None):
         try:
@@ -231,7 +237,8 @@ class Agent:
         next_snapshot = 0
         while not self.stop.is_set():
             if interval and time.monotonic() >= next_snapshot:
-                self.snapshot(); next_snapshot = time.monotonic() + interval
+                self.snapshot()
+                next_snapshot = time.monotonic() + interval
             pending = set()
             while len(pending) < 4:
                 try:
@@ -309,8 +316,10 @@ class Agent:
                             stream.close()
                             path.replace(self.root / 'capture.previous.log')
                             stream = path.open('wb')
-                            path.chmod(0o600); self.own(path)
-                        stream.write(block); stream.flush()
+                            path.chmod(0o600)
+                            self.own(path)
+                        stream.write(block)
+                        stream.flush()
                 finally:
                     stream.close()
         except OSError:
@@ -359,7 +368,9 @@ class Agent:
         used = sum(p.stat().st_size for p in (self.root / 'frozen').rglob('*') if p.is_file())
         if used + sum(r['bytes'] for r in files) + event_bytes + 65536 + 2048 * len(files) > self.config.get('frozen_mib', self.config['max_mib']) * 1048576:
             raise ValueError('Frozen evidence quota exhausted; release a previously fetched freeze first')
-        dest = self.root / 'frozen' / token; dest.mkdir(mode=0o700); self.own(dest)
+        dest = self.root / 'frozen' / token
+        dest.mkdir(mode=0o700)
+        self.own(dest)
         meta = {'schema_version': '1.0', 'tool': 'capture-batch-host', 'name': self.config['name'],
                 'host': self.config.get('host', self.config['name']), 'sensor_id': self.config['sensor_id'],
                 'bpf': self.config['bpf'], 'sip_ports': self.config.get('sip_ports', [5060]),
@@ -417,7 +428,8 @@ class Agent:
                              'reason': 'Mapping grew beyond frozen quota while copying captures'}]
                 body = (json.dumps(selected[0]) + '\n').encode('utf-8')
             target.write_bytes(body)
-            target.chmod(0o600); self.own(target)
+            target.chmod(0o600)
+            self.own(target)
         meta['events'] = {'file': 'events.jsonl', 'sha256': hashlib.sha256(target.read_bytes()).hexdigest(), 'bytes': target.stat().st_size}
         state = self.status()
         first = min((r['first_epoch'] for r in files), default=None)
@@ -449,11 +461,14 @@ class Agent:
             if path.is_symlink() or path.stat().st_size > 4096 or not re.fullmatch('[a-f0-9]{32}.json', path.name):
                 continue
             try:
-                req = json.loads(path.read_text()); token = path.stem
+                req = json.loads(path.read_text())
+                token = path.stem
                 if req.get('id') != token:
                     raise ValueError('Request identity mismatch')
                 if req.get('action') == 'stop':
-                    self.forced_reason = 'requested_stop'; self.stop.set(); result = {'status': 'stopping'}
+                    self.forced_reason = 'requested_stop'
+                    self.stop.set()
+                    result = {'status': 'stopping'}
                 elif req.get('action') == 'freeze':
                     # Give the active fragment a chance to close, never copy it live.
                     if self.process and self.process.poll() is None and time.time() < req['to_epoch'] + self.config['segment_seconds'] + 2:
@@ -484,7 +499,8 @@ class Agent:
             try:
                 self.process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                os.killpg(self.process.pid, signal.SIGKILL); self.process.wait()
+                os.killpg(self.process.pid, signal.SIGKILL)
+                self.process.wait()
 
     def run(self):
         threads = []
@@ -492,7 +508,8 @@ class Agent:
         if self.config.get('esl'):
             esl.validate_config(self.config['esl'])
         log = self.root / 'capture.log'
-        log.touch(mode=0o600); self.own(log)
+        log.touch(mode=0o600)
+        self.own(log)
         try:
             self.process = subprocess.Popen(capture_command(self.config, self.root / 'spool'),
                                             stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
@@ -504,20 +521,26 @@ class Agent:
                 thread.start()
             deadline = time.monotonic() + self.config['seconds'] + 10
             while not self.stop.is_set() and self.process.poll() is None:
-                self.status(); self.requests(); self.stop.wait(.25)
+                self.status()
+                self.requests()
+                self.stop.wait(.25)
                 if time.monotonic() > deadline:
-                    self.forced_reason = 'remote_deadline'; break
+                    self.forced_reason = 'remote_deadline'
+                    break
         except (OSError, ValueError):
             self.forced_reason = 'agent_or_capture_failed'
             self.errors.append('Unable to start or maintain capture; inspect capture.log on the host')
         finally:
-            self.terminate_capture(); self.finished = time.time(); self.stop.set()
+            self.terminate_capture()
+            self.finished = time.time()
+            self.stop.set()
             for thread in threads:
                 thread.join(timeout=12)
                 if thread.is_alive():
                     self.event_truncated = True
             if self.process:
-                self.process.stdout.close(); self.process.stderr.close()
+                self.process.stdout.close()
+                self.process.stderr.close()
             with log.open('rb') as reader:
                 reader.seek(max(0, reader.seek(0, 2) - 65536))
                 self.capture_health = capture_statistics(reader.read().decode('utf-8', 'replace'))
@@ -527,9 +550,12 @@ class Agent:
 
 
 def main():
-    p = argparse.ArgumentParser(); p.add_argument('action', choices=('run', 'freeze', 'release'))
-    p.add_argument('directory'); p.add_argument('--request')
-    args = p.parse_args(); root = Path(args.directory)
+    p = argparse.ArgumentParser()
+    p.add_argument('action', choices=('run', 'freeze', 'release'))
+    p.add_argument('directory')
+    p.add_argument('--request')
+    args = p.parse_args()
+    root = Path(args.directory)
     config = json.loads((root / 'config.json').read_text())
     agent = Agent(root, config)
     if args.action == 'run':
@@ -538,7 +564,8 @@ def main():
         state = json.loads((root / 'status.json').read_text())
         if state['status'] == 'running':
             raise ValueError('Running jobs require queued requests')
-        agent.started = state['started_epoch']; agent.evicted = state['evicted']
+        agent.started = state['started_epoch']
+        agent.evicted = state['evicted']
         agent.event_truncated = state.get('events_truncated', False)
         agent.file_errors = set(state.get('invalid_files', []))
         agent.capture_health = state.get('capture_health', agent.capture_health)
@@ -554,7 +581,8 @@ def main():
                 raise ValueError('Invalid freeze ID')
             with (root / 'operation.lock').open('a') as lock:
                 fcntl.flock(lock, fcntl.LOCK_EX)
-                shutil.rmtree(root / 'frozen' / req['freeze_id']); result = {'status': 'released'}
+                shutil.rmtree(root / 'frozen' / req['freeze_id'])
+                result = {'status': 'released'}
         atomic(root / 'replies' / (req['id'] + '.json'), result, agent.owner)
         Path(args.request).unlink(missing_ok=True)
 

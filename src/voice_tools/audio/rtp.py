@@ -55,7 +55,10 @@ def segments(packets):
         seq = packet['sequence']
         extended = seq if highest is None else highest + ((seq - highest + 32768) % 65536 - 32768)
         if highest is not None and abs(extended - highest) > 3000:
-            result.append(current); current = []; highest = None; extended = seq
+            result.append(current)
+            current = []
+            highest = None
+            extended = seq
         current.append({**packet, 'extended_sequence': extended})
         highest = extended if highest is None else max(highest, extended)
     if current:
@@ -80,7 +83,8 @@ def reconstruct(packets, output, stem, budget_bytes, max_seconds=3600):
     for packet in sorted(unique.values(), key=lambda p: p['extended_sequence']):
         codec = packet.get('codec', {})
         if codec.get('name') not in ('PCMU', 'PCMA') or codec.get('clock_rate') != 8000 or codec.get('channels', 1) != 1 or packet.get('encrypted'):
-            unsupported += 1; continue
+            unsupported += 1
+            continue
         codecs.add(codec['name'])
         decoded.append((packet, decode_g711(packet['payload'], codec['name'])))
     info = {'sample_rate': 8000, 'channels': 1, 'codecs': sorted(codecs), 'duplicates_ignored': duplicates,
@@ -106,19 +110,28 @@ def reconstruct(packets, output, stem, budget_bytes, max_seconds=3600):
     for mode in ('payload', 'timestamp'):
         target = output / f'{stem}-{mode}.wav'
         with wave.open(str(target), 'wb') as stream:
-            stream.setnchannels(1); stream.setsampwidth(2); stream.setframerate(8000)
+            stream.setnchannels(1)
+            stream.setsampwidth(2)
+            stream.setframerate(8000)
             cursor = 0
             for pos, pcm in placements:
                 if mode == 'payload':
-                    stream.writeframesraw(pcm); continue
+                    stream.writeframesraw(pcm)
+                    continue
                 if pos > cursor:
-                    gap = pos - cursor; silence += gap
+                    gap = pos - cursor
+                    silence += gap
                     while gap:
-                        size = min(gap, 8000); stream.writeframesraw(b'\x00' * (size * 2)); gap -= size
+                        size = min(gap, 8000)
+                        stream.writeframesraw(b'\x00' * (size * 2))
+                        gap -= size
                     cursor = pos
                 if pos < cursor:
-                    cut = min(cursor - pos, len(pcm) // 2); overlap += cut; pcm = pcm[cut * 2:]
-                stream.writeframesraw(pcm); cursor += len(pcm) // 2
+                    cut = min(cursor - pos, len(pcm) // 2)
+                    overlap += cut
+                    pcm = pcm[cut * 2:]
+                stream.writeframesraw(pcm)
+                cursor += len(pcm) // 2
         target.chmod(0o600)
         info['files'].append({'file': target.name, 'mode': mode, 'bytes': target.stat().st_size,
                               'duration_s': (payload_bytes // 2 if mode == 'payload' else samples) / 8000})
