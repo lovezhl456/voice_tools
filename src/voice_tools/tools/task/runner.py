@@ -135,6 +135,18 @@ def check(path, config_path=None):
                     params_for_validation = sip_environment(resolved_params, step, environment, Path(folder))
                     checked = subprocess.run([sys.executable, '-m', 'voice_tools', '--json', 'sip', 'validate', str(params_for_validation['scenario'])], capture_output=True, text=True, timeout=30)
                     if checked.returncode: item['issues'].append('SIP 场景离线校验失败：' + checked.stdout[-1500:])
+                    if step['action'] == 'run' and not params.get('dry_run'):
+                        scenario = read_json(params_for_validation['scenario'])
+                        detector = scenario.get('benchmark', {}).get('detector', {})
+                        if scenario.get('benchmark') and detector.get('backend', 'webrtcvad') == 'webrtcvad' and importlib.util.find_spec('webrtcvad') is None:
+                            item['issues'].append('中文时序评测缺少可选依赖 webrtcvad')
+                if step['tool'] == 'sip' and step['action'] == 'batch' and 'queue' in resolved_params:
+                    from voice_tools.tools.sip.batch import load_queue
+                    params_for_validation = sip_environment(resolved_params, step, environment, Path(folder))
+                    queue_plan = load_queue(params_for_validation['queue'])
+                    needs_vad = any(job['scenario'].get('benchmark') and job['scenario']['benchmark'].get('detector', {}).get('backend', 'webrtcvad') == 'webrtcvad' for job in queue_plan['jobs'])
+                    if not params.get('dry_run') and needs_vad and importlib.util.find_spec('webrtcvad') is None:
+                        item['issues'].append('中文时序批量评测缺少可选依赖 webrtcvad')
                 if item['network'] and not config.get('network_allowed', False): item['issues'].append('执行机配置未启用业务网络')
                 if item['linux_raw'] and os.environ.get('VT_HOST_PLATFORM', platform.system().lower()) != 'linux':
                     item['issues'].append('原始包发送须在 Linux 执行')
