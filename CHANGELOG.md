@@ -90,3 +90,5 @@
 - 可视化工作台生成批量执行文件及独立 SIPp 场景包，提供安装、使用和结果边界文档。
 - 验证：284 项完整回归（11 跳过）、42 项受影响范围复验、14 项批量专项、22 项 Studio 核心、9 组 CLI 兼容场景通过；桌面 / 手机 UI 与本机 4 通并发 2 验收通过。RFC4733 原始发包受 macOS 权限限制，详见 [验收记录](docs/sip-batch-validation.md)。
 - PR：[#16](https://github.com/lovezhl456/voice_tools/pull/16)，未合并，不标为已交付。
+
+- 2026-09-20 main integration: 315 Python tests passed (0 skipped), 22 Studio tests and 9 CLI compatibility cases passed; native batch assertion pass/fail aggregation verified. See [validation](docs/sip-batch-validation.md).

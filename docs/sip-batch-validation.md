@@ -35,3 +35,12 @@ RFC4733 原始错误：`Can't create raw IPv4 socket (need to run as root?): Ope
 - 原有 `sipp-prepare` / `sipp-run` 单通话原包回放保持原路径。
 
 本机原始日志、截图保存在工作树忽略目录 `.local/batch-validation/`。仓库中保留测试代码、复现脚本和精简结果 [sip-batch-validation.json](sip-batch-validation.json)。
+
+## 2026-09-20 · 合入 main 后复验
+
+- 主线基线：`d44599c`（PR #14 的 SIP 断言，包含 PR #15 的 sngrep 文档）。保留两侧文档和功能，源码 / CLI / schema 继续使用 0.9.1。
+- 全仓启用本机 SIP 集成测试：`VOICE_TOOLS_SIP_LOOPBACK=1 PYTHONPATH=src python -m unittest discover -s tests -v`，315 项全部通过，无跳过，包含主线的 19 项原生 SIP 测试。
+- Studio 核心 22 项通过；CLI 兼容 9 个场景通过。此轮没有修改 HTML / JS / CSS，保留前轮 UI 验收范围。
+- 新增两个集成边界测试：功能队列逐项保留断言；SIPp 明确拒绝非空功能断言，不静默删除。
+- 另行执行两通真实回环呼叫、并发 2：预期 200 的任务通过，故意预期 486 的任务在呼叫正常完成后因断言不匹配而失败，整批结果正确为 failed。
+- 重新生成 schema，核对批量命令与 sip_assertions=1.0 合同同时存在；冲突标记、版本一致性及相关文档链接检查通过。

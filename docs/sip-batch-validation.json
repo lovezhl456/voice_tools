@@ -81,5 +81,27 @@
     }
   },
   "rfc4733_limitation": "macOS raw IPv4 socket denied; no native media delivery verified",
-  "pcap_independent_decode": "tshark decoded RFC4733 PT101, repeated keys 11#, duration 1280 RTP ticks, 3 end packets per key"
+  "pcap_independent_decode": "tshark decoded RFC4733 PT101, repeated keys 11#, duration 1280 RTP ticks, 3 end packets per key",
+  "main_merge_validation": {
+    "date": "2026-09-20",
+    "main_commit": "d44599c638e34c500dcbffcf79e924640e98a835",
+    "full_regression": {
+      "tests": 315,
+      "passed": 315,
+      "skipped": 0
+    },
+    "studio_core_tests": 22,
+    "cli_compatibility_cases": 9,
+    "native_batch_assertions": {
+      "calls": 2,
+      "concurrency": 2,
+      "statuses": [
+        "completed",
+        "failed"
+      ],
+      "batch_status": "failed",
+      "verdict": "expected"
+    },
+    "conflicts_resolved": 6
+  }
 }
