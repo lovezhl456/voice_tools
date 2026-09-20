@@ -20,6 +20,8 @@ def validate_request(data, base):
     if data.get("schema_version") != "1.0" or data.get("kind") != "sipp_load":
         raise ValueError("压力配置须为 schema_version=1.0、kind=sipp_load")
     source, plan = resolve_scenario(data.get("scenario"), base)
+    if plan.get("benchmark"):
+        raise ValueError("SIPp 不支持媒体桥时序测量或 wait_audio，请使用 sip run/batch")
     if any(k in plan["account"] for k in ("auth", "registrar_uri", "proxy_uri")):
         raise ValueError("SIPp 压力导出暂不支持认证、REGISTER 或代理；请用功能批量测试")
     if source.get("assertions"):

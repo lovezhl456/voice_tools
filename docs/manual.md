@@ -171,3 +171,7 @@ HOMER 有独立退出码，6 表示部分搜索结果，见 [HOMER 手册](homer
 ## 输出中途间隙复核
 
 录音已开始输出却中途停顿时，使用 `voice-tools gaps analyze`。它独立输出候选、事件排除原因和 RTP/NISQA 旁证，支持单独 CLI、时间轴试听、人工补标与跨机复核。安装、批量示例、退出码见 [完整使用指南](output-gaps.md)，数据接入见 [合同](output-gaps-contract.md)。QA 原有应答机会和黄金集保持独立。
+
+## 中文电话时序（0.13.1）
+
+SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](benchmark.md)。

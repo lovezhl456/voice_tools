@@ -24,7 +24,7 @@ class LoopbackTests(unittest.TestCase):
         tmp = tempfile.TemporaryDirectory(); self.addCleanup(tmp.cleanup)
         self.root = Path(tmp.name)
 
-    def call(self, mode="answer", early=False, steps=None, interrupt=False, interrupt_signal=signal.SIGINT, audio_seconds=.4, assertions=None):
+    def call(self, mode="answer", early=False, steps=None, interrupt=False, interrupt_signal=signal.SIGINT, audio_seconds=.4, assertions=None, benchmark=None):
         peer_dir = self.root / "peer"
         log = (self.root / "peer.log").open("w"); self.addCleanup(log.close)
         peer = subprocess.Popen([sys.executable, "-m", "tests.sip.loopback_peer", "--out", str(peer_dir), "--mode", mode, "--duration", "8"], stdout=log, stderr=log)
@@ -37,6 +37,8 @@ class LoopbackTests(unittest.TestCase):
         self.assertTrue((peer_dir / "ready.json").exists(), (self.root / "peer.log").read_text())
         info = json.loads((peer_dir / "ready.json").read_text())
         spec = template(); spec["target_uri"] = f"sip:peer@127.0.0.1:{info['sip_port']}"
+        if benchmark is not None:
+            spec.update(schema_version="1.1", benchmark=benchmark)
         for attempt in range(100):
             free_port = random.randrange(20000, 45000, 2)
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as a, socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as b:

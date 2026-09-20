@@ -56,3 +56,10 @@ wavesurfer.js 的版权归原权利人所有；分发源码或二进制时保留
 ## hiccup 问题定义参考
 
 参考 https://github.com/AhmadIbrahiim/hiccup/tree/260c92e867203f192dd8d5c37879b4e624ec3f11 对输出中途停顿的分类。gaps 独立实现；未复制其源码、测试或页面，不作为运行依赖。新增自有实现沿用本仓库 Apache-2.0；共享 WaveSurfer 资源及 BSD 许可证位于 `src/voice_tools/core/review/vendor/`。
+
+## telephony-voice-agent-benchmark（设计参考）
+
+- 来源：https://github.com/ictinnovations/telephony-voice-agent-benchmark
+- 固定参考提交：`fdc4410316110a163c25efecb53aa66459526b7c`；上游 MIT 许可见该提交的 LICENSE。
+- 本版选择性借鉴时序测量和故障模拟思路，独立实现 SIP 媒体观测与中文模板。未复制上游源代码、文件或素材，不是依赖或 vendored 组件；参考仓库保持独立且保留原 LICENSE。
+- 若后续复制实际源码，须同时保留上游完整 MIT 版权与许可声明，不能仅依赖这条设计来源说明。

@@ -1,6 +1,6 @@
 # 跨主机任务与结果复查
 
-版本：0.12.1。任务由本机编排，Docker 执行端完成业务操作；完整结果包带回后离线复查。Studio 不承担远程控制或后台呼叫服务。
+版本：0.13.1。任务由本机编排，Docker 执行端完成业务操作；完整结果包带回后离线复查。Studio 不承担远程控制或后台呼叫服务。
 
 ```mermaid
 flowchart LR
@@ -22,11 +22,11 @@ flowchart LR
 ./vt prepare --platform linux/amd64   # 在对应架构机器准备，或使用 Docker 仿真
 ```
 
-统一镜像 `voice-tools-executor:0.12.1` 使用 Python 3.11，包含现有业务 CLI、FFmpeg、tshark、SIPp、PJSUA2、NISQA CPU 依赖和固定源码版本的 ViSQOL 后端。ViSQOL 自带评分模型与许可随后端导出；NISQA 权重独立准备、校验并挂载。镜像不包含录音、账号、SSH 私钥或用户凭据。Bazel/PJSIP 编译可能持续较长时间；构建成功不等于目标线路通过。
+统一镜像 `voice-tools-executor:0.13.1` 使用 Python 3.11，包含现有业务 CLI、FFmpeg、tshark、SIPp、PJSUA2、NISQA CPU 依赖和固定源码版本的 ViSQOL 后端。ViSQOL 自带评分模型与许可随后端导出；NISQA 权重独立准备、校验并挂载。镜像不包含录音、账号、SSH 私钥或用户凭据。Bazel/PJSIP 编译可能持续较长时间；构建成功不等于目标线路通过。
 
 NISQA 的权重使用要求见 [NISQA 文档](nisqa.md)。准备好权重目录后设置 `VT_MODELS_DIR`；`executor.json` 的 `model_dir` 使用容器路径 `/models/nisqa`。需要首次下载时显式使用现有 `voice-tools nisqa download`，不要把模型放进任务素材目录。
 
-不同 CPU 架构分别准备镜像。可用 `VT_IMAGE` 指定不同的本地镜像名；开发时 `VT_NATIVE_IMAGE` 可复用同架构、同 Python 3.11 的已验证 native 构建阶段，默认仍从源码准备。向不联网的同架构执行机转移环境，可用 `docker save voice-tools-executor:0.12.1 -o executor-image.tar`，目标机执行 `docker load -i executor-image.tar`。同时复制仓库中的 `vt` 与 `scripts/task_host.py`，或完整仓库。记录实际 image ID；任务包和模型分别传送。
+不同 CPU 架构分别准备镜像。可用 `VT_IMAGE` 指定不同的本地镜像名；开发时 `VT_NATIVE_IMAGE` 可复用同架构、同 Python 3.11 的已验证 native 构建阶段，默认仍从源码准备。向不联网的同架构执行机转移环境，可用 `docker save voice-tools-executor:0.13.1 -o executor-image.tar`，目标机执行 `docker load -i executor-image.tar`。同时复制仓库中的 `vt` 与 `scripts/task_host.py`，或完整仓库。记录实际 image ID；任务包和模型分别传送。
 
 | 宿主环境 | 本轮设计范围 | 网络条件 |
 |---|---|---|

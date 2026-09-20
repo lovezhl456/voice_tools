@@ -2,3 +2,8 @@
 
 :focus-visible{outline:3px solid #c97732;outline-offset:3px} .row-button{overflow-wrap:anywhere} select{max-width:100%} dialog textarea{max-width:100%}
 .step-add select{flex:1;min-width:0;width:auto}.step-add button{flex:0 0 auto;white-space:nowrap}
+
+/* Timing evidence uses the existing responsive workbench. */
+.bench-timeline{margin:20px 0}.bench-track{display:grid;grid-template-columns:135px 1fr;gap:12px;align-items:center;margin:12px 0}.bench-bars{height:38px;position:relative;background:#eef2f6;border-radius:8px;overflow:hidden}.bench-span{position:absolute;top:5px;height:28px;min-width:3px;padding:0;border:0;border-radius:4px;background:#247c91}.bench-span.tx{background:#b56d35}.bench-table{overflow-x:auto}.bench-table table{width:100%;border-collapse:collapse}.bench-table td,.bench-table th{padding:12px;text-align:left;border-bottom:1px solid #e3e8ee}.bench-table button{text-align:left}@media(max-width:700px){.bench-track{grid-template-columns:1fr;gap:5px}.bench-table td,.bench-table th{padding:8px;font-size:13px}}
+
+.bench-markers{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.bench-markers button{font-size:12px}

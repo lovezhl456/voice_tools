@@ -135,6 +135,18 @@ def check(path, config_path=None):
                     params_for_validation = sip_environment(resolved_params, step, environment, Path(folder))
                     checked = subprocess.run([sys.executable, '-m', 'voice_tools', '--json', 'sip', 'validate', str(params_for_validation['scenario'])], capture_output=True, text=True, timeout=30)
                     if checked.returncode: item['issues'].append('SIP 场景离线校验失败：' + checked.stdout[-1500:])
+                    if step['action'] == 'run' and not params.get('dry_run'):
+                        scenario = read_json(params_for_validation['scenario'])
+                        detector = scenario.get('benchmark', {}).get('detector', {})
+                        if scenario.get('benchmark') and detector.get('backend', 'webrtcvad') == 'webrtcvad' and importlib.util.find_spec('webrtcvad') is None:
+                            item['issues'].append('中文时序评测缺少可选依赖 webrtcvad')
+                if step['tool'] == 'sip' and step['action'] == 'batch' and 'queue' in resolved_params:
+                    from voice_tools.tools.sip.batch import load_queue
+                    params_for_validation = sip_environment(resolved_params, step, environment, Path(folder))
+                    queue_plan = load_queue(params_for_validation['queue'])
+                    needs_vad = any(job['scenario'].get('benchmark') and job['scenario']['benchmark'].get('detector', {}).get('backend', 'webrtcvad') == 'webrtcvad' for job in queue_plan['jobs'])
+                    if not params.get('dry_run') and needs_vad and importlib.util.find_spec('webrtcvad') is None:
+                        item['issues'].append('中文时序批量评测缺少可选依赖 webrtcvad')
                 if item['network'] and not config.get('network_allowed', False): item['issues'].append('执行机配置未启用业务网络')
                 if item['linux_raw'] and os.environ.get('VT_HOST_PLATFORM', platform.system().lower()) != 'linux':
                     item['issues'].append('原始包发送须在 Linux 执行')
@@ -193,6 +205,12 @@ def classify(tool, action, code, payload):
         if tool == 'capture' and action == 'ring-start': return 'remote_running'
         return 'completed'
     if code == 1 and tool in ('qa', 'gaps'): return 'findings'
+    if code == 1 and tool == 'benchmark' and action in ('analyze', 'summarize'):
+        # A crashed subprocess may also exit 1; only a valid findings receipt permits dependants to run.
+        if (isinstance(payload, dict) and payload.get('ok') is True
+                and payload.get('status') == 'findings' and payload.get('exit_code') == code):
+            return 'findings'
+        return 'failed'
     if code == 1 and tool == 'nisqa': return 'insufficient_evidence'
     if code == 6 and tool == 'homer': return 'partial'
     if code == 3 and tool == 'sip':

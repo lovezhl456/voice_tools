@@ -198,8 +198,12 @@ VOICE_TOOLS_SIP_LOOPBACK=1 python -m unittest tests.sip.test_loopback -v
 
 默认单元测试跳过需要网络和原生库的回环项。显式开启后实际检查 UDP 媒体、按键、录音、Digest、提前媒体、忙线、对端挂断和导入 PCAP 的按键去重；不是只 mock SDK。结果不替代真实网关／NAT／运营商互通验收。
 
-修改动作或字段时同步更新 [Agent 协议](sip-ai.md)、示例、测试，并从实际 CLI 重新生成 `docs/cli-schema.json`。保持工具边界：`tools/sip` 可以使用公共 `core`，不直接导入其他工具。
+修改动作或字段时同步更新 [Agent 协议](sip-ai.md)、示例、测试，并从实际 CLI 重新生成 `docs/cli-schema.json`。保持工具边界：`tools/sip` 使用公共 `core`；时序扩展仅复用 `benchmark` 的配置、媒体观测和离线分析模块，不调用其 CLI 或上游参考仓库。
 
 ## 结构化断言
 
 0.8.1 支持应答码、接收 RTP、最小有效音频及预期 DTMF／音调。配置、三态结果与退出码见 [SIP 断言](sip-assertions.md)。使用 `examples/sip/assertions.json` 可离线校验及预演。
+
+## 中文电话时序（0.13.1）
+
+SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](benchmark.md)。
