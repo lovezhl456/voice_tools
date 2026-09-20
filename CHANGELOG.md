@@ -1,8 +1,21 @@
 # 版本记录与迭代规则
 
+## 0.11.1 · ViSQOL 全参考音质评估
+
+- 状态：实现与本地验收完成，待 PR 审阅，尚未合并交付。
+- 工作分支：`feat/v0.11.1-visqol`；已同步主线 `b46d681`，保留 NISQA Docker、NISQA CLI 和 SIP 批量功能。
+- 范围：`voice-tools visqol doctor / score / batch`、固定版本 CPU 安装脚本、官方样本实战、下载/安装/使用文档与结构化结果。
+- 本机已完成：M1 Max / 32 GiB 源码编译、语音/一般音频真实评分、独立 wheel 评分、批次部分失败与证据保留；上游 20 项一致性和 3 项 TFLite 测试通过。
+- 主线合入后全仓 354 项，322 项执行通过、32 项可选测试跳过。最终 CSV 错误处理小修复后 17 项 ViSQOL 专项和重建 wheel 真实评分通过。
+- Mac 验证与资源记录见 [ViSQOL 本机实战](docs/visqol-local-validation.md)；生产通话未验收。
+- PR：[#18](https://github.com/lovezhl456/voice_tools/pull/18)，待审阅，尚未合并。
+- Linux 补充验收完成：本地 Docker 的 Ubuntu 22.04 / amd64 在 M1/QEMU 下完成编译、3 个官方短基准、真实单对/批量与部分失败；非 root、禁网、只读系统的独立运行镜像评分通过。不是原生 x86 Linux 主机性能验收。
+- 增加工具与运行 Dockerfile、显式 QEMU/Bazel 启动兼容、校验后端导出与 Linux 验收脚本。最终 Mac/Linux 各 23 项 ViSQOL 专项通过；[Linux 安装使用](docs/visqol-docker.md)及[实测记录](docs/visqol-linux-validation.md)已补齐，沿用尚未合并的 `0.11.1` 版本。
+- 合入最新 `b46d681`（NISQA Docker PR #19）后，Mac 全仓 360 项：328 项执行通过、32 项可选测试跳过；CLI schema 与文档完全一致。此次主线同步未改变运行代码或 ViSQOL 安装/验证脚本，保留上述 Linux 实测范围。
+
 ## 0.10.2 · NISQA Linux Docker 部署与验收
 
-- **状态：实现与 Linux Docker 验收完成，[PR #19](https://github.com/lovezhl456/voice_tools/pull/19) 待审阅，尚未合并交付。**
+- **状态：已随 [PR #19](https://github.com/lovezhl456/voice_tools/pull/19) 合入主线，合并提交 `b46d681`。** 以下保留该迭代的验收记录。
 - 分支：`enhance/v0.10.2-nisqa-docker`；从已同步主线 `14ed371`（NISQA PR #17）创建。
 - 范围：CPU Docker 镜像定义、构建上下文排除权重/录音、Linux 安装和断网真实推理验证、Docker 使用文档与资源记录。
 - 两架构构建及真实断网评分通过：`linux/arm64` 原生虚拟化，`linux/amd64` 本机模拟；独立完成 Linux CLI 权重下载、哈希校验、多采样率/声道批量及失败路径验证。
@@ -12,7 +25,7 @@
 
 ## 0.10.1 · NISQA 本地听感评分
 
-- **状态：已随 [PR #17](https://github.com/lovezhl456/voice_tools/pull/17) 合入主线，合并提交 `14ed371`。** 以下保留当轮 Mac 验收范围。
+- **状态：已随 [PR #17](https://github.com/lovezhl456/voice_tools/pull/17) 合入主线，合并提交 `14ed371`。** 以下保留该迭代的验收记录。
 - 开发分支：`feat/v0.10.1-nisqa`，从已同步的 `origin/main`（`d44599c`）创建。
 - `0.9.1` 已随 SIP 批量队列 PR #16 合入主线（`374456f`），本分支已同步该更新，新功能使用 `0.10.1`。
 - 目标：可选 CPU NISQA 依赖、离线诊断、显式下载/哈希校验、按声道分段批量评分、JSON/JSONL/CSV 输出和 Linux/Mac 文档。权重、录音、环境和结果不入 Git。
@@ -58,9 +71,9 @@
 
 ## 当前状态与编号迁移
 
-- 当前已合入主线的基线为 **`0.10.1`**，对应 [PR #17](https://github.com/lovezhl456/voice_tools/pull/17) 合并提交 `14ed371`；Docker 验证分支已同步该基线。
-- 当前 NISQA 开发分支源码、CLI 和机器接口文档统一为 **`0.10.2`**；合并前不标为已交付。
-- 本次功能交付目标：**`0.10.2`**，待 PR 验证及合并。
+- 当前已合入主线的基线为 **`0.10.2`**，对应 [PR #19](https://github.com/lovezhl456/voice_tools/pull/19) 合并提交 `b46d681`。
+- 当前 ViSQOL 分支已同步 NISQA 与 SIP 批量功能，源码、CLI 和机器接口文档统一为 **`0.11.1`**；合并前不标为已交付。
+- 本次功能交付目标：**`0.11.1`**，待 PR 验证及合并。
 - 下表是根据现有 Git 合并历史重新编排的版本，不表示过去实际发布过这些版本号；建立台账时仓库没有发布标签。不补打历史发布标签，不改写旧报告中的原版本号。
 
 ## 历史迭代编排
@@ -80,7 +93,8 @@
 | `0.7.1` | SIP 用例编排工作台原型 | [PR #12](https://github.com/lovezhl456/voice_tools/pull/12) · `4d003a6` |
 | `0.8.1` | SIP 结构化测试断言 | [PR #14](https://github.com/lovezhl456/voice_tools/pull/14) · `d44599c` |
 | `0.9.1` | SIP 批量队列与 SIPp 压力测试 | [PR #16](https://github.com/lovezhl456/voice_tools/pull/16) · `374456f` |
-| `0.10.1` | NISQA 本地 CPU 听感评分 CLI | [PR #17](https://github.com/lovezhl456/voice_tools/pull/17) · `14ed371` |
+| `0.10.1` | NISQA 本地听感评分 | [PR #17](https://github.com/lovezhl456/voice_tools/pull/17) · `14ed371` |
+| `0.10.2` | NISQA Linux Docker 部署 | [PR #19](https://github.com/lovezhl456/voice_tools/pull/19) · `b46d681` |
 
 历史功能的验证范围以各 PR 和当时的验收记录为准；此表只记录功能归属与合入证据。
 

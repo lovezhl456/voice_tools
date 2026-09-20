@@ -12,6 +12,7 @@
 
 | 工具 | 适用场景 | 命令入口 | 使用文档 |
 |---|---|---|---|
+| **ViSQOL 音质对比** | 对照干净原声，评估线路/编码/传输后的音质；提供本地安装与官方样本演示 | `voice-tools visqol doctor / score / batch` | [下载、安装与使用](docs/visqol.md) · [Mac 实战](docs/visqol-local-validation.md) · [Linux / Docker](docs/visqol-docker.md) |
 | **NISQA 听感评分** | CPU 分段预测录音的整体质量、噪声、断续、音色和响度 | `voice-tools nisqa download / doctor / analyze` | [安装、权重下载与使用](docs/nisqa.md) · [本地验收](docs/nisqa-validation.md) |
 | **SIP 自动拨测** | 轻量 SIP UDP 呼叫、播放/按键/录音，PCAP 素材导入与独立 SIPp 回放 | `voice-tools sip` / `voice-sip` | [使用手册](docs/sip.md) · [大模型协议](docs/sip-ai.md) |
 | **录音体检与准备** | 查看逐轨音频健康指标，转换为保留声道和时间映射的 PCM16 WAV | `voice-tools audio inspect / prepare` | [人工使用手册](docs/manual.md) |
@@ -36,6 +37,8 @@ python -m pip install -e .
 
 voice-tools --help
 voice-tools schema --tool qa
+voice-tools visqol --help
+voice-tools schema --tool visqol
 voice-tools audio --help
 voice-tools qa --help
 voice-tools homer --help
@@ -121,7 +124,7 @@ voice-tools report build --capture outputs/call-capture --audio data/call.wav \
 | 入口 | 内容 |
 |---|---|
 | [架构与扩展约定](docs/architecture.md) | 模块边界、命令注册、新增工具步骤 |
-| [工具源码](src/voice_tools/tools) | `audio/`、`recording_qa/`、`homer/`、`capture/`、`sessions/` 与 `report/`，各自维护业务逻辑 |
+| [工具源码](src/voice_tools/tools) | `visqol/`、`audio/`、`recording_qa/`、`homer/`、`capture/`、`sessions/` 与 `report/`，各自维护业务逻辑 |
 | [测试](tests) | 录音场景、人工复核、模拟 SSH/HOMER、PCAP 会话检索与统一入口回归 |
 | [CI 模板](docs/ci.example.yml) | Python 3.9 / 3.12 / 3.13 测试模板，尚未启用 |
 | [HOMER 整合来源](docs/homer/integration.md) | 原包校验值、迁移范围与保留的历史资料 |

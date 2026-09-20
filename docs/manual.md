@@ -6,6 +6,8 @@ NISQA 的 CPU 听感评分通过 `voice-tools nisqa` 使用：见[安装、下�
 
 SIP 时序排障可结合 [sngrep 联动快速说明](sngrep-workflow.md)和[安装使用手册](sngrep.md)，通过已有抓包文件衔接。
 
+ViSQOL 需要同一句干净原声与待测音频。参见[下载、安装、CLI 使用指南](visqol.md)与[本机实战记录](visqol-local-validation.md)。
+
 ## 安装
 
 Python 3.9+，CPU 运行，无需 API Key。仓库根目录执行：

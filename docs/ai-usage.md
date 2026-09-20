@@ -1,6 +1,6 @@
 # voice_tools · 大模型 / Agent 接入协议
 
-Version 0.10.2. The CLI is the primary interface. Use a local subprocess with an argv array; no MCP server is required. Audio/QA are offline CPU tools. HOMER online commands contact only the configured instance; offline schema and analyze --input need no credentials.
+Version 0.11.1. The CLI is the primary interface. Use a local subprocess with an argv array; no MCP server is required. Audio/QA are offline CPU tools. HOMER online commands contact only the configured instance; offline schema and analyze --input need no credentials.
 
 NISQA is optional (Python 3.10+, `.[nisqa]`). Discover `voice-tools schema --tool nisqa`; explicitly download licensed weights with `nisqa download`, inspect offline metadata/hash with `nisqa doctor`, and score with `nisqa analyze`. Only download uses the network; analyze refuses missing/corrupt local weights. Stereo requires explicit left/right/both; mono is never duplicated. Results are per channel and segment, with named MOS/noisiness/discontinuity/coloration/loudness scores. Short/silent segments have null scores and exit 1; processing errors preserve other results and exit 3. RMS is not a VAD. Doctor readiness only checks metadata/hash, not runtime inference. Respect CC BY-NC-SA 4.0 weights; changing wrappers does not authorize commercial use. See [NISQA](nisqa.md).
 
@@ -35,7 +35,7 @@ Audio/QA emit one JSON object on stdout, including handled errors. No progress p
 
 ```json
 {
-  "schema_version": "1.0", "tool_version": "0.10.2",
+  "schema_version": "1.0", "tool_version": "0.11.1",
   "tool": "qa", "action": "analyze", "ok": true,
   "exit_code": 0, "status": "completed",
   "summary": {"files": 20, "errors": 0, "candidates": 11},
@@ -123,3 +123,9 @@ Use `capture ring-start/status/fetch/stop/release` for bounded remote ring jobs.
 Use `capture by-number --inventory ... --caller ...` or `--callee ...` for a bounded server-side capture followed by per-Call-ID splitting and session ZIP download. Repeated values are OR within a role and AND across caller/callee; matching is exact, without phone-number normalization. Direction comes from FS role records or initial SIP INVITEs, not reverse in-dialog requests. `--dry-run` is offline. Use `capture fetch-number --job ... --out ... [--wait]` after disconnection; inspect `number.json`, each host's `manifest.json`, matched/exported/omitted counts and partial status. Only selected session bundles are downloaded; raw scoped captures remain on servers. See [number capture](capture-by-number.md) for remote dependencies, quotas and evidence limits.
 
 Do not merge arbitrary PCAPs across sensors. Use explicit `--pcap-group SENSOR FILE FILE...` or known host manifests. `--decode-rtp` writes optional G.711 payload/timestamp WAVs; unsupported/SRTP packets are not decoded. SR/RR/XR values are endpoint reports, and capture-point RTT estimates are not one-way latency. A complete pipeline does not certify capture completeness or a root cause. See [capture-v2](capture-v2.md) for quotas, ESL credentials and recovery.
+
+## ViSQOL reference-based scoring
+
+Use `voice-tools schema --tool visqol` for the actual contract. `doctor` only checks native executable/model files. `score --reference ... --degraded ... --out ...` and `batch --pairs ... --out ...` require a separately installed local ViSQOL backend. `speech` expects mono PCM16 16 kHz WAV; `audio` expects 48 kHz. The caller must establish corresponding content. No automatic resampling, mixing or quality threshold is applied. Read [installation and usage](visqol.md) and [local validation](visqol-local-validation.md).
+
+A score is not human MOS or proof of a fault cause. Exit 3 preserves per-pair failures with null scores; the mean excludes failed pairs. Do not describe a partial batch as completed. Native stdout/stderr is stored in artifacts, leaving one JSON envelope on stdout. Output directories must be new/empty. Installation is explicit and online; scoring is CPU/offline.
