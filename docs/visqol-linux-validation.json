@@ -417,5 +417,16 @@
     "仅三个上游短样本基准，不冒充完整 20+3 项上游测试。",
     "Mac 与 Linux 的 FFmpeg 版本和重采样输入 SHA256 不同，16 kHz 演示分数不能用于跨平台一致性断言。",
     "资源配置是本次测试限制，不是官方最低要求。"
-  ]
+  ],
+  "post_merge_regression": {
+    "base_main_commit": "b46d681",
+    "platform": "macOS",
+    "run": 360,
+    "passed": 328,
+    "skipped": 32,
+    "elapsed_s": 60.533,
+    "runtime_source_and_visqol_scripts_changed_by_merge": false,
+    "schema_snapshot_matches_cli": true,
+    "scope": "主线 NISQA Docker 合入后的 Mac 全仓回归；不充当 Linux 全仓证据。"
+  }
 }
