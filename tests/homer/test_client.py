@@ -263,8 +263,14 @@ class CliIntegration(unittest.TestCase):
         self.assertEqual(self.server.requests, [])
 
     def test_global_options_before_and_after_subcommand(self):
-        self.run_cli('--url', self.url, 'doctor')
-        self.run_cli('doctor', '--url', self.url)
+        env = dict(self.env, HOMER_URL=self.url + '/wrong-prefix')
+        for args in (('--url', self.url, 'doctor'), ('doctor', '--url', self.url)):
+            with self.subTest(args=args):
+                self.server.requests.clear()
+                self.run_cli(*args, env=env)
+                self.assertTrue(self.server.requests)
+                self.assertTrue(all(path.startswith('/homer/api/v3/')
+                                    for _, path, _, _ in self.server.requests))
 
     def test_mapping_string_and_malformed_field(self):
         fields = self.server.mapping['data'][0]['fields_mapping']

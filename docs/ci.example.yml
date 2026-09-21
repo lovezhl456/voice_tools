@@ -1,4 +1,7 @@
-name: tests
+# 未启用的 Python 示例；不是完整交付门禁。
+# 使用前按 docs/testing.md 准备系统工具及 Node：部分 Python 测试也会调用它们。
+# 此示例不包含 Node 测试、Studio/CLI 兼容和浏览器验收，不能称为默认全量通过。
+name: python-tests-example
 on:
   push:
   pull_request:
@@ -20,5 +23,7 @@ jobs:
       - run: python -m pip install -e .
       - if: matrix.python-version == '3.12'
         run: python -m pip install -e '.[vad]'
-      - run: python -m unittest discover -s tests -v
+      - run: >-
+          env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR
+          PYTHONPATH="$PWD/src" python -m unittest discover -s tests -v
       - run: voice-tools --help

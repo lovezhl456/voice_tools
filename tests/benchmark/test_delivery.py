@@ -1,11 +1,14 @@
+import json
 import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
+from tests.html_fixtures import Page
 from tests.sip.fixtures import tone
 from voice_tools.core.files import read_json, write_json
 from voice_tools.tools.benchmark.templates import case
+from voice_tools.tools.latency import report as latency_report
 from voice_tools.tools.task import bundle, runner, review
 
 
@@ -58,6 +61,31 @@ class TimingDeliveryTests(unittest.TestCase):
         self.assertIn('"benchmark.analyze"', html)
         self.assertIn('"benchmark_templates"', html)
         self.assertTrue((output / "benchmark.js").is_file())
+        self.assertNotIn('/*__DATA__*/', html)
+        page = Page(html)
+        sources = [script['attrs']['src'] for script in page.scripts if 'src' in script['attrs']]
+        self.assertEqual(sources, ['benchmark.js', 'latency.js', 'app.js'])
+        self.assertEqual(page.stylesheets, ['style.css', 'latency.css'])
+        for name in sources + page.stylesheets:
+            directory = latency_report.WEB if name in ('latency.js', 'latency.css') else review.WEB
+            self.assertEqual((output / name).read_bytes(), (directory / name).read_bytes())
+        statements = [script['text'] for script in page.scripts if 'src' not in script['attrs']]
+        self.assertEqual(len(statements), 1)
+        self.assertTrue(statements[0].startswith('window.VT_DATA='))
+        data, end = json.JSONDecoder().raw_decode(statements[0][len('window.VT_DATA='):])
+        self.assertEqual(statements[0][len('window.VT_DATA=') + end:], ';')
+        self.assertEqual(data['mode'], 'author')
+        self.assertEqual(data['catalog']['benchmark.analyze']['tool'], 'benchmark')
+        self.assertEqual(data['catalog']['benchmark.analyze']['action'], 'analyze')
+        templates = data['benchmark_templates']
+        self.assertEqual(set(templates), {'greeting', 'response', 'interrupt', 'backchannel', 'hesitation'})
+        for name, item in templates.items():
+            with self.subTest(template=name):
+                self.assertTrue(item['title'])
+                self.assertIsInstance(item['phrases'], list)
+                self.assertEqual(item['scenario']['schema_version'], '1.1')
+                self.assertEqual(item['scenario']['benchmark']['case_id'], name)
+                self.assertEqual(item['scenario']['steps'][-1]['action'], 'hangup')
 
     def test_offline_cli_never_imports_native_modules(self):
         import subprocess

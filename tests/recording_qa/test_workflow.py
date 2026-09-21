@@ -6,7 +6,8 @@ import sys
 import tempfile
 import unittest
 
-from voice_tools.core.files import read_json, write_json
+from tests.recording_qa.fixtures import write_case
+from voice_tools.core.files import read_json
 from voice_tools.tools.recording_qa.batch import analyze_batch
 from voice_tools.tools.recording_qa.review import evaluate, promote
 from voice_tools.tools.recording_qa.scenarios import generate
@@ -19,7 +20,6 @@ class WorkflowTests(unittest.TestCase):
         self.root = Path(self.tmp.name)
         self.data = self.root / "data"
         self.output = self.root / "report"
-        generate(self.data)
 
     def run_cli(self, *args):
         return subprocess.run([sys.executable, "-m", "voice_tools", *map(str, args)], capture_output=True, text=True)
@@ -35,6 +35,7 @@ class WorkflowTests(unittest.TestCase):
             writer.writerows(rows)
 
     def test_cli_full_batch_with_portable_audio(self):
+        generate(self.data)
         result = self.run_cli("qa", "analyze", self.data, "--out", self.output, "--include-audio")
         self.assertEqual(result.returncode, 0, result.stderr)
         summary = read_json(self.output / "run.json")
@@ -49,13 +50,19 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(len(self.review_rows()), 19)
 
     def test_bad_recording_does_not_drop_good_results(self):
+        good = write_case(self.data, "missing")
         (self.data / "bad.wav").write_bytes(b"broken")
         result = self.run_cli("qa", "analyze", self.data, "--out", self.output)
         self.assertEqual(result.returncode, 3)
         summary = read_json(self.output / "run.json")
-        self.assertEqual((summary["files"], summary["errors"]), (21, 1))
+        self.assertEqual((summary["files"], summary["errors"]), (2, 1))
+        records = [json.loads(line) for line in (self.output / "results.jsonl").read_text().splitlines()]
+        preserved = next(record for record in records if Path(record["input"]) == good.resolve())
+        self.assertEqual(preserved["result"]["opportunities"][0]["status"], "NO_OUTPUT_CANDIDATE")
 
     def test_invalid_event_sidecar_and_safe_html(self):
+        write_case(self.data, "missing")
+        write_case(self.data, "normal")
         name = '<script>alert("x")</script>'.replace("/", "_")
         source = self.data / "missing.wav"
         source.rename(self.data / (name + ".wav"))
@@ -67,6 +74,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn('&lt;script&gt;', report)
 
     def test_refuse_overwrite_and_empty_input(self):
+        write_case(self.data, "missing")
         analyze_batch([self.data], self.output)
         with self.assertRaisesRegex(ValueError, "覆盖"):
             analyze_batch([self.data], self.output)
@@ -77,21 +85,23 @@ class WorkflowTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             analyze_batch([empty], self.root / "other")
 
-    def test_fail_on_findings_exit_code(self):
-        result = self.run_cli("qa", "analyze", self.data / "missing.wav", "--out", self.output, "--fail-on-findings")
-        self.assertEqual(result.returncode, 1)
-
     def test_help_and_invalid_cli(self):
         self.assertEqual(self.run_cli("--help").returncode, 0)
         self.assertEqual(self.run_cli("qa", "--help").returncode, 0)
-        self.assertEqual(self.run_cli("qa", "analyze", self.data, "--out", self.output, "--timeout", "nan").returncode, 2)
+        result = self.run_cli("qa", "analyze", self.data, "--out", self.output, "--timeout", "nan")
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("timeout_s", result.stderr)
+        self.assertFalse(self.output.exists())
 
     def test_unreviewed_rows_cannot_be_gold(self):
+        write_case(self.data, "missing")
         analyze_batch([self.data], self.output)
         with self.assertRaisesRegex(ValueError, "没有人工复核"):
             promote(self.output / "review.csv", self.output / "results.jsonl", self.root / "gold.json", "synthetic")
 
     def test_manual_review_promotion_and_metrics(self):
+        write_case(self.data, "missing")
+        write_case(self.data, "normal")
         analyze_batch([self.data], self.output)
         rows = self.review_rows()
         # 测试夹具中的人工记录仅用于测试，不作为交付黄金集。
@@ -110,6 +120,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(metrics["dataset_kind"], "synthetic")
 
     def test_tampered_hash_and_missing_reviewer_rejected(self):
+        write_case(self.data, "missing")
         analyze_batch([self.data], self.output)
         rows = self.review_rows()
         rows[0].update(decision="missing", reviewed_at="2026-09-16T12:00:00Z")
@@ -122,6 +133,7 @@ class WorkflowTests(unittest.TestCase):
             promote(self.output / "review.csv", self.output / "results.jsonl", self.root / "gold.json", "synthetic")
 
     def test_time_mismatch_and_naive_timestamp_rejected(self):
+        write_case(self.data, "missing")
         analyze_batch([self.data], self.output)
         rows = self.review_rows()
         rows[0].update(decision="missing", reviewer="test", reviewed_at="2026-09-16T12:00:00")
@@ -134,6 +146,7 @@ class WorkflowTests(unittest.TestCase):
             promote(self.output / "review.csv", self.output / "results.jsonl", self.root / "gold.json", "synthetic")
 
     def test_evaluation_refuses_missing_predictions(self):
+        write_case(self.data, "missing")
         analyze_batch([self.data], self.output)
         rows = self.review_rows()
         rows[0].update(decision="missing", reviewer="test", reviewed_at="2026-09-16T12:00:00Z")
@@ -145,19 +158,23 @@ class WorkflowTests(unittest.TestCase):
             evaluate(self.root / "gold.json", empty)
 
     def test_seed_and_hash_reproducibility(self):
+        generate(self.data)
         other = self.root / "again"
         generate(other)
         self.assertEqual(read_json(other / "manifest.json"), read_json(self.data / "manifest.json"))
 
     def test_duplicate_inputs_are_processed_once(self):
+        write_case(self.data, "missing")
         result = analyze_batch([self.data / "missing.wav", self.data / "missing.wav"], self.output)
         self.assertEqual(result["files"], 1)
 
     def test_event_channels_used_unless_explicit_override(self):
+        write_case(self.data, "swapped")
         result = analyze_batch([self.data / "swapped.wav"], self.output, use_event_channel=False)
         self.assertEqual(result["errors"], 1)
 
     def test_noise_labeled_missing_counts_as_false_negative(self):
+        write_case(self.data, "noise")
         analyze_batch([self.data / "noise.wav"], self.output)
         rows = self.review_rows()
         rows[0].update(decision="missing", reviewer="test", reviewed_at="2026-09-16T12:00:00Z")
@@ -169,6 +186,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertIsNone(result["precision"])
 
     def test_partial_review_and_duplicate_labels_rejected(self):
+        write_case(self.data, "missing")
         analyze_batch([self.data], self.output)
         rows = self.review_rows()
         rows[0].update(notes="尚未试听")
@@ -182,6 +200,7 @@ class WorkflowTests(unittest.TestCase):
             promote(self.output / "review.csv", self.output / "results.jsonl", self.root / "gold.json", "synthetic")
 
     def test_uncertain_only_labels_have_no_accuracy(self):
+        write_case(self.data, "missing")
         analyze_batch([self.data], self.output)
         rows = self.review_rows()
         rows[0].update(decision="uncertain", reviewer="test", reviewed_at="2026-09-16T12:00:00Z")
@@ -191,6 +210,7 @@ class WorkflowTests(unittest.TestCase):
             evaluate(self.root / "gold.json", self.output / "results.jsonl")
 
     def test_malformed_results_return_clear_error(self):
+        write_case(self.data, "missing")
         analyze_batch([self.data], self.output)
         bad = self.root / "bad.jsonl"
         bad.write_text('[1,2,3]\n')

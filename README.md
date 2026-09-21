@@ -128,12 +128,11 @@ voice-tools report build --capture outputs/call-capture --audio data/call.wav \
 | [架构与扩展约定](docs/architecture.md) | 模块边界、命令注册、新增工具步骤 |
 | [工具源码](src/voice_tools/tools) | `visqol/`、`audio/`、`recording_qa/`、`homer/`、`capture/`、`sessions/` 与 `report/`，各自维护业务逻辑 |
 | [测试](tests) | 录音场景、人工复核、模拟 SSH/HOMER、PCAP 会话检索与统一入口回归 |
-| [CI 模板](docs/ci.example.yml) | Python 3.9 / 3.12 / 3.13 测试模板，尚未启用 |
+| [测试指南](docs/testing.md) | 依赖与源码来源、按影响选测、默认全量、模型／原生专项及结果复用 |
+| [CI 模板](docs/ci.example.yml) | 尚未启用的 Python 示例，不能代替完整交付验证 |
 | [HOMER 整合来源](docs/homer/integration.md) | 原包校验值、迁移范围与保留的历史资料 |
 
-```bash
-python -m unittest discover -s tests -v
-```
+模块内部小改动先运行相关模块及调用方；公共接口、共享格式、跨工具流程变化及含代码／测试变更的 PR 交付前跑默认全量。同一代码状态的验证结果可复用。真实模型和 SIP 原生回环独立运行，命令与跳过边界见[测试指南](docs/testing.md)。
 
 新增工具时提供独立模块、文档和测试，注册命令后在本页工具列表增加入口。详细操作放在各工具手册，首页持续作为导航。
 
