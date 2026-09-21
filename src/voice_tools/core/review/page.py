@@ -19,5 +19,6 @@ def render_page(path, data, script, form=None, replacements=None):
     bundles = ("/* WaveSurfer.js 7.12.12 — " + (vendor / "wavesurfer.LICENSE.txt").read_text() + " */\n" + bundles).replace("</script", "<\\/script")
     page = template.replace("__REVIEW_SCRIPT__", script).replace("__WAVEFORM_VENDOR__", bundles)
     page = page.replace("__WAVEFORM_SCRIPT__", (ASSETS / "waveform.js").read_text())
+    page = page.replace("__FILE_FILTER_SCRIPT__", (ASSETS / "file-filter.js").read_text())
     page = page.replace("__PLAYBACK_SCRIPT__", (ASSETS / "playback.js").read_text())
     Path(path).write_text(page.replace("__REVIEW_DATA__", payload), encoding="utf-8")

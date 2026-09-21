@@ -9,6 +9,7 @@
   const message = text => { $('message').textContent = text; };
   const key = row => `${row.fingerprint}:${row.gap_id}`;
   const player = $('player');
+  const fileFilter = createReviewFileFilter(data.records, record => record.result.fingerprint, refreshFilters);
   const wave = createReviewWaveform(player, (a,b) => playback.setRange(a,b), message);
   const playback = createReviewPlayback(player, {duration:()=>current?.record.result.duration_s,
     seek:v=>wave.setTime(v), rangeChanged:(a,b)=>wave.syncRange(a,b), error:message});
@@ -18,14 +19,13 @@
   }
   for (const record of data.records) {
     if (!record.result) continue;
-    $('fileFilter').add(new Option(record.input.split(/[\\/]/).pop(),record.result.fingerprint));
     const gaps = record.result.gaps.length ? record.result.gaps : [{id:'inspect',type:'inspect',start_s:0,end_s:record.result.duration_s,status:record.result.status,evidence_level:'acoustic_only'}];
     for (const gap of gaps) entries.push({record,gap,row:rowFor(record,gap)});
   }
   $('statusFilter').replaceChildren(new Option('全部状态',''));
   for (const status of new Set(entries.map(e=>e.gap.status))) $('statusFilter').add(new Option(statuses[status]||status,status));
   function filtered() {
-    return entries.filter(e => (!$('fileFilter').value||e.row.fingerprint===$('fileFilter').value) &&
+    return entries.filter(e => fileFilter.matches(e.record) &&
       (!$('statusFilter').value||e.gap.status===$('statusFilter').value) &&
       (!$('evidenceFilter').value||e.gap.evidence_level===$('evidenceFilter').value) &&
       (!$('unreviewed').checked||!labels.has(key(e.row))));
@@ -54,6 +54,7 @@
     $('evidenceSummary').textContent=sources.length?sources.map(s=>`${s.kind.toUpperCase()}：${evidenceNames[s.status]||s.status}`).join('；'):(evidence.error||'未提供匹配的外部旁证');
     $('evidenceDetail').textContent=JSON.stringify({interval:gap,evidence:{...evidence,sources}},null,2);
     $('saveLabel').disabled=gap.type==='inspect';
+    message('');
     if(gap.type==='inspect')message('此录音没有自动候选；发现漏检时可调整试听范围并人工补标。');
     for(const [id,c] of [['leftTitle',0],['rightTitle',1]]) {
       $(id).querySelector('.role-name').textContent=result.config.system_channel===c?'AI':'用户';
@@ -92,13 +93,43 @@
     row={...row,decision:$('decision').value,reviewer:$('reviewer').value.trim(),reviewed_at:new Date().toISOString(),notes:$('notes').value};
     const record=valid(row); labels.set(key(row),row);
     if(manual)entries.push({record,row,gap:{id:row.gap_id,type:row.type,start_s:Number(row.start_s),end_s:Number(row.end_s),status:'CANDIDATE',evidence_level:'human_review'}});
-    dirty=true;formDirty=false;refresh();message('已记下；离开前请导出 CSV。');
+    dirty = true;
+    formDirty = false;
+    refresh();
+    reconcileSelection();
+    message('已记下；离开前请导出 CSV。');
   }
   $('reviewForm').onsubmit=e=>{e.preventDefault();try{save();}catch(err){message(err.message);}};
   $('manual').onclick=()=>{try{save(true);}catch(err){message(err.message);}};
-  $('discard').onclick=()=>{formDirty=false;if(current)select(current);message('已放弃尚未记下的表单修改。');};
+  function reconcileSelection() {
+    if (formDirty) return;
+    const visible = filtered();
+    if (visible.length && !visible.includes(current)) select(visible[0]);
+    else if (!visible.length) {
+      playback.pause();
+      current = null;
+      $('detail').hidden = true;
+    }
+  }
+  $('discard').onclick = () => {
+    formDirty = false;
+    reconcileSelection();
+    if (current) select(current);
+    message('已放弃尚未记下的表单修改。');
+  };
   for(const id of ['decision','reviewer','notes'])$(id).oninput=()=>{formDirty=true;};
-  for(const id of ['fileFilter','statusFilter','evidenceFilter','unreviewed'])$(id).onchange=refresh;
+  function refreshFilters() {
+    refresh();
+    if (formDirty && !filtered().includes(current))
+      message('筛选已更新；当前表单有未记下的修改，记下或放弃后再切换录音。');
+    else reconcileSelection();
+  }
+  for (const id of ['directoryFilter', 'fileFilter', 'statusFilter', 'evidenceFilter', 'unreviewed']) {
+    $(id).onchange = () => {
+      if (id === 'directoryFilter') fileFilter.updateFiles();
+      refreshFilters();
+    };
+  }
   $('channel').onchange=()=>{playback.setSource(current?.record.playback_sources?.[$('channel').value]||'');wave.syncChannel($('channel').value);};
   function download(content,name,type) {
     const url=URL.createObjectURL(new Blob([content],{type})),link=document.createElement('a');
