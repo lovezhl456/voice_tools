@@ -5,7 +5,7 @@
 - 状态：目录选择与文件名／路径模糊检索均已实现并完成本轮验收；[PR #31](https://github.com/lovezhl456/voice_tools/pull/31) 待审阅，尚未合并，沿用未发布的 0.15.2。对应 [issue #30](https://github.com/lovezhl456/voice_tools/issues/30)。
 - 分支：`enhance/v0.15.2-directory-filter`；基于主线 `c2bcdb1`，更新现有录音筛选功能。
 - 范围：QA 与输出间隙复核页增加目录／录音联动和实时关键词检索，不区分大小写，支持多关键词同时匹配；保留其他筛选和人工标注，兼容相对路径、Windows 路径和跨目录同名录音。
-- 验证：新增检索后重新执行 Python 全量 503 项（467 通过、36 条件跳过），内含 14 项 Node 筛选行为测试；Studio Node 24 项、CLI 兼容 9 场景通过。本轮两个入口共 43 项桌面／移动端检索与 CSV 检查、wheel 资源验证通过。详见[验证记录](docs/directory-filter-validation.md)。
+- 验证：最终 Python 全量 503 项，466 通过、36 条件跳过，1 项进程清理权限错误；该组 10 项补跑全部通过，合计覆盖 467 项通过。内含 14 项 Node 筛选行为测试；Studio Node 24 项、CLI 兼容 9 场景通过。本轮两个入口共 44 项桌面／移动端检索与 CSV 检查、wheel 资源验证通过。详见[验证记录](docs/directory-filter-validation.md)。
 
 ## 0.15.1 · 测试维护主线同步
 

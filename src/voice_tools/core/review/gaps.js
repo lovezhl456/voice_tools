@@ -54,6 +54,7 @@
     $('evidenceSummary').textContent=sources.length?sources.map(s=>`${s.kind.toUpperCase()}：${evidenceNames[s.status]||s.status}`).join('；'):(evidence.error||'未提供匹配的外部旁证');
     $('evidenceDetail').textContent=JSON.stringify({interval:gap,evidence:{...evidence,sources}},null,2);
     $('saveLabel').disabled=gap.type==='inspect';
+    message('');
     if(gap.type==='inspect')message('此录音没有自动候选；发现漏检时可调整试听范围并人工补标。');
     for(const [id,c] of [['leftTitle',0],['rightTitle',1]]) {
       $(id).querySelector('.role-name').textContent=result.config.system_channel===c?'AI':'用户';
