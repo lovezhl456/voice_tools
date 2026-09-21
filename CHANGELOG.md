@@ -1,5 +1,12 @@
 # 版本记录与迭代规则
 
+## 0.15.2 · 复核页目录优先选择
+
+- 状态：实现与本轮验收完成，待 PR 审阅，尚未合并；对应 [issue #30](https://github.com/lovezhl456/voice_tools/issues/30)。
+- 分支：`enhance/v0.15.2-directory-filter`；基于主线 `c2bcdb1`，更新现有录音筛选功能。
+- 范围：QA 与输出间隙复核页增加目录／录音联动，保留全部目录、其他筛选和人工标注；兼容相对路径、Windows 路径和跨目录同名录音。
+- 验证：Python 全量 503 项（467 通过、36 条件跳过），内含 7 项 Node 筛选行为断言；Studio Node 24 项、CLI 兼容 9 场景通过。两个入口共 50 项桌面／移动端浏览器检查、CSV 往返与 wheel 资源验证通过。详见[验证记录](docs/directory-filter-validation.md)。
+
 ## 0.15.1 · 测试维护主线同步
 
 - 状态：已将主线 `73c383e` 合入维护分支并完成本轮验证，待 [PR #29](https://github.com/lovezhl456/voice_tools/pull/29) 审阅；复用最初按 0.14.1 创建的分支 `test/v0.14.1-suite-maintenance`，当前产品版本随主线为 0.15.1，不另行升版。

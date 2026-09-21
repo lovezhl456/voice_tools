@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice-tools"
-version = "0.15.1"
+version = "0.15.2"
 description = "本地运行、CPU 优先的语音工具集"
 readme = "README.md"
 license = {file = "LICENSE"}

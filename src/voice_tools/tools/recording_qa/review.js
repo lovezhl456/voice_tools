@@ -21,6 +21,7 @@
     formDirty = false;
   const key = (row) => JSON.stringify([row.sample_id, row.opportunity_id]);
   const player = $('player');
+  const fileFilter = createReviewFileFilter(data.records, (record) => record.sample_id);
   function message(text) {
     $('message').textContent = text;
   }
@@ -39,8 +40,6 @@
   });
   for (const record of data.records) {
     if (!record.result) continue;
-    const option = new Option(record.input.split(/[\\/]/).pop(), record.sample_id);
-    $('fileFilter').add(option);
     for (const op of record.result.opportunities) {
       const row = {
         sample_id: record.sample_id,
@@ -70,7 +69,7 @@
       : null;
     filtered = entries.filter(
       (e) =>
-        (!$('fileFilter').value || e.row.sample_id === $('fileFilter').value) &&
+        fileFilter.matches(e.record) &&
         (!$('statusFilter').value || e.op.status === $('statusFilter').value) &&
         (!$('evidenceFilter').value || e.op.evidence_level === $('evidenceFilter').value) &&
         (!$('unreviewed').checked || !labels.has(e.key))
@@ -293,8 +292,9 @@
     if (current) select(current);
     message('已放弃未记下的修改，并恢复当前筛选结果。');
   };
-  for (const id of ['fileFilter', 'statusFilter', 'evidenceFilter', 'unreviewed'])
+  for (const id of ['directoryFilter', 'fileFilter', 'statusFilter', 'evidenceFilter', 'unreviewed'])
     $(id).onchange = () => {
+      if (id === 'directoryFilter') fileFilter.updateFiles();
       refresh();
       if (formDirty && !filtered.includes(current))
         message('筛选已更新；当前表单有未记下的修改，记下或放弃后再切换录音。');
