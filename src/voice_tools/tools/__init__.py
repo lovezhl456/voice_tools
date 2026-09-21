@@ -1,6 +1,7 @@
 """每个工具提供 register(subparsers)，新增工具仅在此注册。"""
 
 BUILTIN_TOOLS = (
+    "voice_tools.tools.latency.cli",
     "voice_tools.tools.gaps.cli",
     "voice_tools.tools.benchmark.cli",
     "voice_tools.tools.task.cli",

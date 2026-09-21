@@ -63,3 +63,12 @@ wavesurfer.js 的版权归原权利人所有；分发源码或二进制时保留
 - 固定参考提交：`fdc4410316110a163c25efecb53aa66459526b7c`；上游 MIT 许可见该提交的 LICENSE。
 - 本版选择性借鉴时序测量和故障模拟思路，独立实现 SIP 媒体观测与中文模板。未复制上游源代码、文件或素材，不是依赖或 vendored 组件；参考仓库保持独立且保留原 LICENSE。
 - 若后续复制实际源码，须同时保留上游完整 MIT 版权与许可声明，不能仅依赖这条设计来源说明。
+
+## SignalWire latency_checker（可选外部引擎）
+
+- 项目：https://github.com/signalwire/latency_checker
+- 固定提交：`0d71ca1f42a59744258420e4074ae0378f86c857`；MIT。
+- 许可原文随包分发：`src/voice_tools/tools/latency/resources/upstream-LICENSE.txt`。源码保持在独立安装前缀的 source/，安装器下载和验证固定归档。
+- 本包携带受控补丁及校验清单，保留原作者许可；适配名称为 voice-tools-latency-checker-adapted，补丁版本见 manifest.json。
+- 实际检测路径使用 NumPy 2.2.6（BSD-3-Clause，许可证由对应 wheel 分发）；没有启用上游加载器、Web、单声道分类及其额外依赖。
+- 本声明覆盖集成使用的资源，不替代基础 Docker 镜像所有系统和第三方组件的再分发审计。

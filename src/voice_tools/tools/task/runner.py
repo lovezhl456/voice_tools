@@ -30,7 +30,7 @@ def atomic(path, value):
 
 def profile(path=None):
     data = read_json(path) if path else {'schema_version': '1.0', 'environments': {}, 'network_allowed': False}
-    object_fields(data, {'schema_version', 'environments', 'network_allowed', 'model_dir', 'visqol_dir', 'secret_env'}, 'executor')
+    object_fields(data, {'schema_version', 'environments', 'network_allowed', 'model_dir', 'visqol_dir', 'latency_dir', 'secret_env'}, 'executor')
     if data.get('schema_version') != '1.0' or not isinstance(data.get('environments', {}), dict): raise ValueError('执行机配置格式无效')
     if not isinstance(data.get('network_allowed', False), bool): raise ValueError('network_allowed 须为布尔值')
     names = data.get('secret_env', [])
@@ -38,7 +38,7 @@ def profile(path=None):
     if not isinstance(names, list) or any(not isinstance(n, str) or not re.fullmatch('[A-Za-z_][A-Za-z0-9_]*', n) for n in names):
         raise ValueError('secret_env 只能包含环境变量名称')
     no_secrets(data)
-    for key in ('model_dir', 'visqol_dir'):
+    for key in ('model_dir', 'visqol_dir', 'latency_dir'):
         if key in data and (not isinstance(data[key], str) or not data[key]): raise ValueError(f'{key} 须为路径字符串')
     tools = {entry['tool'] for entry in catalog().values()}
     for name, env in data.get('environments', {}).items():
@@ -88,7 +88,7 @@ def parameters(step, config):
         if key not in allowed or allowed[key]['role'] in ('input', 'input_group', 'output'):
             raise ValueError(f'执行环境不能覆盖 {step["tool"]}.{key}')
         values[key] = value
-    for name in ('model_dir', 'visqol_dir'):
+    for name in ('model_dir', 'visqol_dir', 'latency_dir'):
         if name in allowed and name in config: values[name] = config[name]
     for name, value in values.items():
         if allowed[name]['role'] == 'runtime' and (not isinstance(value, str) or not value):
@@ -155,10 +155,11 @@ def check(path, config_path=None):
                 for name in item['dependencies']:
                     if name == 'pjsua2':
                         if importlib.util.find_spec('pjsua2') is None: item['issues'].append('缺少 PJSUA2')
-                    elif name in ('nisqa', 'visqol'):
+                    elif name in ('nisqa', 'visqol', 'latency'):
                         args = [sys.executable, '-m', 'voice_tools', '--json', name, 'doctor']
-                        directory = params.get('model_dir' if name == 'nisqa' else 'visqol_dir')
-                        if directory: args += ['--model-dir' if name == 'nisqa' else '--visqol-dir', directory]
+                        directory_key = {'nisqa': 'model_dir', 'visqol': 'visqol_dir', 'latency': 'latency_dir'}[name]
+                        directory = params.get(directory_key)
+                        if directory: args += ['--' + directory_key.replace('_', '-'), directory]
                         result = subprocess.run(args, capture_output=True, timeout=30)
                         if result.returncode: item['issues'].append(f'{name} 环境／模型未就绪')
                     elif not shutil.which(params.get(name, name)): item['issues'].append(f'缺少 {name}')

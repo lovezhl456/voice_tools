@@ -1,0 +1,8 @@
+include LICENSE THIRD_PARTY_NOTICES.md
+recursive-include src/voice_tools/tools/latency/resources *.json *.patch *.txt
+recursive-include src/voice_tools/tools/latency/web *.js *.css *.html
+include scripts/install_latency.py scripts/latency_demo.py
+recursive-include docs *.md *.json *.html
+recursive-include docker/latency Dockerfile*
+include scripts/serve_latency.py
+include scripts/build_latency_guide.mjs
