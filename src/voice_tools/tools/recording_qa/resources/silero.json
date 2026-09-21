@@ -1,0 +1,12 @@
+{
+  "name": "silero-vad",
+  "version": "6.2.2",
+  "commit": "60b7ffa243625ebdc1070275a29f18c87843786a",
+  "filename": "silero_vad.onnx",
+  "bytes": 2327524,
+  "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+  "git_blob": "80c5592ef1f4c9ede3e357bbd02eb863358a6a9d",
+  "license": "MIT",
+  "license_sha256": "2e63e9a38b6e8fc0c7bc37ce174caca1862870856c6daf5697cfb785e925520b",
+  "source": "https://github.com/snakers4/silero-vad/tree/60b7ffa243625ebdc1070275a29f18c87843786a"
+}

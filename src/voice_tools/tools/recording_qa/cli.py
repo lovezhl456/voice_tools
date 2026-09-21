@@ -6,6 +6,8 @@ from voice_tools.core.command import artifacts, emit_result
 def register(commands):
     parser = commands.add_parser("qa", help="双声道热线录音质检")
     actions = parser.add_subparsers(dest="action", required=True)
+    from .assessment_cli import register as register_assessment
+    register_assessment(actions)
     generate = actions.add_parser("generate", help="生成合成回归录音（不是黄金集）")
     generate.add_argument("--out", type=Path, required=True)
     generate.add_argument("--sample-rate", type=int, default=8000, choices=(8000, 16000, 32000, 48000))

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "voice-tools"
-version = "0.15.2"
+version = "0.16.1"
 description = "本地运行、CPU 优先的语音工具集"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -13,6 +13,7 @@ requires-python = ">=3.9"
 dependencies = ["numpy>=1.24,<3"]
 
 [project.optional-dependencies]
+autoqa = ["onnxruntime>=1.18,<2", "scipy>=1.10,<2"]
 vad = ["webrtcvad-wheels>=2.0.14,<3"]
 nisqa = ["torch>=2.6,<3", "torchmetrics==1.9.0", "librosa>=0.10.2,<0.12", "soundfile>=0.12,<0.14", "requests>=2.31,<3"]
 
@@ -22,13 +23,13 @@ homerctl = "voice_tools.tools.homer.client:main"
 voice-sip = "voice_tools.tools.sip.cli:main"
 
 [tool.setuptools]
-license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/voice_tools/core/review/vendor/wavesurfer.LICENSE.txt", "src/voice_tools/tools/latency/resources/upstream-LICENSE.txt"]
+license-files = ["LICENSE", "THIRD_PARTY_NOTICES.md", "src/voice_tools/core/review/vendor/wavesurfer.LICENSE.txt", "src/voice_tools/tools/latency/resources/upstream-LICENSE.txt", "src/voice_tools/tools/recording_qa/resources/silero-LICENSE.txt"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-"voice_tools.tools.recording_qa" = ["*.js"]
+"voice_tools.tools.recording_qa" = ["*.js", "*.html", "*.css", "resources/*.json", "resources/*.txt"]
 "voice_tools.core.review" = ["*.html", "*.js", "vendor/*.js", "vendor/*.txt", "vendor/*.json"]
 "voice_tools.tools.task" = ["web/*.html", "web/*.css", "web/*.js", "web/*.json"]
 

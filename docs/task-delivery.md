@@ -122,3 +122,7 @@ export VT_EXECUTOR_DIR=/absolute/path/to/executor-config
 ## gaps 依赖与可信复核
 
 gaps 的 evidence 清单、NISQA provenance 与其原结果、RTP timeline 与分片由打包器显式收集，必须落在打包根内。新类型证据及其引用的内容保持字节和摘要，执行路径映射单独处理；不可重写后重新计算摘要冒充原始证据。每片 <=8 MiB，沿用结构化文件 16 MiB 和总包额度。RTP 包行不进入普通记录列表。结果页“人工标签”重建 gaps 复核页，独立导入/导出间隙标签；包内 HTML 不执行。示例命令见 [间隙使用指南](output-gaps.md)。
+
+## 整通自动质检（0.16.1）
+
+`qa assess` 新增整通结果与人工例外队列。执行环境安装 `[autoqa]`，通过 `qa_model_dir` 指定已校验的本地语音模型；模型下载为显式准备操作，权重不随任务打包。任务预检检查模型，复查页面从已验证数据重建。旧任务及 NISQA 的 `model_dir` 保持原语义。参数、输出与人工标签合同见[整通自动质检](automatic-qa.md)。
