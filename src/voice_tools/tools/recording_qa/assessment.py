@@ -7,7 +7,7 @@ from voice_tools.audio.activity import merge_spans
 from voice_tools.tools.gaps.detector import Config as GapConfig, analyze as analyze_gaps
 from .detector import Config, analyze, number
 
-ALGORITHM = 'qa-assessment-1'
+ALGORITHM = 'qa-assessment-2'
 SCOPE = 'acoustic_and_response_timing'
 DECISIONS = {'AUTO_PASS': '自动通过', 'AUTO_ANOMALY': '自动异常', 'NEEDS_REVIEW': '待人工复核'}
 REASONS = {
@@ -15,6 +15,8 @@ REASONS = {
     'late_response': 'AI 语音开始时间超过应答时限',
     'non_speech_output': '有声学活动但语音模型未确认是语音',
     'short_response': 'AI 语音过短，无法确认完整输出',
+    'speech_energy_conflict': '模型语音缺少足够的工程声学证据支持',
+    'overlapping_output': '已有 AI 输出跨越用户结束时间，无法确认新的应答',
     'short_window': '观察窗口不足，不能确定是否漏答',
     'no_turns': '未找到可评估的用户轮次或显式应答机会',
     'long_output_gap': 'AI 输出中的长停顿超过当前策略阈值',
@@ -102,11 +104,19 @@ def response_turns(user, agent, start, end, metadata, policy):
 
 def response_check(turn, stop, agent, energy_agent, policy):
     at = turn['at_s']
-    responses = [(max(a, at), min(b, stop)) for a, b in agent if b > at and a < stop]
+    # Output already in progress is not a new answer to this user turn.
+    responses = [(a, min(b, stop)) for a, b in agent if at <= a < stop]
     sustained = [(a, b) for a, b in responses if b-a >= policy.minimum_response_s]
     if sustained:
-        latency = min(a for a, b in sustained) - at
+        a, b = sustained[0]
+        if overlap(energy_agent, a, b) < policy.minimum_response_s:
+            return 'REVIEW', 'speech_energy_conflict', None
+        # A model's early onset cannot move a later acoustic response before the deadline.
+        supported_start = min(max(a, left) for left, right in energy_agent if right > a and left < b)
+        latency = supported_start - at
         return ('ANOMALY', 'late_response', latency) if latency >= policy.timeout_s else ('PASS', 'speech_in_time', latency)
+    if any(a < at < b for a, b in agent):
+        return 'REVIEW', 'overlapping_output', None
     if responses:
         return 'REVIEW', 'short_response', None
     if stop-at < policy.timeout_s:
@@ -198,7 +208,12 @@ def assess(audio, audio_hash, metadata, policy, model):
             else:
                 status, reason, latency = response_check(turn, stop, agent, engineering.get('system_activity', []), policy)
                 if status != 'PASS':
-                    finding(reason, at, stop, status == 'ANOMALY', ['engineering', 'speech_model', turn['source']])
+                    evidence_end = stop
+                    if reason == 'no_response':
+                        evidence_end = min(stop, at + policy.timeout_s)
+                    elif reason == 'late_response':
+                        evidence_end = min(stop, at + latency)
+                    finding(reason, at, evidence_end, status == 'ANOMALY', ['engineering', 'speech_model', turn['source']])
             turn.update(decision=status, reason=reason, observed_until_s=stop,
                         latency_s=None if latency is None else round(latency, 6))
         if not turns and 'opportunities' not in metadata:

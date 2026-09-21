@@ -126,3 +126,5 @@ gaps 的 evidence 清单、NISQA provenance 与其原结果、RTP timeline 与�
 ## 整通自动质检（0.16.1）
 
 `qa assess` 新增整通结果与人工例外队列。执行环境先用 `voice-tools qa setup --component all` [准备依赖与模型](automatic-qa-install.md)，通过 `qa_model_dir` 指定已校验的本地语音模型；安装／下载为显式准备操作，`qa.setup` 和 `qa.model-download` 不进入离线任务，权重不随任务打包。任务预检检查模型，复查页面从已验证数据重建。旧任务及 NISQA 的 `model_dir` 保持原语义。参数、输出与人工标签合同见[整通自动质检](automatic-qa.md)。
+
+`qa model-doctor` 作为任务步骤时，只有退出 `0` 且检查结果 `ready=true` 才算完成；未就绪、异常退出或缺少有效就绪结果均记为 `failed`，依赖它的步骤跳过，独立步骤继续。直接 CLI 调用未就绪仍退出 `1`；任务执行器按动作区分它与正常质检的 `findings`。

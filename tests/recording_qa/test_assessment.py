@@ -5,7 +5,7 @@ from unittest.mock import patch
 import numpy as np
 
 from voice_tools.audio.io import Audio
-from voice_tools.tools.recording_qa.assessment import Policy, assess
+from voice_tools.tools.recording_qa.assessment import Policy, assess, response_check
 
 HASH = 'a'*64
 
@@ -51,6 +51,56 @@ class AssessmentTests(unittest.TestCase):
         result=assess(audio,HASH,{},self.policy,evidence(audio,agent=()))
         self.assertEqual(result['decision'],'NEEDS_REVIEW')
         self.assertEqual(result['findings'][0]['kind'],'non_speech_output')
+
+    def test_model_false_positive_on_silent_agent_cannot_auto_pass(self):
+        audio = recording(agent=())
+        result = assess(audio, HASH, {}, self.policy, evidence(audio))
+        self.assertEqual(result['decision'], 'NEEDS_REVIEW')
+        self.assertEqual(result['turns'][0]['reason'], 'speech_energy_conflict')
+        self.assertTrue(result['review_required'])
+
+    def test_engineering_support_must_overlap_the_model_response(self):
+        for energy in ([], [(4, 5)], [(2, 2.2)]):
+            with self.subTest(energy=energy):
+                status, reason, latency = response_check({'at_s': 1.5}, 8, [(2, 3)], energy, self.policy)
+                self.assertEqual((status, reason, latency), ('REVIEW', 'speech_energy_conflict', None))
+        self.assertEqual(response_check({'at_s': 1.5}, 8, [(2, 3)], [(2.1, 2.9)], self.policy)[0], 'PASS')
+
+    def test_model_onset_cannot_hide_late_engineering_evidence(self):
+        audio = recording(agent=((7, 8),), duration=9)
+        result = assess(audio, HASH, {}, self.policy, evidence(audio, agent=((2, 8),)))
+        self.assertEqual(result['decision'], 'AUTO_ANOMALY')
+        self.assertEqual(result['turns'][0]['reason'], 'late_response')
+        self.assertAlmostEqual(result['turns'][0]['latency_s'], 5.5, places=2)
+
+    def test_preexisting_agent_output_is_not_an_immediate_response(self):
+        result = self.run_case(agent=((.2, 3),))
+        self.assertEqual(result['decision'], 'NEEDS_REVIEW')
+        self.assertEqual(result['turns'][0]['reason'], 'overlapping_output')
+        self.assertIsNone(result['turns'][0]['latency_s'])
+
+    def test_new_response_after_overlapping_output_is_evaluated_separately(self):
+        result = self.run_case(agent=((.2, 2), (2.4, 3.4)))
+        self.assertEqual(result['decision'], 'AUTO_PASS')
+        self.assertAlmostEqual(result['turns'][0]['latency_s'], .9, places=2)
+        status, reason, latency = response_check({'at_s': 1.5}, 9,
+            [(.2, 2), (7, 8)], [(.2, 2), (7, 8)], self.policy)
+        self.assertEqual((status, reason, latency), ('ANOMALY', 'late_response', 5.5))
+
+    def test_response_at_exact_turn_boundary_remains_valid(self):
+        status, reason, latency = response_check({'at_s': 1.5}, 8,
+            [(1.5, 2.5)], [(1.5, 2.5)], self.policy)
+        self.assertEqual((status, reason, latency), ('PASS', 'speech_in_time', 0))
+
+    def test_response_findings_stop_at_deadline_or_response_not_recording_end(self):
+        for agent, kind, end in [((), 'no_response', 6.5), (((7, 8),), 'late_response', 7)]:
+            with self.subTest(kind=kind):
+                result = self.run_case(agent=agent, duration=60)
+                finding = next(item for item in result['findings'] if item['kind'] == kind)
+                self.assertEqual(finding['start_s'], 1.5)
+                self.assertAlmostEqual(finding['end_s'], end, places=2)
+                self.assertEqual(result['review_windows'], [(0.5, end + 1)])
+                self.assertEqual(result['turns'][0]['observed_until_s'], 60)
 
     def test_short_window_and_short_response_do_not_pass(self):
         self.assertEqual(self.run_case(agent=(),duration=3)['decision'],'NEEDS_REVIEW')

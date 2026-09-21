@@ -19,10 +19,10 @@ class DeliveryTests(unittest.TestCase):
             'steps':[{'id':'assess','tool':'qa','action':'assess','params':{'inputs':[{'input':'audio'}],
                 'rules_only':True,'include_audio':True,'channels_verified':True,'ai_start':0}}]}
 
-    def pack_run(self):
+    def pack_run(self, profile=None):
         path=self.source/'task.json';write_json(path,self.task)
         bundle.pack(path,self.source,self.root/'task.zip')
-        return runner.run(self.root/'task.zip',self.root/'run')
+        return runner.run(self.root/'task.zip',self.root/'run',profile)
 
     def test_catalog_classifies_model_path_as_runtime_and_download_as_setup(self):
         entries=catalog.catalog()
@@ -63,6 +63,34 @@ class DeliveryTests(unittest.TestCase):
         result=runner.check(self.root/'task.zip',profile)
         self.assertFalse(result['ready'])
         self.assertTrue(any('语音模型' in item for item in result['issues']))
+
+    def test_failed_model_doctor_blocks_dependants_but_not_independent_steps(self):
+        self.task['steps'] = [
+            {'id': 'doctor', 'tool': 'qa', 'action': 'model-doctor',
+             'params': {}},
+            {**self.task['steps'][0], 'depends_on': ['doctor']},
+            {'id': 'inspect', 'tool': 'audio', 'action': 'inspect',
+             'params': {'inputs': [{'input': 'audio'}]}},
+        ]
+        profile = self.root / 'executor.json'
+        write_json(profile, {'schema_version': '1.0', 'environments': {},
+                             'qa_model_dir': str(self.root / 'missing-model')})
+        receipt = self.pack_run(profile)
+        self.assertEqual([step['status'] for step in receipt['steps']], ['failed', 'skipped', 'completed'])
+        self.assertEqual(receipt['status'], 'failed')
+        self.assertFalse((self.root / 'run/steps/assess').exists())
+
+    def test_model_doctor_requires_successful_ready_receipt(self):
+        cases = [(0, {'summary': {'ready': True}}, 'completed'),
+                 (1, {'summary': {'ready': False}}, 'failed'),
+                 (1, {'summary': {'ready': True}}, 'failed'),
+                 (0, {'summary': {'ready': False}}, 'failed'),
+                 (0, {'summary': []}, 'failed'), (0, None, 'failed'),
+                 (3, {'summary': {'ready': False}}, 'failed'), (-2, None, 'interrupted')]
+        for code, payload, expected in cases:
+            with self.subTest(code=code, payload=payload):
+                self.assertEqual(runner.classify('qa', 'model-doctor', code, payload), expected)
+        self.assertEqual(runner.classify('qa', 'assess', 1, {'summary': {'decisions': {'NEEDS_REVIEW': 1}}}), 'findings')
 
     def test_malformed_assessment_is_reported_instead_of_rendering_a_broken_page(self):
         self.pack_run()

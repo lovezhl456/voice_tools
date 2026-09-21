@@ -209,6 +209,11 @@ def sip_environment(params, step, env, root):
 
 def classify(tool, action, code, payload):
     if code < 0: return 'interrupted'
+    if tool == 'qa' and action == 'model-doctor':
+        summary = payload.get('summary') if isinstance(payload, dict) else None
+        if code == 0 and isinstance(summary, dict) and summary.get('ready') is True:
+            return 'completed'
+        return 'failed'
     if code == 0:
         if tool == 'capture' and action == 'ring-start': return 'remote_running'
         return 'completed'
