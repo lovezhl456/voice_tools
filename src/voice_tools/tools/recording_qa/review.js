@@ -21,7 +21,7 @@
     formDirty = false;
   const key = (row) => JSON.stringify([row.sample_id, row.opportunity_id]);
   const player = $('player');
-  const fileFilter = createReviewFileFilter(data.records, (record) => record.sample_id);
+  const fileFilter = createReviewFileFilter(data.records, (record) => record.sample_id, refreshFilters);
   function message(text) {
     $('message').textContent = text;
   }
@@ -292,14 +292,18 @@
     if (current) select(current);
     message('已放弃未记下的修改，并恢复当前筛选结果。');
   };
-  for (const id of ['directoryFilter', 'fileFilter', 'statusFilter', 'evidenceFilter', 'unreviewed'])
+  function refreshFilters() {
+    refresh();
+    if (formDirty && !filtered.includes(current))
+      message('筛选已更新；当前表单有未记下的修改，记下或放弃后再切换录音。');
+    else reconcileSelection();
+  }
+  for (const id of ['directoryFilter', 'fileFilter', 'statusFilter', 'evidenceFilter', 'unreviewed']) {
     $(id).onchange = () => {
       if (id === 'directoryFilter') fileFilter.updateFiles();
-      refresh();
-      if (formDirty && !filtered.includes(current))
-        message('筛选已更新；当前表单有未记下的修改，记下或放弃后再切换录音。');
-      else reconcileSelection();
+      refreshFilters();
     };
+  }
   function csvCell(value) {
     let text = String(value ?? '');
     if (/^[\s]*[=+\-@]/.test(text)) text = "'" + text;

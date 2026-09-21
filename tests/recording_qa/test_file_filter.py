@@ -23,5 +23,6 @@ class FileFilterTests(unittest.TestCase):
             html = path.read_text()
         self.assertIn((ASSETS / 'file-filter.js').read_text(), html)
         self.assertLess(html.index('id="directoryFilter"'), html.index('id="fileFilter"'))
+        self.assertIn('id="fileSearch" type="search"', html)
         self.assertLess(html.index('function createReviewFileFilter'), html.index('/* business script */'))
         self.assertNotIn('__FILE_FILTER_SCRIPT__', html)

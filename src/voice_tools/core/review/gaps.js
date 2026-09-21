@@ -9,7 +9,7 @@
   const message = text => { $('message').textContent = text; };
   const key = row => `${row.fingerprint}:${row.gap_id}`;
   const player = $('player');
-  const fileFilter = createReviewFileFilter(data.records, record => record.result.fingerprint);
+  const fileFilter = createReviewFileFilter(data.records, record => record.result.fingerprint, refreshFilters);
   const wave = createReviewWaveform(player, (a,b) => playback.setRange(a,b), message);
   const playback = createReviewPlayback(player, {duration:()=>current?.record.result.duration_s,
     seek:v=>wave.setTime(v), rangeChanged:(a,b)=>wave.syncRange(a,b), error:message});
@@ -117,13 +117,16 @@
     message('已放弃尚未记下的表单修改。');
   };
   for(const id of ['decision','reviewer','notes'])$(id).oninput=()=>{formDirty=true;};
+  function refreshFilters() {
+    refresh();
+    if (formDirty && !filtered().includes(current))
+      message('筛选已更新；当前表单有未记下的修改，记下或放弃后再切换录音。');
+    else reconcileSelection();
+  }
   for (const id of ['directoryFilter', 'fileFilter', 'statusFilter', 'evidenceFilter', 'unreviewed']) {
     $(id).onchange = () => {
       if (id === 'directoryFilter') fileFilter.updateFiles();
-      refresh();
-      if (formDirty && !filtered().includes(current))
-        message('筛选已更新；当前表单有未记下的修改，记下或放弃后再切换录音。');
-      else reconcileSelection();
+      refreshFilters();
     };
   }
   $('channel').onchange=()=>{playback.setSource(current?.record.playback_sources?.[$('channel').value]||'');wave.syncChannel($('channel').value);};
