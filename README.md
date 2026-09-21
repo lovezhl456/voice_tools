@@ -12,6 +12,7 @@
 
 | 工具 | 适用场景 | 命令入口 | 使用文档 |
 |---|---|---|---|
+| **整通自动质检** | 工程规则与本地语音模型联合判定，按整通汇总，人工只处理例外与抽检 | `voice-tools qa assess` | [安装与使用](docs/automatic-qa.md) · [验收](docs/automatic-qa-validation.md) |
 | **输出中途间隙** | 独立检测长停顿、短断音、聚集和有预期的中断，关联 RTP/NISQA 并试听标注 | `voice-tools gaps analyze / review-check` | [使用](docs/output-gaps.md) · [合同](docs/output-gaps-contract.md) · [验收](docs/output-gaps-validation.md) |
 | **ViSQOL 音质对比** | 对照干净原声，评估线路/编码/传输后的音质；提供本地安装与官方样本演示 | `voice-tools visqol doctor / score / batch` | [下载、安装与使用](docs/visqol.md) · [Mac 实战](docs/visqol-local-validation.md) · [Linux / Docker](docs/visqol-docker.md) |
 | **NISQA 听感评分** | CPU 分段预测录音的整体质量、噪声、断续、音色和响度 | `voice-tools nisqa download / doctor / analyze` | [安装、权重下载与使用](docs/nisqa.md) · [本地验收](docs/nisqa-validation.md) |
@@ -52,6 +53,8 @@ voice-tools schema --tool sip
 ```
 
 默认依赖 NumPy，用于录音质检；HOMER 工具自身仅用 Python 标准库。可选 CPU WebRTC VAD：`python -m pip install -e '.[vad]'`。也可用 `python -m voice_tools` 代替 `voice-tools`。
+
+整通自动质检依赖可通过 `voice-tools qa setup` 交互选择安装；脚本使用 `voice-tools qa setup --component all` 一次安装 CPU 运行库、下载模型并检查。支持仅运行库／仅模型与缓存复用，详见[安装与排障](docs/automatic-qa-install.md)及[使用说明](docs/automatic-qa.md)。
 
 NISQA 为独立可选功能，需 Python 3.10+：安装 `python -m pip install -e '.[nisqa]'`，再显式执行 `voice-tools nisqa download`。Linux 先安装 CPU 版 PyTorch，详见[安装说明](docs/nisqa.md)。权重仅存本地缓存、不入 Git，官方权重含非商业限制。
 

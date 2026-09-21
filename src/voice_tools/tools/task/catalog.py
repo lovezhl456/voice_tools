@@ -4,10 +4,11 @@ import json
 import subprocess
 import sys
 
-SETUP = {('homer', 'init'), ('homer', 'login'), ('homer', 'logout'), ('nisqa', 'download')}
+SETUP = {('homer', 'init'), ('homer', 'login'), ('homer', 'logout'), ('nisqa', 'download'),
+         ('qa', 'model-download'), ('qa', 'setup')}
 EXECUTABLES = {'tshark', 'sipp', 'fs_cli'}
-RUNTIME_PATHS = {'identity', 'model_dir', 'visqol_dir', 'latency_dir', 'ca_file'}
-FILE_OUTPUTS = {('qa', 'promote'), ('qa', 'evaluate'), ('homer', 'export')}
+RUNTIME_PATHS = {'identity', 'model_dir', 'qa_model_dir', 'visqol_dir', 'latency_dir', 'ca_file'}
+FILE_OUTPUTS = {('qa', 'promote'), ('qa', 'evaluate'), ('qa', 'assess-evaluate'), ('homer', 'export')}
 
 
 @functools.lru_cache(maxsize=1)
@@ -54,6 +55,8 @@ def capabilities(step):
     if tool == 'nisqa': needs.add('nisqa')
     if tool == 'visqol': needs.add('visqol')
     if tool == 'latency': needs.add('latency')
+    if tool == 'qa' and action == 'assess' and not params.get('rules_only'):
+        needs.add('qa_model')
     if params.get('dry_run') and tool == 'sip':
         network = raw = False
         needs.difference_update({'pjsua2', 'sipp'})

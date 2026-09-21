@@ -47,7 +47,7 @@ PYTHONPATH="$PWD/src" python -c 'import sys, voice_tools; from pathlib import Pa
 例如，只调整 QA 测试准备与退出码：
 
 ```bash
-env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR -u VOICE_TOOLS_TEST_QA_MODEL_DIR \
   PYTHONPATH="$PWD/src" python -m unittest \
   tests.recording_qa.test_detector tests.recording_qa.test_workflow \
   tests.recording_qa.test_p0 tests.test_machine_cli -v
@@ -58,10 +58,10 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 ## 默认全量：三项均需记录
 
 ```bash
-env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR -u VOICE_TOOLS_TEST_QA_MODEL_DIR \
   PYTHONPATH="$PWD/src" python -m unittest discover -s tests -v
 node --test tests/studio/core.test.cjs
-env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR -u VOICE_TOOLS_TEST_QA_MODEL_DIR \
   PYTHONPATH="$PWD/src" python tests/studio/check_cli_compat.py
 ```
 
@@ -72,7 +72,7 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 SIP 与 benchmark 共用原生回环开关，运行时一并选择，所有呼叫限制在本机：
 
 ```bash
-env -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
+env -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR -u VOICE_TOOLS_TEST_QA_MODEL_DIR \
   VOICE_TOOLS_SIP_LOOPBACK=1 PYTHONPATH="$PWD/src" python -m unittest \
   tests.sip.test_loopback tests.benchmark.test_native -v
 ```
@@ -82,7 +82,7 @@ env -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TES
 NISQA 真实权重使用显式的本地模型和语音，测试禁止下载：
 
 ```bash
-env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_TEST_LATENCY_DIR \
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_TEST_LATENCY_DIR -u VOICE_TOOLS_TEST_QA_MODEL_DIR \
   VOICE_TOOLS_NISQA_MODEL_DIR="$PWD/.local/nisqa-model" \
   VOICE_TOOLS_NISQA_AUDIO="$PWD/data/speech.wav" \
   PYTHONPATH="$PWD/src" python -m unittest tests.nisqa.test_real_model -v
@@ -111,9 +111,25 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 - 若仅 HOMER 的 `setUpClass` 因本机端口报 `PermissionError`，记录未进入的方法，在允许本机绑定的环境补跑下列两组；其他失败另行处理，不笼统归因给沙箱：
 
 ```bash
-env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR -u VOICE_TOOLS_TEST_QA_MODEL_DIR \
   PYTHONPATH="$PWD/src" python -m unittest \
   tests.homer.test_client.CliIntegration tests.sessions.test_homer_link.HomerLinkTests -v
 ```
 
 合并结果时按用例去重，注明哪些组来自补跑。旧验收文档只证明其日期和基线下的结果，不替代当前验证。
+
+## 整通自动质检
+
+普通规则、模型合同及工作流验证无需权重：`tests.recording_qa.test_assessment`、`test_assessment_workflow`、`test_speech_model`、`test_assessment_delivery`。安装器契约用 `test_setup`，以假子进程覆盖选择、JSON、当前解释器、部分失败、重试和任务排除，不在普通测试中执行 pip 下载。变更影响共享证据加载、任务执行或复查时加原 QA、task、gaps 交付组；页面变更另做桌面／移动端实浏览器验证。
+
+安装器或依赖变化时，另建一次性虚拟环境，从构建 wheel 安装基础 CLI；在未装 ONNX Runtime／SciPy 的环境实际执行 `qa setup --component all --model-dir 临时目录`，核对 JSON、缓存重跑、交互选择和 doctor 推理。禁止在测试中改用户现有全局环境。离线 wheelhouse 准备和失败排查见[安装说明](automatic-qa-install.md)。安装成功不等于真实通话准确率通过。
+
+真实 CPU 模型专项必须显式提供本机权重和语音，不在测试中下载：
+
+```bash
+VOICE_TOOLS_TEST_QA_MODEL_DIR=/absolute/path/to/autoqa \
+VOICE_TOOLS_TEST_QA_AUDIO=/absolute/path/to/speech.wav \
+PYTHONPATH="$PWD/src" python -m unittest tests.recording_qa.test_assessment_real_model -v
+```
+
+该专项检查真实推理、状态隔离和重采样；不能替代真实业务录音上自动通过覆盖率和漏检率的评估。

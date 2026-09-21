@@ -72,3 +72,7 @@ wavesurfer.js 的版权归原权利人所有；分发源码或二进制时保留
 - 本包携带受控补丁及校验清单，保留原作者许可；适配名称为 voice-tools-latency-checker-adapted，补丁版本见 manifest.json。
 - 实际检测路径使用 NumPy 2.2.6（BSD-3-Clause，许可证由对应 wheel 分发）；没有启用上游加载器、Web、单声道分类及其额外依赖。
 - 本声明覆盖集成使用的资源，不替代基础 Docker 镜像所有系统和第三方组件的再分发审计。
+
+## 整通质检语音模型
+
+`qa assess` 可选使用 [Silero VAD v6.2.2](https://github.com/snakers4/silero-vad/tree/60b7ffa243625ebdc1070275a29f18c87843786a) 的 ONNX 权重，许可证 MIT；原文随包保留在 `voice_tools/tools/recording_qa/resources/silero-LICENSE.txt`。权重不随安装包分发，仅通过 `qa model-download` 显式下载，固定提交、大小、Git blob 与 SHA-256 记录在 `resources/silero.json`。ONNX 调用遵循该提交的 `utils_vad.py` 协议，包装和质检决策由本项目实现。可选运行库 ONNX Runtime 为 MIT，SciPy 为 BSD-3-Clause；沿用各发行包的许可资料。

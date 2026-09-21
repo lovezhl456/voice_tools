@@ -69,7 +69,7 @@ def review(package, output):
     rows = []
     for step in receipt['steps']:
         if not isinstance(step.get('id'), str) or not ID.fullmatch(step['id']): raise ValueError('回执步骤 ID 无效')
-        item = dict(step); item.update(files=[], assertions=[], scores=[], records=[], audio=[], benchmarks=[], benchmark_summaries=[], latency=[])
+        item = dict(step); item.update(assessment_review=None, files=[], assertions=[], scores=[], records=[], audio=[], benchmarks=[], benchmark_summaries=[], latency=[])
         record_directories = {}
         folder = root / 'steps' / step['id']
         if folder.exists():
@@ -160,6 +160,35 @@ def review(package, output):
                             selected[audio['path']] = audio
                 item['audio'] = list(selected.values())
             except (ValueError, OSError): pass
+        if step.get('tool') == 'qa' and step.get('action') == 'assess':
+            from voice_tools.tools.recording_qa.assessment_report import render as render_assessment
+            from voice_tools.tools.recording_qa.assessment_batch import summarize
+            from voice_tools.tools.recording_qa.assessment_review import validate_record
+            selected = []
+            target = output / 'assessment-review' / step['id']
+            target.mkdir(parents=True)
+            try:
+                for row in item['records']:
+                    if row.get('kind') != 'qa_assessment':
+                        continue
+                    validate_record(row)
+                    record = dict(row)
+                    sources = {}
+                    for channel, value in record.get('playback_sources', {}).items():
+                        if channel not in ('both', 'left', 'right') or not isinstance(value, str):
+                            continue
+                        source = (record_directories[id(row)] / value).resolve()
+                        if folder.resolve() in source.parents and source.is_file() and source.suffix.lower() == '.wav':
+                            sources[channel] = quote(os.path.relpath(source, target))
+                    record['playback_sources'] = sources
+                    selected.append(record)
+                if selected:
+                    summary = summarize(selected)
+                    summary['truncated'] = bool(item.get('records_truncated'))
+                    render_assessment(target / 'report.html', selected, summary, True, '../../index.html')
+                    item['assessment_review'] = quote((target / 'report.html').relative_to(output).as_posix())
+            except (ValueError, TypeError, KeyError, OSError) as error:
+                item['assessment_review_error'] = str(error)
         if step.get('tool') == 'gaps' and step.get('action') == 'analyze':
             from voice_tools.core.review.gaps import render_gap_review
             gap_records = []

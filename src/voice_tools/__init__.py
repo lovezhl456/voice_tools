@@ -1,3 +1,3 @@
 """CPU-first, local voice tools."""
 
-__version__ = "0.15.2"
+__version__ = "0.16.1"
