@@ -1,0 +1,32 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><title>latency · latency-integration</title><style>*{box-sizing:border-box}body{margin:0;background:#f2f6f7;color:#183347;font:16px/1.8 system-ui,sans-serif}header{background:#15394b;color:white;padding:32px max(20px,calc((100vw - 1040px)/2))}header p{color:#c0e1e6}nav{display:flex;flex-wrap:wrap;gap:12px}nav a{color:#d9f1f2;font-size:14px}main{max-width:1040px;margin:28px auto;background:white;padding:32px;border-radius:16px}h1{font-size:30px}h2{margin-top:32px;border-top:1px solid #dce8ec;padding-top:20px}a{color:#14727a;overflow-wrap:anywhere}pre{overflow:auto;padding:18px;background:#eef4f6;border-radius:10px;font-size:13px}code{font-family:ui-monospace,monospace;overflow-wrap:anywhere}table{display:block;max-width:100%;overflow:auto;border-collapse:collapse;font-size:14px}th,td{border:1px solid #dae5e8;padding:10px;text-align:left;min-width:100px}blockquote{border-left:4px solid #19818b;padding-left:16px}footer{max-width:1040px;margin:20px auto;color:#526976}@media(max-width:650px){main{padding:18px;margin:12px}header{padding:24px 18px}h1{font-size:24px}}</style></head><body><header><p>VOICE_TOOLS 0.15.1 · 可选外部引擎</p><h1>双轨录音延迟说明书</h1><nav><a href="/">← 本地总导航</a><a href="latency.html">使用与结果</a><a href="latency-install.html">安装与回退</a><a href="latency-integration.html">任务与协议</a><a href="latency-validation.html">验收记录</a><a href="demo/">合成录音演示 ↗</a><a href="task-review/">任务复查演示 ↗</a></nav></header><main><h1>latency 引擎与任务集成协议</h1>
+<p>运行参数和退出码由 <a href="https://github.com/lovezhl456/voice_tools/blob/1e9f1c82ed8e0ec7bdf9dc111d0f18353bdc7247/src/voice_tools/tools/latency/contract.py">contract.py</a> 维护，CLI schema 导出 <code>latency_contract</code>；<a href="latency.html">用户说明</a> 与 <a href="latency-install.html">安装说明</a> 引用它，不另设参数表。</p>
+<h2>边界与固定来源</h2>
+<p><code>cli → latency/service → isolated runtime → prefix/worker.py → pinned detector.py</code>。主解释器只读取 WAV 头、计算身份、写结果及报告；引擎用最终前缀的 Python 以 <code>-I</code> 启动。每文件串行启动独立进程，逐块加载到一份双声道 float32 数组；线程设置和缓存不回写父进程。输入长度是数组预检，不等于峰值 RSS 上限；每文件结果记录引擎实际 RSS。</p>
+<p>上游为 SignalWire latency_checker <code>0d71ca1f42a59744258420e4074ae0378f86c857</code> / MIT。包内 <a href="https://github.com/lovezhl456/voice_tools/blob/1e9f1c82ed8e0ec7bdf9dc111d0f18353bdc7247/src/voice_tools/tools/latency/resources/manifest.json">manifest</a> 固定源码归档和检测器 SHA-256、补丁版本及资源摘要；<a href="https://github.com/lovezhl456/voice_tools/blob/1e9f1c82ed8e0ec7bdf9dc111d0f18353bdc7247/src/voice_tools/tools/latency/resources/detector.patch">补丁差异</a> 可直接审阅。</p>
+<p>适配版只改变三类内容：将双向配对公共常量移到短 AI 过滤之前，消除未初始化异常；去掉 10s/30s 正延迟上限；增加片段的资格和去向记录。保持起声、静音、串音抑制、边界修剪和双向配对规则。包装层明确声道、计算可信统计和不足证据状态，不使用上游无配对时的零统计。</p>
+<p>补丁 2 修正第三类中的续说归属：AI 在人声暂停中起声、人声在 600ms 内续说时，续说段记录 incoming overlap；先前人声来源段记录 outgoing overlap，续说段自身的 outgoing 仍由它之后是否收到 AI 回复决定。人声持续期间被 AI 打断的情形仍标记当前人声 outgoing overlap。此修正不改变配对或延迟数值，结果协议仍为 1.0；manifest 的补丁版本与摘要随修复更新。</p>
+<h2>Worker 与结果版本</h2>
+<p>worker 从系统临时目录读取 JSON 请求：<code>input</code>、<code>system_channel</code>、有效 <code>parameters</code>；写独立响应 JSON，stdout 仅返回写入确认。响应 <code>protocol_version=1.0</code>，含检测片段、双向配对、波形、音频摘要和资源记录。缓存/协议暂存不在结果收集树。失败 stderr 有界保留；进程超时、SIGINT/SIGTERM 会终止整个引擎进程组。</p>
+<p>公共文件有独立 <code>kind=latency_run/latency_recording</code> 与 <code>schema_version=1.0</code>，通用 CLI 封套仍用既有 1.0。<code>run.json</code> 不内嵌全部详情；逐文件 JSONL 引用按录音保存的 JSON。录音身份与路径解耦：文件 SHA-256 为 recording_id，PCM SHA-256 检测不同路径/头信息下的同内容。输入在分析期间变动则该文件失败。</p>
+<p><code>measurement.segments</code> 每段包含 <code>id/speaker/start/end/duration/full_duration/eligible/incoming/outgoing</code>。<code>full_duration</code> 是上游未修剪时长，用于最短片段资格；<code>duration</code> 是修剪后的范围。去向包括 <code>short_filtered/overlap/superseded/unpaired/paired</code>，incoming 和 outgoing 分别描述它作为前一段的应答和后一段的来源，不能混为同一方向。</p>
+<p>Human → AI 覆盖分母取全部 eligible human，分子取完成的 Human → AI 配对。不把重叠或被后续片段替代的合格人声从分母剔除；零分母为 null。重复内容每条处理记录参与统计并显式提醒。无有效轮次不产生零延迟。分位数在全部有效轮次上用线性插值计算。</p>
+<p>时间戳以当前录音起点为零；不对齐或覆盖 benchmark 的桥时钟，也不修改黄金集身份和业务规则。</p>
+<h2>可运行任务</h2>
+<p>仓库 <code>python scripts/latency_demo.py --out demo</code> 同时生成确定边界的 WAV、<code>task.json</code>、<code>expected.json</code> 和 <code>executor.example.json</code>。执行机配置路径必须按实际执行机器修改：</p>
+<pre><code class="language-json">{&quot;schema_version&quot;:&quot;1.0&quot;,&quot;network_allowed&quot;:false,&quot;latency_dir&quot;:&quot;/opt/latency&quot;,&quot;environments&quot;:{}}
+</code></pre>
+<pre><code class="language-sh">voice-tools task pack demo/task.json --root demo --out demo.vtask.zip
+voice-tools task check demo.vtask.zip --profile executor.json
+voice-tools task run demo.vtask.zip --profile executor.json --out task-run
+voice-tools task collect task-run --out demo.vresult.zip
+voice-tools task review demo.vresult.zip --out task-review
+python scripts/serve_latency.py --root . --port 8088
+</code></pre>
+<p><code>latency_dir</code> 是 runtime 参数，不作为输入打包。只有 latency 步骤检查该依赖，旧配置不要求填写。执行机 profile 按已有覆盖规则将实际配置转换为 CLI 参数；之后 CLI 参数优先于环境变量。安装器不是业务任务命令。</p>
+<p>新版继续读旧任务、配置及结果；旧版未注册 latency 时拒绝新命令，不将其误判为成功。文件 timeout 与步骤 timeout_s 并存；以先触发者为准。批次文件错误保留成功产物并返回部分失败，取消沿用任务的 interrupted 语义。</p>
+<p>任务包收集原输入，结果包保留工作输入和步骤产物；独立报告只有 include_audio 才复制音频。任务复查根据已校验包内路径重建试听引用，不需要原素材绝对路径。包内 HTML/脚本只供下载，不执行；latency.js/css 来自当前安装包，数据通过同源 JSON 获取。通用复查最多展示 2000 条逐文件索引，并明确标记截断，完整 files.jsonl/turns.csv/详情仍可导出。每页 50 轮及波形降采样不改变统计。</p>
+<p>摘要校验只保证包内字节完整，不证明 JSON 字段类型可信。共享展示组件在运行摘要和录音详情两处校验配对数、分母、双向轮数及去向计数为非负安全整数，覆盖率为 0–1 有限数值或 null；不接受数字字符串、布尔值或缺失计数，也不把非法值替换为 0。文本插入 HTML 前转义，非法统计显示字段错误。原始导出数据和测量算法不变。</p>
+<p>升级工具不会更新已经生成的静态报告。任务结果包需使用修复后的工具重新执行 <code>voice-tools task review result.vresult.zip --out task-review-fixed</code>，输出到新目录；独立报告重新执行原 analyze/batch 命令并选择新的 <code>--out</code>。保留原结果包作为证据，不修改其校验清单或包内历史 HTML。此页面修复不改变引擎补丁 2，无需重装引擎前缀。</p>
+<h2>共享模块影响</h2>
+<p>仅新增工具注册、schema 合同、任务 runtime/依赖识别、可选 profile 字段、复查入口和打包资源。复查 CSP 的 connect-src 从 none 扩为 self，以按需获取本页同源结构化 JSON；仍不执行包内 HTML/脚本。默认 Dockerfile 未引入引擎。许可、版本号及文档索引为配套变动。QA/SIP/benchmark/NISQA/ViSQOL 业务文件的基线对照及实际回归见 <a href="latency-validation.html">验收记录</a>。</p>
+</main><footer>此站只展示说明书和合成音频；业务报告保留在各自结果目录。内容源为仓库四份 latency 文档。</footer></body></html>

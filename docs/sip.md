@@ -192,9 +192,9 @@ voice-sip sipp-run outputs/sipp-package-001 --capture-interface lo0 \
 仓库提供独立的最小 SIP/RTP 应答端，只绑定 `127.0.0.1`，不会访问外部网关：
 
 ```bash
-env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO \
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
   PYTHONPATH="$PWD/src" python -m unittest discover -s tests/sip -v
-env -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO \
+env -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
   VOICE_TOOLS_SIP_LOOPBACK=1 PYTHONPATH="$PWD/src" python -m unittest \
   tests.sip.test_loopback tests.benchmark.test_native -v
 ```

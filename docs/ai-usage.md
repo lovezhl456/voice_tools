@@ -137,3 +137,7 @@ A score is not human MOS or proof of a fault cause. Exit 3 preserves per-pair fa
 ## 中文电话时序（0.13.1）
 
 SIP 场景 1.1 支持媒体桥观测、`wait_audio` 和人工语音区间，保持 1.0 兼容。新增 `benchmark init/analyze/summarize`，可在现有任务工作台编排与复查。用法、证据边界与验收见 [中文时序指南](benchmark.md)。
+
+## latency 接入
+
+先读取 `voice-tools schema --tool latency`；参数和退出码以 `latency_contract` 为准。不要把均方能量阈值当作 dBFS，不推断声道，不把覆盖率当作应答成功率。`exit_code=0` 仅说明执行完成，必须另读 `measurement_status`；无配对统计为 null。环境安装显式执行，禁止通过 doctor/analyze 自动联网修复。详情见 [集成协议](latency-integration.md) 和 [使用说明](latency.md)。

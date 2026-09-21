@@ -1,4 +1,6 @@
-# 0.14.1 测试维护验证
+# 测试维护验证
+
+以下保留首轮 0.14.1 整理的原始基线与结果；后续合入 0.15.1 的验证单列在 [主线同步记录](#合入-0151-主线后的验证)，两轮结果不相互替代。
 
 日期：2026-09-21。基线 `d4d073d4961f2086341dbc7c4249cf8341b28450`，分支 `test/v0.14.1-suite-maintenance`。实施前及最终验收前均已 fetch 主线，基线未变。沿用 0.14.1，仅修改测试与维护文档。
 
@@ -60,7 +62,7 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
   tests.gaps.test_delivery tests.gaps.test_evidence tests.task.test_delivery -v
 ```
 
-最终默认全量直接使用 [测试指南](testing.md#默认全量三项均需记录) 的 Python、Node、CLI 兼容三条命令；修改后仅一项断言继续补强，先单项复验，再进入最终全量，不机械重跑整个选测组。仅文档收尾不重复全量。
+首轮最终默认全量直接使用当时 [测试指南](testing.md#默认全量三项均需记录) 的 Python、Node、CLI 兼容三条命令；修改后仅一项断言继续补强，先单项复验，再进入最终全量，不机械重跑整个选测组。仅文档收尾不重复全量。
 
 普通命令的环境隔离已用预设的三个测试开关验证。文档中的重型专项只检查 Bash 语法、选择的模块及收集数量，没有执行真实模型或原生通话；不将命令检查写成专项通过。
 
@@ -73,3 +75,37 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 实施自检第一轮发现：不再生成录音后，非法参数测试需要明确错误来源，避免将不存在输入误当作超时校验通过。补充 `timeout_s` 与输出未创建断言，单项复验通过。第二轮复核覆盖迁移、资源路径、依赖分层及生产文件差异，未发现新的明显问题，提前结束。此前计划已完成三轮审查；后续计划自检规则已写入仓库约定。
 
 本轮未运行真实模型、PJSUA2 回环、真实 ViSQOL 后端、生产服务、Linux/其他 Python 版本或浏览器交互。未修改产品页面或打包内容，因此不重复页面验收、构建 wheel 或镜像。CI 示例仍未启用；其语法和说明检查不能当作 GitHub Actions 实际通过。
+
+## 合入 0.15.1 主线后的验证
+
+日期：2026-09-21。按用户要求，将最新主线 `73c383e` 合入原维护分支并更新 PR #29，产品版本随主线为 0.15.1。主线新增 latency 功能与文档脱敏；唯一文本冲突为 CHANGELOG，保留双方迭代记录。相对 `73c383e`，本 PR 仍只修改测试和维护文档；产品源码、HTML/JS、接口、打包配置、依赖和主线新用例均无改动。
+
+合并自检第一轮发现并处理两个适配点：共享任务页新增 `latency.js`／`latency.css`，原资源列表断言需同步，并继续逐个核对资源的实际来源与字节；普通测试需临时清除新增的 `VOICE_TOOLS_TEST_LATENCY_DIR`，防止继承环境时意外执行真实引擎。统一指南补充 latency 的依赖、选测关系和独立引擎命令，同步相关维护入口；保留主线历史专项记录。第二轮复查范围、调用点、环境开关、文档和交付要求，未发现新的明显遗漏，提前结束。
+
+环境沿用首轮的 macOS ARM64、Python 3.9.6、NumPy 2.0.2 和 Node 24.18.0，没有安装依赖。重新确认导入当前工作树的 `voice_tools`，版本为 0.15.1；普通命令中的四个开关均已通过预设环境值验证临时清除。
+
+| 检查 | 合并后结果 |
+|---|---|
+| 相关选测 | 54 项：首次 53 通过，1 项因沙箱禁止 `ps` 未完成；仅补跑该项后通过，去重后 54 项通过 |
+| 最终 Python 默认全量 | 501 项，449 通过、52 条件跳过，0 失败／错误；65.544 秒 |
+| Node 与 Studio/CLI 兼容 | Node 24 项通过；CLI 兼容 9 场景通过（16 次正常操作＋1 次预期拒绝） |
+| latency 普通检查 | 契约与页面用例进入 Python 全量，页面用例内的现有 Node 渲染检查含 16 个子场景；没有另重复执行渲染组 |
+| 文档与范围 | 128 处本地链接／锚点、13 个新增或修改的 Bash 块语法、10 组测试选择收集、CI 示例 YAML 和差异检查通过；相对新主线仍为原 16 个测试／文档文件 |
+
+52 项跳过：19 项 SIP 原生回环、8 项 benchmark 原生回环、1 项真实 NISQA 模型、7 项 latency 真实引擎，均未启用；另有 16 项 NISQA 服务和 1 项 gaps 评分来源兼容因缺少 soundfile 未执行。未增加或修改跳过条件，后 17 项仍属于普通测试且不记为通过。合并后的默认全量在允许本机 HTTP 端口与测试进程状态查询的环境完成，不连接真实服务。
+
+本轮选测命令为：
+
+```bash
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
+  PYTHONPATH="$PWD/src" python -m unittest \
+  tests.benchmark.test_delivery tests.benchmark.test_review_regressions \
+  tests.task.test_delivery tests.gaps.test_delivery tests.latency.test_contract \
+  tests.latency.test_web tests.test_machine_cli -v
+```
+
+补跑仅选择 `tests.latency.test_contract.ContractTests.test_timeout_kills_engine_and_descendant`，沿用同一解释器、源码和四个开关的清除方式。最终全量使用当前 [测试指南](testing.md#默认全量三项均需记录) 的三条命令；提交 Git、更新 PR 说明和说明文档收尾后复用该结果。
+
+按 code-readability Skill 复核相对新主线的最终测试差异及共享任务页生成调用点。资源断言只依据文件归属选择两个已有资源目录，保留显式的顺序与完整性检查，没有增加配置层或修改产品逻辑。QA 素材优化未再改动，380 → 76 的计量保留为首轮数据，不重新声称是 0.15.1 的性能对照。
+
+原始日志另存为 `merge-related.log`、`merge-related-retry.log`、`merge-full.log`、`merge-node.log`、`merge-compat.log`、`merge-env-isolation.log` 和 `merge-doc-checks.json`。本轮没有运行 latency 真实引擎、真实模型、PJSUA2 回环、真实 ViSQOL 后端、生产服务、跨平台或浏览器交互验收；这些不以主线已有记录冒充本轮通过。

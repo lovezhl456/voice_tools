@@ -8,6 +8,7 @@ from tests.html_fixtures import Page
 from tests.sip.fixtures import tone
 from voice_tools.core.files import read_json, write_json
 from voice_tools.tools.benchmark.templates import case
+from voice_tools.tools.latency import report as latency_report
 from voice_tools.tools.task import bundle, runner, review
 
 
@@ -63,10 +64,11 @@ class TimingDeliveryTests(unittest.TestCase):
         self.assertNotIn('/*__DATA__*/', html)
         page = Page(html)
         sources = [script['attrs']['src'] for script in page.scripts if 'src' in script['attrs']]
-        self.assertEqual(sources, ['benchmark.js', 'app.js'])
-        self.assertEqual(page.stylesheets, ['style.css'])
+        self.assertEqual(sources, ['benchmark.js', 'latency.js', 'app.js'])
+        self.assertEqual(page.stylesheets, ['style.css', 'latency.css'])
         for name in sources + page.stylesheets:
-            self.assertEqual((output / name).read_bytes(), (review.WEB / name).read_bytes())
+            directory = latency_report.WEB if name in ('latency.js', 'latency.css') else review.WEB
+            self.assertEqual((output / name).read_bytes(), (directory / name).read_bytes())
         statements = [script['text'] for script in page.scripts if 'src' not in script['attrs']]
         self.assertEqual(len(statements), 1)
         self.assertTrue(statements[0].startswith('window.VT_DATA='))

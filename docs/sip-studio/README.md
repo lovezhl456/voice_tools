@@ -83,7 +83,7 @@ case-001/
 
 ```bash
 node --test tests/studio/core.test.cjs
-env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO \
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
   PYTHONPATH="$PWD/src" python tests/studio/check_cli_compat.py
 ```
 

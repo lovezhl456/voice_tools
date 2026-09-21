@@ -1,0 +1,22 @@
+# Allow only packaging inputs. Audio, weights, Git history and environments never
+# enter the build context, even if they are present in the working directory.
+**
+!pyproject.toml
+!README.md
+!LICENSE
+!THIRD_PARTY_NOTICES.md
+!src/
+!src/**
+src/**/__pycache__/
+src/**/*.pyc
+src/**/*.egg-info/
+**/*.tar
+**/*.pt
+**/*.pth
+**/*.ckpt
+**/*.safetensors
+**/*.wav
+**/*.mp3
+**/*.flac
+**/*.aiff
+**/*.m4a

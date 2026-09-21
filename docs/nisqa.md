@@ -147,14 +147,14 @@ python scripts/nisqa_smoke.py data/speech.wav \
 无需权重的测试（从仓库根目录、选定虚拟环境执行；假评分器服务测试仍需 soundfile）：
 
 ```bash
-env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO \
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR \
   PYTHONPATH="$PWD/src" python -m unittest discover -s tests/nisqa -v
 ```
 
 真实权重对齐测试（显式指定本地素材，不下载）：
 
 ```bash
-env -u VOICE_TOOLS_SIP_LOOPBACK \
+env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_TEST_LATENCY_DIR \
   VOICE_TOOLS_NISQA_MODEL_DIR="$PWD/.local/nisqa-model" \
   VOICE_TOOLS_NISQA_AUDIO="$PWD/data/speech.wav" \
   PYTHONPATH="$PWD/src" python -m unittest tests.nisqa.test_real_model -v
