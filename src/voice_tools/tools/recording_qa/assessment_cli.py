@@ -5,6 +5,10 @@ from voice_tools.core.command import artifacts, emit_result
 
 
 def register(actions):
+    setup = actions.add_parser('setup', help='选择安装整通质检的 CPU 运行库、模型或全部，并检查是否就绪')
+    setup.add_argument('--component', choices=('all', 'runtime', 'model'), help='省略时显示交互菜单；脚本／JSON 必填')
+    setup.add_argument('--model-dir', dest='qa_model_dir', type=Path, help='模型目录；默认 ~/.local/share/voice-tools/autoqa')
+    setup.set_defaults(run=run_setup)
     assess = actions.add_parser('assess', help='工程规则与本地语音模型联合质检，按整通录音输出人工例外队列')
     assess.add_argument('inputs', type=Path, nargs='+')
     assess.add_argument('--out', type=Path, required=True)
@@ -37,6 +41,15 @@ def register(actions):
     evaluate.add_argument('--dataset-kind', choices=('synthetic', 'real'), required=True)
     evaluate.add_argument('--out', type=Path, required=True)
     evaluate.set_defaults(run=run_evaluate)
+
+
+def run_setup(args):
+    from .setup import install, select_component, setup_message
+    component = select_component(args.component, args.json_output)
+    if component is None:
+        return emit_result(args, {'cancelled': True}, '已取消安装。')
+    result = install(component, args.qa_model_dir)
+    return emit_result(args, result, setup_message(result), exit_code=0 if result['completed'] else 3)
 
 
 def run_assess(args):

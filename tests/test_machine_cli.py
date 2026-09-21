@@ -23,7 +23,7 @@ class MachineCliTests(unittest.TestCase):
         self.assertEqual(process.returncode, 0)
         self.assertEqual(set(value["cli"]["commands"]), {
             "analyze", "generate", "freeze", "promote", "evaluate", "compare",
-            "assess", "model-download", "model-doctor", "assess-check", "assess-evaluate"})
+            "assess", "setup", "model-download", "model-doctor", "assess-check", "assess-evaluate"})
         self.assertEqual(value["data_contracts"]["golden_write"], "1.1")
         self.assertEqual(value["data_contracts"]["qa_assessment"], "1.0")
         process, value = self.command("schema", "--tool", "homer")

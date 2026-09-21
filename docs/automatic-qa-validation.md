@@ -1,6 +1,6 @@
 # 0.16.1 整通自动质检验收
 
-基线 `a255ee5`，代码提交 `de898f8`，分支 `feat/v0.16.1-autoqa`；[PR #32](https://github.com/lovezhl456/voice_tools/pull/32) 待审阅。实现覆盖工程规则、固定本地语音模型、整通结论、人工例外／抽检及任务结果迁移。本记录针对最终判定代码；此后的说明文档整理不改变运行代码。
+基线 `a255ee5`，原判定代码提交 `de898f8`，分支 `feat/v0.16.1-autoqa`；[PR #32](https://github.com/lovezhl456/voice_tools/pull/32) 待审阅。实现覆盖工程规则、固定本地语音模型、整通结论、人工例外／抽检及任务结果迁移。下方先记录原整通流程验收；后续基于 `4c25846` 的 CLI 安装器增量与最终回归另列于文末。
 
 ## 模型与受控素材
 
@@ -47,3 +47,26 @@
 原始日志、受控素材、模型、截图和 wheel 留在本地 `voice-tools-autoqa-evidence/`，不提交到仓库。核心日志为 `full-python-release.log`、`studio-release.log`、`cli-release.log`，最终安装产物在 `dist-final/` 与 `wheel-final/`。
 
 用户实际录音尚未提供，真实线路上的自动覆盖率、误报率、漏检率及人工节省时间未验收。声道、AI 接管范围和阈值需按实际系统核实；未完成模型或工程检查不会自动通过。本轮验证了 macOS 上的 CPU 执行和本机任务包迁移，未声明其他物理主机／Docker 镜像已验收。
+
+## CLI 依赖安装追加验收（2026-09-21）
+
+基于 `4c25846` 追加 `qa setup`，沿用未发布的 0.16.1。实际使用当前 CLI 的 Python 安装 CPU wheel，交互／脚本选择运行库、模型或全部；pip 输出只到 stderr，安装后由新进程验证。未改变质检判定、模型权重或页面。
+
+| 检查 | 结果 |
+|---|---|
+| 安装器及 CLI、模型、任务选测 | 32 项通过，含新增安装器 14 项；首轮修正 macOS `/var` 与 `/private/var` 路径归一化测试断言 |
+| 最终 Python discovery | 564 项：526 通过、38 条件跳过；62.6 秒。条件与原轮相同，无新增跳过 |
+| 最终 Node／CLI 兼容 | 24 项／9 场景通过，无 SIP 呼叫 |
+| 新环境一键安装 | 从 wheel 安装基础 CLI，确认未装 ONNX Runtime／SciPy 后执行 `--json qa setup --component all`；退出 0，两个组件完成，`ready=true`，模型首次下载并通过固定 SHA 校验 |
+| 缓存与部分安装 | pip 禁用索引后重跑全部，模型 `cached=true`；仅运行库配缺失模型、仅模型配缺失运行库，均正确区分 `completed=true` 与 `ready=false` |
+| 离线依赖源 | 按文档下载 wheelhouse，在第二个全新虚拟环境设置 `PIP_NO_INDEX=1`／`PIP_FIND_LINKS`，从本地 wheel 安装全部运行库并复用已校验模型；退出 0、`ready=true` |
+| 失败保护 | 不兼容 pip 约束触发退出 3，仍保留成功模型及实际 doctor 状态；未知模型内容拒绝并原样保留；JSON 缺选择退出 2、不交互 |
+| 真实终端 | 菜单展示当前 Python；无效输入重新提示，选择 3 后完成缓存模型校验与推理；取消／EOF／中断由单测覆盖 |
+| 安装产物 | 152 个包内源码／资源逐字节匹配工作树，无 ONNX 权重或音频；真实模型专项从安装包运行，2 项通过，覆盖中文语音、静音、状态重置和重采样 |
+| 文档及契约 | 重新生成并对照 CLI schema，安装／排障／离线准备及任务等 97 个文档链接核对，`git diff --check` 通过 |
+
+实装平台 macOS ARM64，Python 3.12.14，NumPy 2.5.3、ONNX Runtime 1.30.0、SciPy 1.18.1。其他系统和架构未实装验收；pip 是否有兼容二进制 wheel 决定对应环境可否安装。本轮未改变前端，复用上方已记录的页面验收；安装测试不证明实际业务通话准确率。
+
+可读性核查：按 `code-readability` 检查相对 `origin/main` 的最终差异及必要调用点，重点复查安装器、CLI 注册、模型入口和任务排除。交互选择、pip 安装、子进程 JSON、最终就绪状态职责明确；共用模型目录常量与现有下载／doctor，保留离线分析边界，未发现未处理的范围内问题。
+
+证据位于本地验收目录的 `setup-unit.log`、`setup-full-python.log`、`setup-studio.log`、`setup-cli-compat.log`、`setup-all.json`／`.log`、`setup-acceptance.json`、`setup-real-model.log` 和 `setup-dist/`。不向仓库提交本机环境、日志、录音或模型。

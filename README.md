@@ -54,6 +54,8 @@ voice-tools schema --tool sip
 
 默认依赖 NumPy，用于录音质检；HOMER 工具自身仅用 Python 标准库。可选 CPU WebRTC VAD：`python -m pip install -e '.[vad]'`。也可用 `python -m voice_tools` 代替 `voice-tools`。
 
+整通自动质检依赖可通过 `voice-tools qa setup` 交互选择安装；脚本使用 `voice-tools qa setup --component all` 一次安装 CPU 运行库、下载模型并检查。支持仅运行库／仅模型与缓存复用，详见[安装与排障](docs/automatic-qa-install.md)及[使用说明](docs/automatic-qa.md)。
+
 NISQA 为独立可选功能，需 Python 3.10+：安装 `python -m pip install -e '.[nisqa]'`，再显式执行 `voice-tools nisqa download`。Linux 先安装 CPU 版 PyTorch，详见[安装说明](docs/nisqa.md)。权重仅存本地缓存、不入 Git，官方权重含非商业限制。
 
 格式准备使用本机可选的 FFmpeg / FFprobe。原生 PCM16 WAV 体检无需它们。音频、QA、抓包、会话检索与报告的 `--json` 放在工具名之前；HOMER 保留其原有 JSON 协议和退出码。

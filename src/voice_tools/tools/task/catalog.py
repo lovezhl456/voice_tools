@@ -4,7 +4,8 @@ import json
 import subprocess
 import sys
 
-SETUP = {('homer', 'init'), ('homer', 'login'), ('homer', 'logout'), ('nisqa', 'download'), ('qa', 'model-download')}
+SETUP = {('homer', 'init'), ('homer', 'login'), ('homer', 'logout'), ('nisqa', 'download'),
+         ('qa', 'model-download'), ('qa', 'setup')}
 EXECUTABLES = {'tshark', 'sipp', 'fs_cli'}
 RUNTIME_PATHS = {'identity', 'model_dir', 'qa_model_dir', 'visqol_dir', 'latency_dir', 'ca_file'}
 FILE_OUTPUTS = {('qa', 'promote'), ('qa', 'evaluate'), ('qa', 'assess-evaluate'), ('homer', 'export')}

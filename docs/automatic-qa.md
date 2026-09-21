@@ -4,15 +4,15 @@
 
 ## 安装与运行
 
-以下安装命令在本仓库根目录、选定的 Python 环境中执行。
+已安装基础 CLI 后，在选定的 Python 环境中执行；菜单可选择全部、仅运行库或仅模型：
 
 ```bash
-pip install '.[autoqa]'
-voice-tools qa model-download --out "$HOME/.local/share/voice-tools/autoqa"
-voice-tools qa model-doctor
+voice-tools qa setup
+# 脚本／无终端环境：一次安装运行库、下载模型并检查
+voice-tools qa setup --component all
 ```
 
-只在 `model-download` 命令下载固定版本模型；模型约 2.3 MB、MIT 许可。`model-doctor` 和 `assess` 不下载、不上传录音，使用 ONNX Runtime CPU 并显式禁用遥测。摘要不匹配的权重拒绝加载。首次部署建议用进程禁网策略进一步验证本机运行库。模型来源和摘要见[模型清单](../src/voice_tools/tools/recording_qa/resources/silero.json)与[第三方声明](../THIRD_PARTY_NOTICES.md)。
+`setup` 使用当前 CLI 的 Python 安装依赖，支持缓存与重试。安装范围、离线准备、退出码和排障见[安装说明](automatic-qa-install.md)。只在显式选择模型安装或调用 `model-download` 时下载固定模型；模型约 2.3 MB、MIT 许可。`model-doctor` 和 `assess` 不安装、不下载、不上传录音，使用 ONNX Runtime CPU 并显式禁用遥测。摘要不匹配的权重拒绝加载。模型来源和摘要见[模型清单](../src/voice_tools/tools/recording_qa/resources/silero.json)与[第三方声明](../THIRD_PARTY_NOTICES.md)。
 
 先核实录音系统的左右声道映射，以及 AI 接管时间。若整个录音范围确实都是 AI 会话、右轨为 AI，可批量使用：
 
@@ -78,10 +78,10 @@ voice-tools qa assess-evaluate outputs/assessment-001/recording-review.csv \
 
 ## 任务迁移
 
-`qa assess`、`assess-check`、`assess-evaluate` 可由任务 catalog 发现。模型安装留在执行机，`qa.model-download` 不进入离线任务。执行端配置增加 `qa_model_dir`，与 NISQA 的 `model_dir` 分开；模型不会作为输入打包：
+`qa assess`、`assess-check`、`assess-evaluate` 可由任务 catalog 发现。依赖提前在执行机通过 `qa setup --component all` 准备，`qa.setup` 与 `qa.model-download` 不进入离线任务。执行端配置增加 `qa_model_dir`，与 NISQA 的 `model_dir` 分开；模型不会作为输入打包：
 
 ```json
 {"schema_version":"1.0","environments":{},"qa_model_dir":"/models/autoqa","network_allowed":false}
 ```
 
-任务预检会执行模型 doctor；`rules_only` 不要求模型。复查端从已校验 JSONL 重建整通页面，不执行结果包提供的 HTML，并只接入包内经过验证的 WAV。运行机需单独安装 `[autoqa]`；本次不自动改变既有 Docker 镜像。
+任务预检会执行模型 doctor；`rules_only` 不要求模型。复查端从已校验 JSONL 重建整通页面，不执行结果包提供的 HTML，并只接入包内经过验证的 WAV。运行机需单独准备依赖与模型；本次不自动改变既有 Docker 镜像。

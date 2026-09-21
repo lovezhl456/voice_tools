@@ -13,9 +13,10 @@ import numpy as np
 
 from voice_tools.audio.activity import spans_from_mask
 from voice_tools.core.files import read_json, sha256, write_json
+from . import DEFAULT_MODEL_DIRECTORY
 
 RESOURCES = Path(__file__).with_name('resources')
-DEFAULT_DIRECTORY = Path('~/.local/share/voice-tools/autoqa')
+DEFAULT_DIRECTORY = DEFAULT_MODEL_DIRECTORY
 
 
 def manifest():
@@ -30,7 +31,7 @@ def verify(directory=None):
     spec = manifest()
     path = model_file(directory)
     if not path.is_file():
-        raise ValueError('缺少语音模型；请先运行 qa model-download，或显式使用 --rules-only')
+        raise ValueError('缺少语音模型；请先运行 qa setup --component model 或 qa model-download，或显式使用 --rules-only')
     if path.stat().st_size != spec['bytes'] or sha256(path) != spec['sha256']:
         raise ValueError('语音模型摘要不匹配；拒绝加载未知或损坏的模型')
     return path
@@ -88,7 +89,7 @@ class SpeechModel:
             import onnxruntime as ort
             from scipy.signal import resample_poly
         except ImportError as error:
-            raise ValueError('请安装 CPU 模型依赖：pip install "voice-tools[autoqa]"') from error
+            raise ValueError('请安装 CPU 模型依赖：voice-tools qa setup --component runtime') from error
         ort.disable_telemetry_events()
         options = ort.SessionOptions()
         options.intra_op_num_threads = 1
