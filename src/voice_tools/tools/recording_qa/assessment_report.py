@@ -11,7 +11,7 @@ def render(path, records, summary, hide_paths=False, back_link=None):
     visible = []
     for record in records:
         validate_record(record)
-        row = {key: record[key] for key in ('assessment_id', 'audio_sha256', 'result', 'error', 'playback_sources') if key in record}
+        row = {key: record[key] for key in ('assessment_id', 'audio_sha256', 'result', 'error', 'playback_sources', 'waveform') if key in record}
         row['input'] = record['input'].replace('\\', '/').rsplit('/', 1)[-1] if hide_paths else record['input']
         if hide_paths:
             original = record['input']
@@ -28,7 +28,8 @@ def render(path, records, summary, hide_paths=False, back_link=None):
     data = json.dumps({'records': visible, 'summary': summary, 'fields': FIELDS}, ensure_ascii=False, allow_nan=False)
     data = data.replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
     template = (ROOT/'assessment.html').read_text(encoding='utf-8')
-    from voice_tools.core.review.page import ASSETS
+    from voice_tools.core.review.page import ASSETS, embed_playback_assets
+    template = embed_playback_assets(template).replace('当前机会', '当前范围').replace('标注窗口 · 固定', '建议复核范围 · 固定')
     page = template.replace('__STYLE__', (ROOT/'assessment.css').read_text())
     page = page.replace('__FILTER__', (ASSETS/'file-filter.js').read_text())
     page = page.replace('__SCRIPT__', (ROOT/'assessment.js').read_text()).replace('__DATA__', data)
