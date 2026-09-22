@@ -108,3 +108,85 @@ test('E04 nested imported config survives form export and invalid JSON never rep
   await expect(page.getByLabel('配置标识',{exact:true})).toHaveValue(config.id);
   expect(errors).toEqual([]);
 });
+
+test('E05 unsaved new template import and copy cannot run old versions and discard restores saved content',async({page},info)=>{
+  const errors=await openEditor(page,true);
+  const id='baseline-'+info.project.name;
+  await newConfig(page,id,'保留的已保存标签');
+  await page.locator('#saveConfig').click();
+  await expect(page.locator('#message')).toContainText('已保存到本机检测库');
+  const baseline=JSON.parse(await page.locator('#preview').textContent());
+  const imported={...baseline,id:'imported-'+info.project.name,name:'待保存导入配置'};
+  const importFile=info.outputPath('pending-import.json');
+  fs.writeFileSync(importFile,JSON.stringify(imported));
+  const runs=[];
+  page.on('request',request=>{if(request.url().endsWith('/api/run'))runs.push(request.postDataJSON());});
+  const starts=[
+    ['new',()=>page.locator('#newConfig').click()],
+    ['template',()=>page.locator('#example').selectOption('1')],
+    ['import',()=>page.locator('#importConfig').setInputFiles(importFile)],
+    ['copy',()=>page.locator('#copyConfig').click()]
+  ];
+  for(const [kind,start] of starts) {
+    await start();
+    await expect(page.locator('#dirtyState')).toHaveText('有未保存修改');
+    await expect(page.locator('#runDefinitions input:checked')).toHaveCount(1);
+    await page.locator('#runDetection').click();
+    await expect(page.locator('#message')).toContainText('未保存修改');
+    expect(runs).toEqual([]);
+    const pending=JSON.parse(await page.locator('#preview').textContent());
+    await page.reload();
+    await expect(page.locator('#message')).toContainText('已恢复未保存草稿');
+    expect(JSON.parse(await page.locator('#preview').textContent())).toEqual(pending);
+    await page.locator('#runDefinitions').getByRole('checkbox',{name:'界面创建 '+id+' · '+id+'@1',exact:true}).check();
+    await page.locator('#runDetection').click();
+    await expect(page.locator('#message')).toContainText('未保存修改');
+    expect(runs).toEqual([]);
+    await page.locator('#discardConfig').click();
+    expect(JSON.parse(await page.locator('#preview').textContent())).toEqual(baseline);
+    await expect(page.locator('#savedConfig')).toHaveValue(id+'@1');
+    await expect(page.locator('#dirtyState')).toHaveText('当前配置无未保存修改');
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await page.screenshot({path:info.outputPath('discard-'+kind+'.png'),fullPage:true});
+  }
+  await page.locator('#importConfig').setInputFiles(importFile);
+  await expect(page.locator('#message')).toContainText('配置已导入');
+  await page.locator('#saveConfig').click();
+  await expect(page.locator('#message')).toContainText(imported.id+'@1');
+  await page.locator('#runDefinitions').getByRole('checkbox',{name:'界面创建 '+id+' · '+id+'@1',exact:true}).uncheck();
+  await page.locator('#runDetection').click();
+  await expect(page.locator('#runResult')).toContainText('使用配置：'+imported.id+'@1');
+  expect(runs.map(run=>run.definitions)).toEqual([[imported.id+'@1']]);
+  await page.reload();
+  await page.locator('#savedConfig').selectOption(imported.id+'@1');
+  expect(JSON.parse(await page.locator('#preview').textContent())).toEqual(imported);
+  expect(errors).toEqual([]);
+});
+
+test('E06 no saved baseline and legacy imported baselines never become saved by discarding',async({page},info)=>{
+  const errors=await openEditor(page);
+  await expect(page.locator('#dirtyState')).toHaveText('当前配置尚未保存');
+  const initial=JSON.parse(await page.locator('#preview').textContent());
+  await newConfig(page,'unsaved-'+info.project.name);
+  await page.reload();
+  await expect(page.locator('#message')).toContainText('已恢复未保存草稿');
+  await page.locator('#discardConfig').click();
+  await expect(page.locator('#dirtyState')).toHaveText('当前配置尚未保存');
+  expect(JSON.parse(await page.locator('#preview').textContent())).toEqual(initial);
+  // Migrate the old format, which incorrectly treated the imported draft as saved.
+  const legacy={...initial,id:'legacy-unsaved'};
+  await page.evaluate(config=>localStorage.setItem('voice-tools-config-draft:offline',JSON.stringify({config,baseline:config})),legacy);
+  await page.reload();
+  await expect(page.locator('#message')).toContainText('已恢复未保存草稿');
+  await page.locator('#discardConfig').click();
+  await expect(page.locator('#dirtyState')).toHaveText('当前配置尚未保存');
+  await expect(page.locator('#savedConfig option')).toHaveCount(1);
+  expect(JSON.parse(await page.locator('#preview').textContent())).toEqual(initial);
+  await page.locator('#example').selectOption('1');
+  await expect(page.locator('#dirtyState')).toHaveText('有未保存修改');
+  await page.locator('#saveConfig').click();
+  await expect(page.locator('#message')).toContainText('已保存到本浏览器');
+  await page.reload();
+  await expect(page.locator('#dirtyState')).toHaveText('当前配置无未保存修改');
+  expect(errors).toEqual([]);
+});

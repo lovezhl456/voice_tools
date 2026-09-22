@@ -79,14 +79,14 @@ def main():
                 visit(child)
         visit(report)
         coverage={key:sorted(values) for key,values in coverage.items()}
-        expected={name:['D01','D02','D03','D04','D05','E01','E02','E03','E04'] for name in ('desktop','mobile')}
+        expected={name:['D01','D02','D03','D04','D05','E01','E02','E03','E04','E05','E06'] for name in ('desktop','mobile')}
         result['capabilities']=coverage
         if coverage != expected:
-            raise RuntimeError('D01–D05 and E01–E04 desktop/mobile capability coverage is incomplete')
-        if stats['expected'] != 18 or any(stats[key] for key in ('unexpected','skipped','flaky')):
-            raise RuntimeError('Expected D01–D05 and E01–E04 on desktop/mobile with no failures, skips or retries')
+            raise RuntimeError('D01–D05 and E01–E06 desktop/mobile capability coverage is incomplete')
+        if stats['expected'] != 22 or any(stats[key] for key in ('unexpected','skipped','flaky')):
+            raise RuntimeError('Expected D01–D05 and E01–E06 on desktop/mobile with no failures, skips or retries')
         result['status']='passed'
-        print('Passed 18 installed detection/editor browser cases: '+str(output))
+        print('Passed 22 installed detection/editor browser cases: '+str(output))
         return 0
     except (OSError,ValueError,RuntimeError) as error:
         result['error']=str(error); print(error,file=sys.stderr); return 1

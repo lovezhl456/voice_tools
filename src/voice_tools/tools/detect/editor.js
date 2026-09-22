@@ -12,7 +12,7 @@
   const metricNames={rms_dbfs:'均方根电平',peak_dbfs:'峰值电平',duration_s:'窗口时长',clipping_ratio:'削波比例',
     activity_ratio:'活动占比',activity_total_s:'累计活动时长',activity_longest_s:'最长活动时长',activity_count:'活动次数',
     silence_ratio:'静音占比',silence_total_s:'累计静音时长',silence_longest_s:'最长静音时长',silence_count:'静音次数'};
-  let definitions=data.definitions.map(normalize), draft=clone(data.templates[0]), baseline=clone(draft);
+  let definitions=data.definitions.map(normalize), draft=clone(data.templates[0]), baseline=null;
   let dirty=false, busy=false;
   const selectedRuns=new Set();
   function message(value,success=false) { $('message').textContent=value; $('message').classList.toggle('success',success); }
@@ -43,7 +43,7 @@
   }
   function preview() {
     $('preview').textContent=JSON.stringify(draft,null,2);
-    $('dirtyState').textContent=dirty?'有未保存修改':'当前配置无未保存修改';
+    $('dirtyState').textContent=dirty?'有未保存修改':baseline?'当前配置无未保存修改':'当前配置尚未保存';
   }
   function changed() {
     dirty=true;preview();
@@ -52,7 +52,22 @@
   }
   function clearDraft() { try {localStorage.removeItem(draftKey);} catch (_) { /* Download and server save still work. */ } }
   function canSwitch() { if(busy||dirty) {message('请先保存配置或放弃未保存修改，再切换。');return false;} return true; }
-  function load(config) {draft=normalize(config);baseline=clone(draft);dirty=false;clearDraft();render();}
+  function loadSaved(config) {
+    draft=normalize(config);baseline=clone(draft);dirty=false;clearDraft();render();
+    $('savedConfig').value=ref(config);$('example').value='';
+  }
+  function startDraft(config) {
+    draft=normalize(config);$('savedConfig').value='';changed();render();
+  }
+  function discardDraft() {
+    if(baseline) {
+      loadSaved(baseline);message('已恢复上次保存的配置。');
+    } else {
+      draft=normalize(data.templates[0]);dirty=false;clearDraft();render();
+      $('savedConfig').value='';$('example').value='';
+      message('已放弃草稿。当前示例尚未保存，请保存后再运行。');
+    }
+  }
   function newConfig() {
     return normalize({schema_version:'1.0',id:'custom-rule',version:'1',name:'自定义检测',description:'描述要识别的业务问题',
       metrics:{level:{kind:'rms_dbfs',channel:1}},rules:[{id:'rule-1',label:'自定义标签',when:{metric:'level',op:'lt',value:-35}}]});
@@ -206,22 +221,22 @@
       if(!previous)definitions.push(config);
       localStorage.setItem(versionsKey,JSON.stringify(definitions));message('已保存到本浏览器。下载 JSON 后可在其他环境执行。',true);
     }
-    load(config);renderLibrary();$('savedConfig').value=ref(config);
+    renderLibrary();loadSaved(config);
   }
   $('definitionForm').onsubmit=event=>{event.preventDefault();action(save);};
   $('validateConfig').onclick=()=>action(async()=>{const config=validDraft();if(data.session)await api('validate',{config});message('配置有效：'+Object.keys(config.metrics).length+' 个指标，'+config.rules.length+' 条标签规则。',true);});
   $('exportConfig').onclick=()=>action(async()=>{download(validDraft());message('已下载当前配置 JSON；修改内容仍需保存为配置版本。',true);});
-  $('discardConfig').onclick=()=>{load(baseline);message('已恢复切换到此配置时的内容。');};
-  $('newConfig').onclick=()=>{if(canSwitch()){load(newConfig());$('savedConfig').value='';$('example').value='';message('请填写新配置和标签规则。');}};
-  $('copyConfig').onclick=()=>{if(!canSwitch())return;const config=clone(draft);config.version=(config.version.slice(0,65)+'-copy');while(definitions.some(item=>ref(item)===ref(config)))config.version=config.version.slice(0,65)+'-'+Date.now();load(config);changed();message('已复制配置。请设置新版本号并保存。');};
-  $('savedConfig').onchange=()=>{const config=definitions.find(item=>ref(item)===$('savedConfig').value);if(!config)return;if(canSwitch())load(config);else $('savedConfig').value=ref(baseline);};
+  $('discardConfig').onclick=discardDraft;
+  $('newConfig').onclick=()=>{if(canSwitch()){startDraft(newConfig());$('example').value='';message('请填写新配置和标签规则。');}};
+  $('copyConfig').onclick=()=>{if(!canSwitch())return;const config=clone(draft);config.version=(config.version.slice(0,65)+'-copy');while(definitions.some(item=>ref(item)===ref(config)))config.version=config.version.slice(0,65)+'-'+Date.now();startDraft(config);message('已复制配置。请设置新版本号并保存。');};
+  $('savedConfig').onchange=()=>{const config=definitions.find(item=>ref(item)===$('savedConfig').value);if(!config)return;if(canSwitch())loadSaved(config);else $('savedConfig').value=dirty?'':baseline?ref(baseline):'';};
   data.templates.forEach((config,index)=>$('example').add(new Option(config.name,String(index))));
-  $('example').onchange=()=>{if($('example').value==='')return;if(canSwitch())load(data.templates[Number($('example').value)]);else $('example').value='';};
+  $('example').onchange=()=>{if($('example').value==='')return;if(canSwitch())startDraft(data.templates[Number($('example').value)]);else $('example').value='';};
   $('importConfig').onchange=()=>action(async()=>{
     const file=$('importConfig').files[0];$('importConfig').value='';if(!file)return;
     if(dirty)throw Error('请先保存配置或放弃未保存修改，再导入。');
     if(file.size>1024*1024)throw Error('配置 JSON 不能超过1 MiB。');
-    const config=normalize(contract.parse(await file.text()));if(data.session)await api('validate',{config});load(config);changed();message('配置已导入；所有指标和组合条件已保留，请检查后保存。');
+    const config=normalize(contract.parse(await file.text()));if(data.session)await api('validate',{config});startDraft(config);message('配置已导入；所有指标和组合条件已保留，请检查后保存。');
   });
   $('windowKind').onchange=()=>{
     const kind=$('windowKind').value;draft.window={kind};
@@ -234,7 +249,7 @@
   $('addMetric').onclick=()=>{if(Object.keys(draft.metrics).length>=32){message('最多32个指标。');return;}let index=1;while(Object.hasOwn(draft.metrics,'metric-'+index))index++;draft.metrics['metric-'+index]={kind:'rms_dbfs',channel:1,params:defaultParams('rms_dbfs')};changed();renderMetrics();renderRules();};
   $('addRule').onclick=()=>{if(draft.rules.length>=32){message('最多32条规则。');return;}let index=1;while(draft.rules.some(rule=>rule.id==='rule-'+index))index++;draft.rules.push({id:'rule-'+index,label:'新标签',description:'请说明此规则的业务含义',when:defaultCondition()});changed();renderRules();};
   $('runDetection').onclick=()=>action(async()=>{
-    if(dirty)throw Error('当前表单有未保存修改，请先保存新版本再运行。');
+    if(dirty||!baseline)throw Error('当前表单有未保存修改，请先保存新版本再运行。');
     if(!selectedRuns.size)throw Error('请选择至少一个已保存的配置版本。');
     $('runResult').textContent='正在检测，请稍候。';
     try {
@@ -257,11 +272,21 @@
     try {const saved=JSON.parse(localStorage.getItem(versionsKey)||'[]');for(const raw of saved){const config=normalize(raw);if(!definitions.some(item=>ref(item)===ref(config)))definitions.push(config);}}
     catch(error){message('本地版本记录未读取：'+error.message);}
   }
-  renderLibrary();draft=normalize(draft);baseline=clone(draft);render();
+  renderLibrary();
+  if(definitions.length) {
+    draft=normalize(definitions[0]);baseline=clone(draft);$('savedConfig').value=ref(draft);
+  } else draft=normalize(draft);
+  render();
   // Restore only an explicit unsaved draft; never pretend it is an immutable saved version.
   try {
     const saved=localStorage.getItem(draftKey);
-    if(saved){const value=JSON.parse(saved);draft=normalize(value.config);baseline=normalize(value.baseline);dirty=true;render();message('已恢复未保存草稿，请保存新版本或放弃修改。');}
+    if(saved){
+      const value=JSON.parse(saved), restored=normalize(value.config);
+      // Older drafts may name an imported or copied configuration as their baseline.
+      const previous=value.baseline?normalize(value.baseline):null;
+      baseline=previous?definitions.find(config=>contract.stable(config)===contract.stable(previous))||null:null;
+      startDraft(restored);message('已恢复未保存草稿，请保存新版本或放弃修改。');
+    }
   } catch(error){message('草稿无法恢复：'+error.message);}
   window.addEventListener('beforeunload',event=>{if(dirty){event.preventDefault();event.returnValue='';}});
 })();

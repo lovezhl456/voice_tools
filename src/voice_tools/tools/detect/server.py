@@ -22,22 +22,37 @@ class EditorApplication:
     def __init__(self, database, inputs, output):
         from voice_tools.tools.recording_qa.batch import discover
         self.database = Path(database).resolve()
-        self.inputs = discover(inputs)
         self.output = Path(output).resolve()
+        sources = [Path(path).resolve() for path in inputs]
+        for source in sources:
+            if (source == self.output or self.output in source.parents
+                    or source.is_dir() and source in self.output.parents):
+                raise ValueError('服务输出目录不能与输入目录重叠，也不能包含输入录音')
+        reports = (self.output / 'reports').resolve()
+        marker = self.output / '.library.json'
+        if self.database in (self.output, marker) or self.database == reports or reports in self.database.parents:
+            raise ValueError('检测库不能使用服务输出目录、标记文件或公开报告目录的位置')
+        self.inputs = discover(sources)
         self.token = secrets.token_urlsafe(32)
         self.run_lock = threading.Lock()
-        with store.connect(self.database, create=True) as db:
-            self.library_id = store.library_id(db)
-        self.output.mkdir(parents=True, exist_ok=True)
-        marker = self.output / '.library.json'
-        identity = {'schema_version': '1.0', 'library_id': self.library_id}
+        # Validate before opening SQLite: a new database may live inside the empty workspace.
+        if self.output.exists() and not self.output.is_dir():
+            raise ValueError('服务输出路径须为目录')
         if marker.exists():
-            if json.loads(marker.read_text(encoding='utf-8')) != identity:
+            identity = json.loads(marker.read_text(encoding='utf-8'))
+            if not self.database.is_file():
+                raise ValueError('服务输出目录属于其他检测库，或指定检测库不存在，请检查路径')
+            with store.connect(self.database) as db:
+                self.library_id = store.library_id(db)
+            if identity != {'schema_version': '1.0', 'library_id': self.library_id}:
                 raise ValueError('服务输出目录属于其他检测库，请选择新目录')
-        elif any(self.output.iterdir()):
-            raise ValueError('服务输出目录须为空，或已由同一检测库创建')
         else:
-            write_json(marker, identity)
+            if self.output.exists() and any(self.output.iterdir()):
+                raise ValueError('服务输出目录须为空，或已由同一检测库创建')
+            with store.connect(self.database, create=True) as db:
+                self.library_id = store.library_id(db)
+            self.output.mkdir(parents=True, exist_ok=True)
+            write_json(marker, {'schema_version': '1.0', 'library_id': self.library_id})
         (self.output / 'reports').mkdir(exist_ok=True)
 
     def definitions(self, db):

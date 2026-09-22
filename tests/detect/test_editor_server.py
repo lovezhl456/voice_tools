@@ -67,12 +67,14 @@ class EditorServer(unittest.TestCase):
         self.assertEqual(len(restored.library()['definitions']),2)
         with self.assertRaisesRegex(ValueError,'其他检测库'):
             EditorApplication(self.root/'other.sqlite3',[self.audio],self.out)
+        self.assertFalse((self.root/'other.sqlite3').exists())
 
     def test_run_uses_saved_versions_and_scoped_inputs_and_serves_range_audio(self):
         self.post('/api/definitions',{'config':config()})
         code,result,_=self.post('/api/run',{'definitions':['level@1'],'batch_id':'browser-1'})
         self.assertEqual(code,200);self.assertEqual(result['summary']['findings'],1)
         self.assertEqual(self.request(result['report_url'])[0],200)
+
         html=self.request(result['report_url'])[1].decode();self.assertIn('href="/"',html)
         source=next((self.out/'reports/browser-1/audio').glob('*.wav'))
         code,body,headers=self.request('/reports/browser-1/audio/'+source.name,headers={'Range':'bytes=0-127'})
@@ -102,3 +104,92 @@ class EditorServer(unittest.TestCase):
         code,result,_=self.post('/api/run',{'definitions':['level@1'],'batch_id':'partial'})
         self.assertEqual(code,200);self.assertEqual(result['summary']['status'],'partial');self.assertEqual(result['summary']['errors'],1)
         self.assertEqual(self.request(result['report_url'])[0],200)
+
+
+class EditorWorkspace(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name).resolve()
+        self.inputs = self.root / 'inputs'
+        self.inputs.mkdir()
+        self.audio = wav(self.inputs / 'original.wav')
+        self.db = self.root / 'library.sqlite3'
+
+    def test_output_within_inputs_is_rejected_before_writes_even_after_restart(self):
+        output = self.inputs / 'service'
+        with self.assertRaisesRegex(ValueError, '输入目录重叠'):
+            EditorApplication(self.db, [self.inputs], output)
+        self.assertFalse(self.db.exists())
+        self.assertFalse(output.exists())
+        # Simulate reports left by an older service; a restart must not ingest them.
+        output.mkdir()
+        generated = wav(output / 'generated.wav', channels=1)
+        for _ in range(2):
+            with self.assertRaisesRegex(ValueError, '输入目录重叠'):
+                EditorApplication(self.db, [self.inputs], output)
+        self.assertFalse(self.db.exists())
+        self.assertTrue(generated.exists())
+
+    def test_resolved_symlinks_and_equal_or_containing_paths_are_rejected(self):
+        alias = self.root / 'alias'
+        alias.symlink_to(self.inputs, target_is_directory=True)
+        output_alias = self.root / 'output-alias'
+        output_alias.symlink_to(self.inputs / 'service', target_is_directory=True)
+        for inputs, output in (([alias], self.inputs / 'service'),
+                               ([self.inputs], output_alias),
+                               ([self.inputs], self.inputs),
+                               ([self.audio], self.inputs),
+                               ([self.inputs], self.root)):
+            with self.subTest(inputs=inputs, output=output):
+                with self.assertRaisesRegex(ValueError, '输入'):
+                    EditorApplication(self.db, inputs, output)
+                self.assertFalse(self.db.exists())
+
+    def test_sibling_output_restart_keeps_only_original_recording(self):
+        output = self.root / 'service'
+        first = EditorApplication(self.db, [self.inputs], output)
+        first.save(config())
+        first.run({'definitions': ['level@1'], 'batch_id': 'first'})
+        restarted = EditorApplication(self.db, [self.inputs], output)
+        self.assertEqual(restarted.inputs, [self.audio])
+        result = restarted.run({'definitions': ['level@1'], 'batch_id': 'second'})
+        self.assertEqual(result['summary']['recordings'], 1)
+        self.assertEqual(result['summary']['errors'], 0)
+
+    def test_database_inside_empty_workspace_can_initialize_and_restart(self):
+        for relative, exists in (('library.sqlite3', False), ('state/library.sqlite3', True)):
+            with self.subTest(database=relative):
+                output = self.root / ('existing' if exists else 'new')
+                if exists:
+                    output.mkdir()
+                database = output / relative
+                first = EditorApplication(database, [self.inputs], output)
+                first.save(config())
+                first.run({'definitions': ['level@1'], 'batch_id': 'first'})
+                restarted = EditorApplication(database, [self.inputs], output)
+                self.assertEqual(restarted.library_id, first.library_id)
+                self.assertEqual(restarted.library()['definitions'], [config()])
+                result = restarted.run({'definitions': ['level@1'], 'batch_id': 'second'})
+                self.assertEqual(result['summary']['errors'], 0)
+
+    def test_nonempty_or_file_output_rejects_without_creating_database(self):
+        output = self.root / 'occupied'
+        output.mkdir()
+        keep = output / 'keep.txt'
+        keep.write_text('preserve me')
+        for target in (output, keep):
+            with self.subTest(output=target):
+                with self.assertRaisesRegex(ValueError, '服务输出'):
+                    EditorApplication(self.db, [self.inputs], target)
+                self.assertFalse(self.db.exists())
+        self.assertEqual(keep.read_text(), 'preserve me')
+
+    def test_database_cannot_use_workspace_marker_or_public_report_paths(self):
+        output = self.root / 'service'
+        for database in (output, output / '.library.json', output / 'reports',
+                         output / 'reports/private/library.sqlite3'):
+            with self.subTest(database=database):
+                with self.assertRaisesRegex(ValueError, '检测库不能'):
+                    EditorApplication(database, [self.inputs], output)
+                self.assertFalse(output.exists())

@@ -188,4 +188,4 @@ python scripts/check_detection.py --package-root .local/review-acceptance/packag
 
 新增 `tests.detect.test_editor` 校验表单导出契约、嵌套条件、未知字段／引用及 JSON 重复字段；`tests.detect.test_editor_server` 使用本机随机端口验证库身份、Host／Origin／会话限制、不可变版本、重启持久化、限定录音输入、检测事务失败回滚和音频 Range。必要端口受限时按实际权限运行，不新增跳过。
 
-`check_detection.py` 现覆盖原 D01–D05 加 E01–E04，桌面／手机共 18 项，复用 `check_review.py` 已构建的安装目录。运行器启动同一安装包的真实 `detect serve`，验证：从原 QA 入口进入编辑器；离线配置导出后经 CLI 校验并执行；图形化指标／AND 条件产生可检索标签；版本冲突、草稿恢复、未保存配置禁止执行；嵌套 JSON 无损往返和无效导入拒绝。任一必需能力缺失、失败、跳过或重试通过都拒绝。服务及临时 HTTP 服务器在测试后退出，不改变用户已有实例。
+`check_detection.py` 现覆盖原 D01–D05 加 E01–E06，桌面／手机共 22 项，复用 `check_review.py` 已构建的安装目录。运行器启动同一安装包的真实 `detect serve`，验证：从原 QA 入口进入编辑器；离线配置导出后经 CLI 校验并执行；图形化指标／AND 条件产生可检索标签；版本冲突、草稿恢复、未保存配置禁止执行；嵌套 JSON 无损往返和无效导入拒绝；新建／示例／导入／复制草稿在刷新、放弃、保存后的状态，以及无已保存版本和旧格式草稿的恢复。任一必需能力缺失、失败、跳过或重试通过都拒绝。服务及临时 HTTP 服务器在测试后退出，不改变用户已有实例。
