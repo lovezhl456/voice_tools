@@ -8,6 +8,14 @@
   let current = null, visible = [], formDirty = false, dirty = false;
   const filter = createReviewFileFilter(data.records, (record) => record.assessment_id, refresh);
   const message = (text) => { $('message').textContent = text; };
+  const waveform = createReviewWaveform($('player'), (start, end) => playback.setRange(start, end), message,
+    {focusSelection: true});
+  const playback = createReviewPlayback($('player'), {
+    duration: () => current?.result.duration_s,
+    seek: (value) => waveform.setTime(value),
+    rangeChanged: (start, end) => waveform.syncRange(start, end),
+    error: message
+  });
   const filename = (record) => record.input.split(/[\\/]/).pop();
   const fixed = (number) => Number.isFinite(number) ? number.toFixed(2) : '未知';
 
@@ -59,20 +67,23 @@
       return;
     }
     if (visible.length && !visible.includes(current)) select(visible[0]);
-    else if (!visible.length) { $('player').pause(); current = null; $('detail').hidden = true; }
+    else if (!visible.length) { playback.pause(); current = null; $('detail').hidden = true; }
   }
 
-  function setAudio() {
-    const source = current?.playback_sources?.[$('channel').value] || '';
-    $('player').pause();
-    if (source) $('player').src = source;
-    else { $('player').removeAttribute('src'); $('player').load(); }
-    $('audioHint').textContent = source ? '可直接跳到下方证据时间点；人工结论按整通录音填写。' : '此报告未附带试听音频。分析时增加 --include-audio 可生成试听副本。';
+  function setAudio(keepTime = true) {
+    const sources = current?.playback_sources || {};
+    if (!sources[$('channel').value]) $('channel').value = sources.both ? 'both' : sources.left ? 'left' : 'both';
+    for (const option of $('channel').options) option.disabled = !sources[option.value];
+    const source = sources[$('channel').value] || '';
+    playback.setSource(source, keepTime);
+    waveform.syncChannel($('channel').value);
+    $('audioHint').textContent = source ? '点击波形定位，或选择下方建议范围试听；图形保持原始双轨，人工结论仍按整通填写。' : '此报告未附带试听音频，仍可查看已保存的波形。分析时增加 --include-audio 可生成试听副本。';
   }
 
   function select(record) {
     if (formDirty) { message('请先记下整通结论或放弃表单修改。'); return; }
     current = record; $('detail').hidden = false; message('');
+    playback.pause();
     const result = record.result;
     $('name').textContent = filename(record);
     $('decision').textContent = names[result.decision] + (result.audit_selected ? ' · 已选入抽检' : '');
@@ -81,12 +92,14 @@
     $('blockers').hidden = !result.blockers?.length;
     $('windows').replaceChildren();
     for (const [start, end] of result.review_windows || []) {
+      if (end <= start) continue;
       const button = document.createElement('button'); button.type = 'button';
       button.textContent = `定位 ${fixed(start)}–${fixed(end)} 秒`;
       button.onclick = () => {
+        playback.pause(); playback.setRange(start, end);
+        waveform.setEvidenceRange(start, end); playback.applyRange(true);
         if (!$('player').getAttribute('src')) { message('此报告未附带试听音频。'); return; }
-        $('player').currentTime = start;
-        $('player').play().catch((error) => message(error.message));
+        playback.toggle();
       };
       $('windows').append(button);
     }
@@ -102,14 +115,30 @@
     const label = labels.get(record.assessment_id) || {};
     $('humanDecision').value = label.decision || ''; $('notes').value = label.notes || '';
     if (label.reviewer) $('reviewer').value = label.reviewer;
-    setAudio(); renderQueue();
+    const mono = record.waveform?.channels.length === 1;
+    for (const [index, id] of ['leftTitle', 'rightTitle'].entries()) {
+      let role = '角色未核实', verification = '待核实';
+      if (mono) { role = '单声道'; verification = '无法区分双方'; }
+      else if (result.channel_verified) { role = index === result.system_channel ? 'AI' : '用户'; verification = '已核实'; }
+      $(id).querySelector('.role-name').textContent = role;
+      $(id).querySelector('.role-meta').textContent = `${index === 0 ? '左' : '右'}声道\n${verification}`;
+    }
+    const range = result.review_windows.find(([start, end]) => end > start) || result.checked_range;
+    const [start, end] = range && range[1] > range[0] ? range : [0, result.duration_s || 0];
+    $('start').value = start; $('end').value = end;
+    for (const id of ['start', 'end']) $(id).removeAttribute('aria-invalid');
+    $('seek').max = result.duration_s || 0; $('seek').value = start;
+    $('time').textContent = `${fixed(start)} / ${fixed(result.duration_s)} 秒`;
+    setAudio(false);
+    waveform.load({record, op: {at_s: start, observed_until_s: end}});
+    renderQueue();
   }
 
   for (const id of ['directoryFilter','fileFilter','queueMode']) $(id).onchange = () => {
     if (id === 'directoryFilter') filter.updateFiles(); refresh();
   };
-  $('channel').onchange = setAudio;
-  $('player').onerror = () => message('试听音频无法读取，请核对报告音频副本。');
+  $('channel').onchange = () => setAudio();
+  $('player').onerror = () => { if ($('player').getAttribute('src')) message('试听音频无法读取，请核对报告音频副本。'); };
   for (const id of ['humanDecision','reviewer','notes']) $(id).oninput = () => { formDirty = true; renderQueue(); };
   function baseRow(record) {
     return {schema_version:'1.0',assessment_id:record.assessment_id,audio_sha256:record.audio_sha256,

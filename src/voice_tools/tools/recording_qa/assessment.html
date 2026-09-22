@@ -1,4 +1,5 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>整通自动质检 · voice_tools</title><link rel="icon" href="data:,"><style>__STYLE__</style></head><body>
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>整通自动质检 · voice_tools</title><link rel="icon" href="data:,"><style>__STYLE__
+__WAVEFORM_STYLE__</style></head><body>
 <header><div><p class="eyebrow">VOICE TOOLS · 整通质检</p><h1>系统先判断，人工处理例外</h1><p>工程规则与语音模型联合检查。每通录音一个结论，片段作为定位证据。</p></div><a href="summary.csv">下载整通汇总</a></header>
 <main><section id="totals" class="totals" aria-label="本批结果"></section>
 <p class="scope">检查范围：无应答、迟答、输出间隙与长静音。自动通过仅表示当前声学和时序检查通过，不代表回答内容或业务流程正确。</p>
@@ -9,8 +10,10 @@
 </section><p id="progress" aria-live="polite"></p><p id="message" role="status"></p>
 <div class="workspace"><aside><h2>录音队列</h2><div id="queue"></div></aside>
 <article id="detail" hidden><h2 id="name"></h2><p id="decision" class="decision"></p><p id="metadata"></p><p id="blockers" class="warning"></p>
-<section><h3>试听与证据定位</h3><label>试听声道<select id="channel"><option value="both">双轨</option><option value="left">左轨</option><option value="right">右轨</option></select></label><audio id="player" controls preload="metadata"></audio><p id="audioHint"></p><div id="windows" class="windows"></div></section>
+<section><h3>波形与证据定位</h3>__WAVEFORM_PANEL__
+__PLAYBACK_CONTROLS__
+<p id="audioHint"></p><div id="windows" class="windows"></div></section>
 <section><h3>本通结论依据</h3><div id="evidence"></div><details><summary>展开自动分析明细</summary><pre id="raw"></pre></details></section>
 <form id="reviewForm"><h3>整通人工结论</h3><p>一次确认整通录音，不要求逐片段填写。人工结论独立保存。</p><div class="formrow"><label>人工判断<select id="humanDecision" required><option value="">请选择</option><option value="normal">未发现问题</option><option value="abnormal">确认异常</option><option value="uncertain">仍无法判断</option></select></label><label>复核人<input id="reviewer" required maxlength="100"></label></div><label>复核说明<textarea id="notes" maxlength="5000"></textarea></label><div class="buttons"><button type="submit">记下整通结论</button><button type="button" id="discard">放弃表单修改</button></div></form>
 </article></div></main><footer>数据仅在本页处理。人工标签保存在浏览器内存，离开前请导出 CSV。模型未完成或证据不足的录音进入复核；真实自动处理效果需用代表性录音和抽检标签验证。</footer>
-<script id="reviewData" type="application/json">__DATA__</script><script>__FILTER__</script><script>__SCRIPT__</script></body></html>
+<script id="reviewData" type="application/json">__DATA__</script><script>__WAVEFORM_VENDOR__</script><script>__PLAYBACK_SCRIPT__</script><script>__WAVEFORM_SCRIPT__</script><script>__FILTER__</script><script>__SCRIPT__</script></body></html>

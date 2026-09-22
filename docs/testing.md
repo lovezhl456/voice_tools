@@ -120,7 +120,7 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 
 ## 整通自动质检
 
-普通规则、模型合同及工作流验证无需权重：`tests.recording_qa.test_assessment`、`test_assessment_workflow`、`test_speech_model`、`test_assessment_delivery`。安装器契约用 `test_setup`，以假子进程覆盖选择、JSON、当前解释器、部分失败、重试和任务排除，不在普通测试中执行 pip 下载。变更影响共享证据加载、任务执行或复查时加原 QA、task、gaps 交付组；页面变更另做桌面／移动端实浏览器验证。
+普通规则、模型合同及工作流验证无需权重：`tests.recording_qa.test_assessment`、`test_assessment_workflow`、`test_speech_model`、`test_assessment_delivery`。波形摘要、离线资源和旧结果兼容用 `test_assessment_waveform`；共享波形壳变化另跑原 QA `test_p0`、筛选与 gaps 交付组，并在实际浏览器验证缩放、拖动、区间播放和手机布局。安装器契约用 `test_setup`，以假子进程覆盖选择、JSON、当前解释器、部分失败、重试和任务排除，不在普通测试中执行 pip 下载。变更影响共享证据加载、任务执行或复查时加原 QA、task、gaps 交付组；页面变更另做桌面／移动端实浏览器验证。
 
 安装器或依赖变化时，另建一次性虚拟环境，从构建 wheel 安装基础 CLI；在未装 ONNX Runtime／SciPy 的环境实际执行 `qa setup --component all --model-dir 临时目录`，核对 JSON、缓存重跑、交互选择和 doctor 推理。禁止在测试中改用户现有全局环境。离线 wheelhouse 准备和失败排查见[安装说明](automatic-qa-install.md)。安装成功不等于真实通话准确率通过。
 

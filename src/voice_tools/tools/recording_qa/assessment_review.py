@@ -16,6 +16,32 @@ def blank_row(record):
             'audio_sha256': record['audio_sha256'], 'automatic_decision': record['result']['decision']}
 
 
+def validate_waveform(waveform, duration):
+    """Bound optional display data before rendering imported result packages."""
+    if not isinstance(waveform, dict) or duration is None:
+        raise ValueError('波形摘要缺少有效时长')
+    length, bin_s = waveform.get('duration_s'), waveform.get('bin_s')
+    if (any(type(value) not in (int, float) or not math.isfinite(value) for value in (length, bin_s))
+            or abs(length - duration) > 1e-5 or not 0 < bin_s <= duration + 1e-5):
+        raise ValueError('波形摘要时间范围无效')
+    channels = waveform.get('channels')
+    if not isinstance(channels, list) or not 1 <= len(channels) <= 2:
+        raise ValueError('波形摘要须为单轨或双轨')
+    counts = []
+    for channel in channels:
+        if not isinstance(channel, list) or not 1 <= len(channel) <= 1200:
+            raise ValueError('波形摘要每轨须为 1–1200 格')
+        counts.append(len(channel))
+        for pair in channel:
+            if (not isinstance(pair, (list, tuple)) or len(pair) != 2 or
+                    any(type(value) not in (int, float) or not math.isfinite(value) for value in pair) or
+                    not -1 <= pair[0] <= pair[1] <= 1):
+                raise ValueError('波形幅度摘要无效')
+    covered_s = counts[0] * bin_s
+    if len(set(counts)) != 1 or not duration - 1e-5 <= covered_s < duration + bin_s + 1e-5:
+        raise ValueError('波形摘要未覆盖完整录音')
+
+
 def validate_record(record):
     if (not isinstance(record, dict) or record.get('kind') != 'qa_assessment' or
             record.get('schema_version') != '1.0' or not isinstance(record.get('input'), str) or
@@ -42,6 +68,8 @@ def validate_record(record):
             raise ValueError('缺少有效录音时长')
     elif type(duration) not in (int, float) or not math.isfinite(duration) or duration <= 0:
         raise ValueError('录音时长无效')
+    if 'waveform' in record:
+        validate_waveform(record['waveform'], duration)
     for window in result['review_windows']:
         if (not isinstance(window, (list, tuple)) or len(window) != 2 or duration is None or
                 any(type(v) not in (int, float) or not math.isfinite(v) for v in window) or

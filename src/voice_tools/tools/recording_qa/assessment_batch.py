@@ -9,6 +9,7 @@ import shutil
 
 from voice_tools import __version__
 from voice_tools.audio.io import read_wav, write_wav
+from voice_tools.audio.health import waveform
 from voice_tools.core.files import new_output, sha256, write_json
 from .assessment import ALGORITHM, DECISIONS, Policy, assess
 from .batch import discover, load_evidence
@@ -78,6 +79,7 @@ def run(inputs, output, policy=None, model_dir=None, rules_only=False, include_a
             if use_event_channel:
                 effective = replace(policy, system_channel=metadata.get('system_channel', policy.system_channel))
             audio = read_wav(path)
+            record['waveform'] = waveform(audio)
             if not rules_only:
                 try:
                     model_result = model.predict(audio)
@@ -93,6 +95,7 @@ def run(inputs, output, policy=None, model_dir=None, rules_only=False, include_a
             if include_audio:
                 audio_previews(output, path, record, audio)
         except (ValueError, OSError) as error:
+            record.pop('waveform', None)
             record['error'] = str(error)
             record['result'] = {'decision': 'NEEDS_REVIEW', 'review_required': True, 'audit_selected': False,
                                 'duration_s': None, 'blockers': [str(error)], 'findings': [], 'turns': [],

@@ -44,6 +44,8 @@ class DeliveryTests(unittest.TestCase):
         data=json.loads(re.search(r'<script id="reviewData" type="application/json">(.*?)</script>',html,re.S)[1])
         self.assertEqual(len(data['records']),1)
         self.assertEqual(data['records'][0]['result']['decision'],'NEEDS_REVIEW')
+        self.assertEqual(len(data['records'][0]['waveform']['channels']), 2)
+        self.assertIn('同步双轨录音波形', html)
         for value in data['records'][0]['playback_sources'].values():self.assertTrue((page.parent/value).is_file())
 
     def test_untrusted_html_and_foreign_playback_are_not_reused(self):
@@ -102,3 +104,14 @@ class DeliveryTests(unittest.TestCase):
         html=(self.root/'review/index.html').read_text()
         self.assertIn('assessment_review_error',html)
         self.assertFalse((self.root/'review/assessment-review/assess/report.html').exists())
+
+    def test_malformed_waveform_in_result_package_is_not_rendered(self):
+        self.pack_run()
+        path = next((self.root / 'run').rglob('assessment.jsonl'))
+        value = json.loads(path.read_text())
+        value['waveform']['channels'] = [[['<script>', 1]]]
+        path.write_text(json.dumps(value) + '\n')
+        runner.collect(self.root / 'run', self.root / 'result.zip')
+        review.review(self.root / 'result.zip', self.root / 'review')
+        self.assertIn('assessment_review_error', (self.root / 'review/index.html').read_text())
+        self.assertFalse((self.root / 'review/assessment-review/assess/report.html').exists())
