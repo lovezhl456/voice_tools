@@ -85,14 +85,17 @@
     current = record; $('detail').hidden = false; message('');
     playback.pause();
     const result = record.result;
+    const duration = result.duration_s || 0;
+    // Imported timestamps may exceed duration by the validator's rounding tolerance.
+    const clampRange = ([start, end]) => [Math.min(start, duration), Math.min(end, duration)];
+    const windows = result.review_windows.map(clampRange).filter(([start, end]) => end > start);
     $('name').textContent = filename(record);
     $('decision').textContent = names[result.decision] + (result.audit_selected ? ' · 已选入抽检' : '');
     $('metadata').textContent = `${fixed(result.duration_s)} 秒 · ${result.turns.length} 个自动分析轮次 · ${result.findings.length} 处证据`;
     $('blockers').textContent = (result.blockers || []).join('\n');
     $('blockers').hidden = !result.blockers?.length;
     $('windows').replaceChildren();
-    for (const [start, end] of result.review_windows || []) {
-      if (end <= start) continue;
+    for (const [start, end] of windows) {
       const button = document.createElement('button'); button.type = 'button';
       button.textContent = `定位 ${fixed(start)}–${fixed(end)} 秒`;
       button.onclick = () => {
@@ -116,18 +119,19 @@
     $('humanDecision').value = label.decision || ''; $('notes').value = label.notes || '';
     if (label.reviewer) $('reviewer').value = label.reviewer;
     const mono = record.waveform?.channels.length === 1;
+    const rolesVerified = result.channel_verified === true && [0, 1].includes(result.system_channel);
     for (const [index, id] of ['leftTitle', 'rightTitle'].entries()) {
       let role = '角色未核实', verification = '待核实';
       if (mono) { role = '单声道'; verification = '无法区分双方'; }
-      else if (result.channel_verified) { role = index === result.system_channel ? 'AI' : '用户'; verification = '已核实'; }
+      else if (rolesVerified) { role = index === result.system_channel ? 'AI' : '用户'; verification = '已核实'; }
       $(id).querySelector('.role-name').textContent = role;
       $(id).querySelector('.role-meta').textContent = `${index === 0 ? '左' : '右'}声道\n${verification}`;
     }
-    const range = result.review_windows.find(([start, end]) => end > start) || result.checked_range;
-    const [start, end] = range && range[1] > range[0] ? range : [0, result.duration_s || 0];
+    const range = windows[0] || clampRange(result.checked_range || [0, duration]);
+    const [start, end] = range[1] > range[0] ? range : [0, duration];
     $('start').value = start; $('end').value = end;
     for (const id of ['start', 'end']) $(id).removeAttribute('aria-invalid');
-    $('seek').max = result.duration_s || 0; $('seek').value = start;
+    $('seek').max = duration; $('seek').value = start;
     $('time').textContent = `${fixed(start)} / ${fixed(result.duration_s)} 秒`;
     setAudio(false);
     waveform.load({record, op: {at_s: start, observed_until_s: end}});

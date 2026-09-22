@@ -89,6 +89,16 @@ def generate(output, package_root):
     zero['result'].update(review_windows=[[1, 1]], checked_range=[1, 1],
                           decision='NEEDS_REVIEW', review_required=True)
     render(output / 'main/zero-range.html', [zero], summarize([zero]))
+    for field in ('review_windows', 'checked_range'):
+        rounded = copy.deepcopy(rows[0])
+        window = [1, rounded['result']['duration_s'] + .000005]
+        rounded['result']['review_windows'] = [window] if field == 'review_windows' else []
+        rounded['result']['checked_range'] = window
+        render(output / f'main/rounded-{field}.html', [rounded], summarize([rounded]))
+    no_roles = copy.deepcopy(rows[0])
+    no_roles['result'].pop('channel_verified')
+    no_roles['result'].pop('system_channel')
+    render(output / 'main/legacy-roles.html', [no_roles], summarize([no_roles]))
     run([inputs / 'normal'], output / 'no-audio', Policy(), rules_only=True)
     unusual = output / 'unusual-inputs'
     unusual.mkdir()

@@ -61,6 +61,16 @@ async function pause(page) {
   await expect.poll(() => player(page).evaluate(audio => audio.paused)).toBe(true);
 }
 
+async function adjustVolumeAndMute(page) {
+  const volume = page.getByRole('slider', {name: '试听音量', exact: true});
+  await volume.focus();
+  await page.keyboard.press('Home');
+  for (let step = 0; step < 7; step++) await page.keyboard.press('ArrowRight');
+  await expect.poll(() => player(page).evaluate(audio => audio.volume)).toBeCloseTo(.35, 3);
+  await page.getByRole('checkbox', {name: '静音', exact: true}).check();
+  await expect.poll(() => player(page).evaluate(audio => audio.muted)).toBe(true);
+}
+
 test('R01 directory and fuzzy search retain the whole-call exception queue', async ({page}) => {
   await page.goto('/');
   await page.getByRole('link', {name: 'main/report.html', exact: true}).click();
@@ -130,8 +140,12 @@ test('R03 evidence selection, looping, stop-at-end and channel switching work', 
   await expectPlaying(page);
   await expect(start(page)).toHaveValue('0.5');
   await expect(end(page)).toHaveValue('7.5');
+  await adjustVolumeAndMute(page);
   await page.getByRole('combobox', {name: '试听声道', exact: true}).selectOption('left');
   await expect.poll(() => player(page).evaluate(audio => audio.currentSrc.endsWith('-left.wav') && !audio.paused)).toBe(true);
+  expect(await player(page).evaluate(audio => [audio.volume, audio.muted])).toEqual([.35, true]);
+  await page.getByRole('checkbox', {name: '静音', exact: true}).uncheck();
+  await expect.poll(() => player(page).evaluate(audio => audio.muted)).toBe(false);
   await expectDrawing(page);
   await pause(page);
   await setRange(page, 2, 2.35);
@@ -147,6 +161,8 @@ test('R03 evidence selection, looping, stop-at-end and channel switching work', 
   await expect.poll(() => player(page).evaluate(audio => Number(audio.dataset.seekCount))).toBeGreaterThanOrEqual(2);
   await expectPlaying(page);
   await pause(page);
+  await search(page).fill('late');
+  expect(await player(page).evaluate(audio => audio.volume)).toBeCloseTo(.35, 3);
 });
 
 test('R04 draft protection and whole-call CSV round trip pass the installed CLI', async ({page}, testInfo) => {
@@ -219,6 +235,28 @@ test('R06 absent audio, old results, mono, broken input and empty windows degrad
   await page.goto('/main/zero-range.html');
   await expectDrawing(page);
   expect(Number(await end(page).inputValue())).toBeGreaterThan(1);
+  await page.goto('/main/legacy-roles.html');
+  await expectDrawing(page);
+  for (const id of ['leftTitle', 'rightTitle']) {
+    await expect(page.locator(`#${id}`)).toContainText('角色未核实');
+    await expect(page.locator(`#${id}`)).not.toContainText('已核实');
+  }
+  for (const field of ['review_windows', 'checked_range']) {
+    await page.goto(`/main/rounded-${field}.html`);
+    await expectDrawing(page);
+    await expect.poll(() => player(page).evaluate(audio => Number.isFinite(audio.duration))).toBe(true);
+    const duration = await player(page).evaluate(audio => audio.duration);
+    expect(Number(await end(page).inputValue())).toBe(duration);
+    await page.getByRole('button', {name: '播放试听', exact: true}).click();
+    await expectPlaying(page);
+    await pause(page);
+    if (field === 'review_windows') {
+      await page.getByRole('button', {name: /^定位 1.00–/}).click();
+      await expectPlaying(page);
+      await pause(page);
+    }
+    await expect(page.locator('#message')).toHaveText('');
+  }
 });
 
 test('R07 task package review opens its waveform and verified relocated audio', async ({page}, testInfo) => {
@@ -242,6 +280,7 @@ test('R08 original opportunity and gap reviews keep their shared waveform contro
     await expect(page.getByRole('button', {name: focus, exact: true})).toBeVisible();
     await page.getByRole('button', {name: '放大波形', exact: true}).click();
     await expect(page.locator('#zoomValue')).toHaveText('×2');
+    await adjustVolumeAndMute(page);
     await page.getByRole('button', {name: '播放试听', exact: true}).click();
     await expectPlaying(page);
     await pause(page);

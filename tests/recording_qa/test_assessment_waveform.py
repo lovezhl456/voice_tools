@@ -82,6 +82,37 @@ class AssessmentWaveformTests(unittest.TestCase):
             with self.subTest(value=str(value)[:80]), self.assertRaises(ValueError):
                 validate_record({**record, 'waveform': value})
 
+    def test_imported_channel_metadata_cannot_falsely_verify_roles(self):
+        _, _, record = self.generate()
+        bad = [{'channel_verified': flag} for flag in ('false', 'true', 0, 1, None)]
+        bad += [{'system_channel': channel} for channel in (-1, 2, '1', True, 1.0, None)]
+        for fields in bad:
+            with self.subTest(fields=fields), self.assertRaises(ValueError):
+                validate_record({**record, 'result': {**record['result'], **fields}})
+        del record['result']['system_channel']
+        with self.assertRaisesRegex(ValueError, '缺少系统声道'):
+            validate_record(record)
+
+    def test_legacy_missing_roles_remain_renderable_without_verification(self):
+        _, summary, record = self.generate()
+        for field in ('channel_verified', 'system_channel'):
+            record['result'].pop(field)
+        validate_record(record)
+        render(self.root / 'unknown-roles.html', [record], summary)
+
+    def test_imported_ranges_allow_only_the_documented_rounding_tolerance(self):
+        _, _, record = self.generate()
+        for field in ('review_windows', 'checked_range'):
+            for excess, valid in ((.000005, True), (.00002, False)):
+                value = [1, record['result']['duration_s'] + excess]
+                candidate = {**record, 'result': {**record['result'], field: [value] if field == 'review_windows' else value}}
+                with self.subTest(field=field, excess=excess):
+                    if valid:
+                        validate_record(candidate)
+                    else:
+                        with self.assertRaisesRegex(ValueError, '时间窗口'):
+                            validate_record(candidate)
+
     def test_single_channel_and_failed_recording_do_not_break_report(self):
         audio = recording()
         write_wav(self.source, audio.samples[:, :1], audio.sample_rate)
@@ -99,7 +130,7 @@ class AssessmentWaveformTests(unittest.TestCase):
         target = self.root / 'legacy-review.html'
         render_page(target, {'records': []}, '/* adapter */')
         page = target.read_text()
-        for identifier in ('waveform', 'start', 'end', 'player', 'channel', 'loop', 'play'):
+        for identifier in ('waveform', 'start', 'end', 'player', 'channel', 'loop', 'play', 'volume', 'mute'):
             self.assertEqual(page.count(f'id="{identifier}"'), 1)
         self.assertIn('当前机会', page)
         self.assertIn('标注窗口 · 固定', page)

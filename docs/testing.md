@@ -152,7 +152,7 @@ tests/browser/node_modules/.bin/playwright show-report .artifacts/review-check/b
 
 第一条仅验证所选项，记录为 `coverage=selected_cases`。完整验收必须不带 `--project`／`--grep`，得到 `status=passed`、`coverage=full_baseline`，且 desktop/mobile 各包含 R01–R08；失败、跳过、空测试、遗漏能力、仅重试后成功都不算通过。使用 `--wheel` 时应确认其包含当前产品改动，并以记录的摘要为准。
 
-[Review acceptance 工作流](../.github/workflows/review-acceptance.yml) 在每个 PR、main 更新和手动触发时运行关键规则回归及相同的安装包浏览器检查，上传有效期为 7 天的日志、报告、截图和 wheel。CI 不替代 Python／Node／CLI 默认全量，也不自动改变 GitHub 分支保护；判断是否可交付应查看当前 PR 提交的实际结果。
+[Review acceptance 配置示例](examples/review-acceptance.yml)目前尚未启用：推送凭据缺少 `workflow` 权限。获得明确授权后，可将该文件部署为 `.github/workflows/review-acceptance.yml`，在每个 PR、main 更新和手动触发时运行关键规则回归及相同的安装包浏览器检查，并上传有效期为 7 天的日志、报告、截图和 wheel。部署后仍须观察一次真实 CI 运行；配置文件本身不证明检查已通过。CI 不替代 Python／Node／CLI 默认全量，也不自动改变 GitHub 分支保护。
 
 ## 整通自动质检
 

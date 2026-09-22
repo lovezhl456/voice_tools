@@ -1,4 +1,5 @@
 <div class="controls playback-controls"><label>试听声道<select id="channel"><option value="both">双轨</option><option value="left">只听左轨</option><option value="right">只听右轨</option></select></label>
 <label>试听起点（秒）<input id="start" type="number" min="0" step="0.1"></label><label>试听终点（秒）<input id="end" type="number" min="0" step="0.1"></label>
-<label class="check"><input id="loop" type="checkbox" checked>循环所选区间</label><button id="play" class="primary" aria-label="播放试听">▶ 播放</button></div>
+<label class="check"><input id="loop" type="checkbox" checked>循环所选区间</label><button id="play" class="primary" aria-label="播放试听">▶ 播放</button>
+<label>试听音量<input id="volume" type="range" min="0" max="1" step="0.05" value="1"></label><label class="check"><input id="mute" type="checkbox">静音</label></div>
 <audio id="player" preload="metadata" hidden></audio><input id="seek" type="range" min="0" step="0.01" value="0" aria-label="跳转播放时间"><p id="time" class="time muted"></p>

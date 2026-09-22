@@ -57,6 +57,13 @@ def validate_record(record):
     for field in ('review_required', 'audit_selected'):
         if type(result.get(field)) is not bool:
             raise ValueError('复核或抽检标志无效')
+    if 'channel_verified' in result and type(result['channel_verified']) is not bool:
+        raise ValueError('声道核实标志须为布尔值')
+    if 'system_channel' in result and (type(result['system_channel']) is not int or
+                                       result['system_channel'] not in (0, 1)):
+        raise ValueError('系统声道须为 0 或 1')
+    if result.get('channel_verified') is True and 'system_channel' not in result:
+        raise ValueError('已核实角色缺少系统声道')
     for field in ('blockers', 'findings', 'turns', 'review_windows'):
         if not isinstance(result.get(field), list):
             raise ValueError('整通质检证据结构无效')
@@ -70,7 +77,10 @@ def validate_record(record):
         raise ValueError('录音时长无效')
     if 'waveform' in record:
         validate_waveform(record['waveform'], duration)
-    for window in result['review_windows']:
+    windows = result['review_windows']
+    if result.get('checked_range') is not None:
+        windows = [*windows, result['checked_range']]
+    for window in windows:
         if (not isinstance(window, (list, tuple)) or len(window) != 2 or duration is None or
                 any(type(v) not in (int, float) or not math.isfinite(v) for v in window) or
                 not 0 <= window[0] <= window[1] <= duration + 1e-5):
