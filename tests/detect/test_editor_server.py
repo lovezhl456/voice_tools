@@ -105,6 +105,35 @@ class EditorServer(unittest.TestCase):
         self.assertEqual(code,200);self.assertEqual(result['summary']['status'],'partial');self.assertEqual(result['summary']['errors'],1)
         self.assertEqual(self.request(result['report_url'])[0],200)
 
+    def test_workspace_routes_require_session_and_reject_malformed_reviews(self):
+        self.assertEqual(self.request('/workspace')[0], 200)
+        for route in ('/api/workspace', '/api/review-state', '/api/comparisons/missing'):
+            self.assertEqual(self.request(route, headers={'X-Voice-Tools-Session':'wrong'})[0], 403)
+        self.assertEqual(self.post('/api/workspace/reviews', {'reviews':['bad']})[0], 400)
+        self.assertEqual(self.post('/api/workspace/run', {'definitions':['level@1'],'mode':'all','inputs':['/outside']})[0], 400)
+
+    def test_live_report_session_is_injected_only_when_served(self):
+        self.post('/api/definitions', {'config':config()})
+        _, result, _ = self.post('/api/run', {'definitions':['level@1'],'batch_id':'live'})
+        disk = (self.out/'reports/live/index.html').read_text()
+        self.assertIn('id="liveSession" type="application/json">null', disk)
+        page = self.request(result['report_url'])[1].decode()
+        self.assertIn(self.server.application.token, page)
+        self.assertNotIn(self.server.application.token, disk)
+
+    def test_online_review_api_updates_state_and_preserves_offline_export(self):
+        self.post('/api/definitions', {'config':config()})
+        self.post('/api/run', {'definitions':['level@1'],'batch_id':'review'})
+        with store.connect(self.db) as db:
+            finding = store.query(db)[0]
+            packet = {'schema_version':'1.0','library_id':store.library_id(db),'manual':[], 'reviews':[{
+                'finding_id':finding['id'],'expected_revision':0,'status':'false_positive','reviewer':'test','comment':'试听正常'}]}
+        self.assertEqual(self.post('/api/workspace/reviews', packet)[0], 200)
+        latest = json.loads(self.request('/api/review-state')[1])
+        self.assertEqual(latest['findings'][0]['status'], 'false_positive')
+        self.assertEqual(latest['standards'][0]['verdict'], 'normal')
+        self.assertEqual(self.post('/api/workspace/reviews', packet)[0], 400)
+
 
 class EditorWorkspace(unittest.TestCase):
     def setUp(self):

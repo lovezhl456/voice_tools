@@ -23,7 +23,10 @@ def document(definitions=(), session=None, back_link=None):
     page = page.replace('__STYLE__', (ROOT / 'editor.css').read_text(encoding='utf-8'))
     page = page.replace('__CONTRACT__', (ROOT / 'editor-contract.js').read_text(encoding='utf-8'))
     page = page.replace('__SCRIPT__', (ROOT / 'editor.js').read_text(encoding='utf-8'))
-    link = '<a href="' + html.escape(back_link, quote=True) + '">返回录音复核</a>' if back_link else ''
+    link = ''
+    if back_link:
+        label = '返回质检工作区' if back_link == '/workspace' else '返回录音复核'
+        link = '<a href="' + html.escape(back_link, quote=True) + '">' + label + '</a>'
     return page.replace('__BACK__', link).replace('__DATA__', encoded)
 
 

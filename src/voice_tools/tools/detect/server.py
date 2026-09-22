@@ -10,7 +10,7 @@ import threading
 from urllib.parse import unquote, urlsplit
 
 from voice_tools.core.files import write_json
-from . import store
+from . import store, workspace
 from .definition import fields, identifier, parse_document, validate
 from .editor import document
 
@@ -23,6 +23,9 @@ class EditorApplication:
         from voice_tools.tools.recording_qa.batch import discover
         self.database = Path(database).resolve()
         self.output = Path(output).resolve()
+        from .workbench import Workbench, restore_inputs
+        if not inputs:
+            inputs = restore_inputs(self.database, self.output)
         sources = [Path(path).resolve() for path in inputs]
         for source in sources:
             if (source == self.output or self.output in source.parents
@@ -54,6 +57,8 @@ class EditorApplication:
             self.output.mkdir(parents=True, exist_ok=True)
             write_json(marker, {'schema_version': '1.0', 'library_id': self.library_id})
         (self.output / 'reports').mkdir(exist_ok=True)
+        self.workbench = Workbench(self, sources)
+        self.workbench.scan()
 
     def definitions(self, db):
         return [store.select_definition(db, row['id'] + '@' + row['version']) for row in store.definitions(db)]
@@ -66,7 +71,7 @@ class EditorApplication:
         data = self.library()
         session = {'library_id': self.library_id, 'token': self.token,
                    'inputs': [path.name for path in self.inputs]}
-        return document(data['definitions'], session=session)
+        return document(data['definitions'], session=session, back_link='/workspace')
 
     def save(self, config):
         config = validate(config)
@@ -179,6 +184,8 @@ class EditorHandler(SimpleHTTPRequestHandler):
                 fields(request, ('config',), name='配置请求')
                 config = validate(request['config'])
                 result = {'config': config} if route == '/api/validate' else self.app.save(config)
+            elif route.startswith('/api/workspace/'):
+                result = self.app.workbench.dispatch(route, request)
             elif route == '/api/run':
                 result = self.app.run(request)
             else:
@@ -193,12 +200,25 @@ class EditorHandler(SimpleHTTPRequestHandler):
             self.json_response(403, {'ok': False, 'error': '仅允许本机访问'})
             return
         route = urlsplit(self.path).path
-        if route == '/api/library':
+        if route in ('/api/library', '/api/workspace', '/api/review-state') or route.startswith('/api/comparisons/'):
             if not self.request_allowed():
                 self.json_response(403, {'ok': False, 'error': '会话身份不匹配'})
                 return
             try:
-                self.json_response(200, {'ok': True, **self.app.library()})
+                if route.startswith('/api/comparisons/'):
+                    with store.connect(self.app.database) as db:
+                        comparison = next((item for item in workspace.saved_items(db, 'rule_comparisons') if item['id'] == route.rsplit('/', 1)[-1]), None)
+                    if comparison is None:
+                        raise ValueError('对比记录不存在')
+                    result = {'comparison': comparison}
+                elif route == '/api/workspace':
+                    result = self.app.workbench.state()
+                elif route == '/api/review-state':
+                    with store.connect(self.app.database) as db:
+                        result = {'findings': store.query(db), 'standards': workspace.standards(db)}
+                else:
+                    result = self.app.library()
+                self.json_response(200, {'ok': True, **result})
             except (OSError, ValueError) as error:
                 self.json_response(400, {'ok': False, 'error': str(error)})
             return
@@ -213,9 +233,9 @@ class EditorHandler(SimpleHTTPRequestHandler):
     def send_head(self):
         self.remaining = None
         route = unquote(urlsplit(self.path).path)
-        if route in ('/', '/editor.html'):
+        if route in ('/', '/editor.html', '/workspace'):
             import io
-            payload = self.app.html().encode('utf-8')
+            payload = (self.app.workbench.html() if route == '/workspace' else self.app.html()).encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.send_header('Content-Length', str(len(payload)))
@@ -234,6 +254,17 @@ class EditorHandler(SimpleHTTPRequestHandler):
             self.send_error(404)
             return None
         # Only generated report files are addressable; never serve the database or input roots.
+        if path.name == 'index.html':
+            import io
+            content = path.read_text(encoding='utf-8')
+            session = json.dumps({'token': self.app.token}).replace('<', '\\u003c')
+            content = content.replace('id="liveSession" type="application/json">null', 'id="liveSession" type="application/json">' + session)
+            payload = content.encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Length', str(len(payload)))
+            self.end_headers()
+            return io.BytesIO(payload)
         stream = path.open('rb')
         size = path.stat().st_size
         start, end = 0, size - 1
@@ -287,10 +318,10 @@ def serve(args):
     with create_server(args.db, args.inputs, args.out, args.port) as server:
         url = f'http://127.0.0.1:{server.server_port}/'
         if args.json_output:
-            print(json.dumps({'ok': True, 'status': 'listening', 'url': url,
+            print(json.dumps({'ok': True, 'status': 'listening', 'url': url, 'workspace_url': url + 'workspace',
                               'recordings': len(server.application.inputs)}), flush=True)
         else:
-            print('本机配置界面：' + url + ' ；按 Ctrl+C 停止服务。', flush=True)
+            print('录音质检工作区：' + url + 'workspace ；按 Ctrl+C 停止服务。', flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:

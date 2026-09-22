@@ -1,5 +1,12 @@
 # 版本记录与迭代规则
 
+## 0.18.1 · 录音质检工作区与规则迭代
+
+- 状态：实现与本地验收完成，待 PR 审阅；独立分支 `feat/v0.18.1-review-workspace`，基线 `8b05129`。
+- 范围：固定工作区与日常规则、目录批跑与在线复核、未命中抽检和标准样本、固定集版本比较及日常版本选择。
+- 验证：Python 647 项（609 通过、38 个原有条件跳过）、Node 24 项、CLI 9 场景通过；最终安装 wheel 原复核 16 项与检测／编辑／工作区 28 项桌面／手机验收通过。
+- [使用说明](docs/detection-workspace.md) · [验收与边界](docs/detection-workspace-validation.md) · [实施计划及保留能力](docs/detection-workspace-plan.md)。
+
 ## 0.17.2 · 检测配置与标签编辑界面
 
 - 状态：实现与三项审查修复均完成验收，待 [PR #36](https://github.com/lovezhl456/voice_tools/pull/36) 审阅；独立分支 `enhance/v0.17.2-config-editor`，基于最新主线 `679ee2c`。

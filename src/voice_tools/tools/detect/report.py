@@ -40,10 +40,13 @@ def add_audio(output, record):
     record['audio_error'] = '源音频不存在、已变化或无法读取；保留波形和检测证据，试听不可用'
 
 
-def render(db, output, include_audio=False, hide_paths=False):
+def render(db, output, include_audio=False, hide_paths=False, batch=None):
     output = new_output(output)
     records = []
-    for row in db.execute('SELECT * FROM recordings ORDER BY id'):
+    sql = 'SELECT * FROM recordings'
+    if batch:
+        sql += ' WHERE id IN (SELECT recording_id FROM evaluations WHERE batch_id=?)'
+    for row in db.execute(sql + ' ORDER BY id', (batch,) if batch else ()):
         record = dict(row)
         record['sources'] = json.loads(record['sources'])
         record['waveform'] = json.loads(record['waveform'])
@@ -53,8 +56,8 @@ def render(db, output, include_audio=False, hide_paths=False):
         record['input'] = record['sources'][0]
         records.append(record)
     payload = {'schema_version': '1.0', 'library_id': store.library_id(db), 'report_id': str(uuid.uuid4()),
-               'created_at': store.now(), 'records': records, 'findings': store.query(db),
-               'evaluations': store.evaluation_rows(db), 'batches': store.batch_details(db),
+               'created_at': store.now(), 'records': records, 'findings': store.query(db, batch=batch),
+               'evaluations': store.evaluation_rows(db, batch), 'batches': [item for item in store.batch_details(db) if not batch or item['id'] == batch],
                'definitions': [{**row, 'config': json.loads(row['config'])}
                                for row in map(dict, db.execute('SELECT * FROM definitions ORDER BY id,version'))]}
     if hide_paths:

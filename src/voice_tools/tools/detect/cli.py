@@ -17,7 +17,7 @@ def register(commands):
     editor.add_argument('--out', type=Path, required=True)
     editor.set_defaults(run=run_editor)
     server = actions.add_parser('serve', help='启动仅本机可访问的配置编辑、版本保存与检测服务')
-    server.add_argument('inputs', nargs='+', type=Path, help='启动时明确指定的录音文件或目录')
+    server.add_argument('inputs', nargs='*', type=Path, help='首次启动指定录音目录；省略时恢复同一工作区保存的目录')
     server.add_argument('--db', type=Path, required=True)
     server.add_argument('--out', type=Path, required=True, help='本机服务报告目录；可复用同一检测库的服务目录')
     server.add_argument('--port', type=int, default=8766)
