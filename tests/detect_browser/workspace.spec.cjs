@@ -39,6 +39,13 @@ test('W01 daily rules, online review, false-positive reason, audit and reopening
   await page.getByRole('button',{name:'保存到检测库',exact:true}).click();
   await expect(page.locator('#message')).toContainText('误报原因');
   await page.locator('#reviewStatus').selectOption('confirmed');await page.locator('#comment').fill('确认输出音量低');
+  await page.route('**/api/workspace/reviews',route=>route.fulfill({status:409,contentType:'application/json',
+    body:JSON.stringify({ok:false,code:'workspace_busy',error:'检测正在进行，请完成后重试；未保存内容仍保留在页面中。'})}));
+  await page.getByRole('button',{name:'保存到检测库',exact:true}).click();
+  await expect(page.locator('#message')).toContainText('未保存内容仍保留');
+  await expect(page.locator('#comment')).toHaveValue('确认输出音量低');
+  await expect(page.locator('#reviewStatus')).toHaveValue('confirmed');
+  await page.unroute('**/api/workspace/reviews');
   await page.getByRole('button',{name:'保存到检测库',exact:true}).click();
   await expect(page.locator('#message')).toContainText('已保存到检测库');await page.reload();
   await expect(page.locator('#reviewStatus')).toHaveValue('confirmed');
@@ -107,4 +114,28 @@ test('W03 trial selection, manual miss and sample revision keep frozen evidence 
   await page.getByRole('button',{name:'运行新旧版本对比',exact:true}).click();await expect(page.locator('#comparisons')).toContainText('对比完成');
   await page.getByRole('button',{name:'查看逐录音片段与保存对比',exact:true}).click();
   await expect(page.locator('#comparisons pre')).toContainText('"end_s": 8');expect(errors).toEqual([]);
+});
+
+
+test('W04 valid long-ID offline drafts import online and survive reopening',async({page},info)=>{
+  const {errors}=await start(page,info);
+  await page.locator('#definitions input[value="level@2"]').check();
+  await page.getByRole('button',{name:'开始质检',exact:true}).click();
+  await page.getByRole('link',{name:'打开本次录音复核',exact:true}).click();
+  await expect(page.locator('#liveToolbar')).toBeVisible();
+  const data=await page.locator('#reviewData').evaluate(element=>JSON.parse(element.textContent));
+  const recording=data.evaluations.find(item=>item.sources.some(name=>name.endsWith('quiet.wav')));
+  const packet={schema_version:'1.0',library_id:data.library_id,reviews:[],manual:[73,80].map((length,index)=>({
+    id:'m'.repeat(length),batch_id:recording.batch_id,recording_id:recording.recording_id,config_hash:recording.config_hash,
+    label:'低电平',start_s:index*4,end_s:index*4+2,reviewer:'离线复核',comment:'已确认漏检'
+  }))};
+  const draft=info.outputPath('long-id-review.json');fs.writeFileSync(draft,JSON.stringify(packet));
+  await page.locator('#importDraft').setInputFiles(draft);
+  await expect(page.locator('#manualQueue li')).toHaveCount(2);
+  await page.getByRole('button',{name:'将已有草稿保存到检测库',exact:true}).click();
+  await expect(page.locator('#message')).toContainText('已保存到检测库');
+  await page.reload();await expect(page.locator('#queue button')).toHaveCount(2);
+  await page.getByRole('link',{name:'返回质检工作区'}).click();
+  await expect(page.locator('#sampleList .row')).toHaveCount(2);
+  expect(errors).toEqual([]);
 });

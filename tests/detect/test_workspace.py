@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 
 from voice_tools.tools.detect import store, workspace
 from voice_tools.tools.detect.definition import fingerprint
@@ -120,6 +121,58 @@ class StandardsTests(unittest.TestCase):
         self.assertEqual(result['hits'], 1)
         self.assertEqual(result['boundary_errors'], 0)
 
+    def test_maximum_manual_ids_import_and_keep_one_standard_revision_chain(self):
+        with store.connect(self.database) as db:
+            packet = {'schema_version':'1.0','library_id':store.library_id(db),'reviews':[], 'manual':[]}
+            for size in (72, 73, 80):
+                packet['manual'].append({'id':'m' * size,'batch_id':'first','recording_id':self.finding['recording_id'],
+                    'config_hash':self.finding['config_hash'],'label':'低电平','start_s':0,'end_s':8,
+                    'reviewer':'tester','comment':'确认漏检'})
+            workspace.save_reviews(db, packet)
+            initial = workspace.standards(db)
+            self.assertEqual(len(initial), 3)
+            self.assertEqual(len({row['id'] for row in initial}), 3)
+            self.assertTrue(all(len(row['id']) <= 80 for row in initial))
+            self.assertIn('finding-' + 'm' * 72, {row['id'] for row in initial})
+            packet['manual'] = []
+            packet['reviews'] = [{'finding_id':'m' * 80,'expected_revision':1,'status':'corrected',
+                                 'reviewer':'tester','comment':'调整边界','end_s':7}]
+            workspace.save_reviews(db, packet)
+            updated = next(row for row in workspace.standards(db) if row['source'] == 'm' * 80)
+            original = next(row for row in initial if row['source'] == 'm' * 80)
+            self.assertEqual(updated['id'], original['id'])
+            self.assertEqual(updated['revision'], 2)
+            self.assertEqual(updated['end_s'], 7)
+
+    def test_saved_summaries_backfill_once_and_selected_details_are_independent(self):
+        with store.connect(self.database) as db:
+            workspace.save_standard(db, self.standard())
+            frozen = workspace.freeze(db, 'fixed', ['sample-1'])
+            store.save_definition(db, config(version='2'))
+            comparison = workspace.compare_set(db, frozen['id'], 'level@1', 'level@2', [self.audio])
+            db.execute('DROP TABLE saved_summaries')  # The original PR library format.
+        with store.connect(self.database) as db:
+            workspace.initialize(db)
+            self.assertEqual(workspace.saved_summaries(db,'sample_sets')[0]['samples'], 1)
+            self.assertNotIn('details', workspace.saved_summaries(db,'rule_comparisons')[0])
+            with patch.object(workspace.json, 'loads', side_effect=AssertionError('already migrated history was decoded')):
+                workspace.initialize(db)
+            self.assertEqual(workspace.saved_item(db,'sample_sets',frozen['id'])['hash'], frozen['hash'])
+            self.assertEqual(workspace.saved_item(db,'rule_comparisons',comparison['id'])['details'], comparison['details'])
+            db.execute('INSERT INTO rule_comparisons VALUES (?, ?, ?)', ('unrelated','later','invalid-json'))
+            # Opening one comparison must not decode unrelated history payloads.
+            self.assertEqual(workspace.saved_item(db,'rule_comparisons',comparison['id'])['details'], comparison['details'])
+
+    def test_summary_failure_rolls_back_complete_history(self):
+        with store.connect(self.database) as db:
+            workspace.save_standard(db, self.standard())
+        with self.assertRaises(ValueError), store.connect(self.database) as db:
+            with patch.object(workspace, 'save_summary', side_effect=ValueError('summary write failed')):
+                workspace.freeze(db, 'fixed', ['sample-1'])
+        with store.connect(self.database) as db:
+            self.assertEqual(workspace.saved_items(db,'sample_sets'), [])
+            self.assertEqual(workspace.saved_summaries(db,'sample_sets'), [])
+
 
 class WorkbenchTests(unittest.TestCase):
     def setUp(self):
@@ -193,3 +246,24 @@ class WorkbenchTests(unittest.TestCase):
             self.workbench.dispatch('/api/workspace/reviews', packet)
         with store.connect(self.database) as db:
             self.assertEqual(store.current_finding(db,finding['id'])['revision'],0)
+
+    def test_refresh_and_completed_jobs_return_summaries_while_details_stay_available(self):
+        result = self.finish(self.workbench.run({'definitions':['level@1'],'mode':'all'})['job_id'])
+        with store.connect(self.database) as db:
+            finding = store.query(db)[0]
+            packet = {'schema_version':'1.0','library_id':store.library_id(db),'manual':[], 'reviews':[{
+                'finding_id':finding['id'],'expected_revision':0,'status':'confirmed','reviewer':'test','comment':'已试听'}]}
+            workspace.save_reviews(db, packet)
+            frozen = workspace.freeze(db, 'fixed', [item['id'] for item in workspace.standards(db)])
+        self.app.save(config(version='2'))
+        result = self.finish(self.workbench.dispatch('/api/workspace/compare',
+            {'set_id':frozen['id'],'before':'level@1','after':'level@2'})['job_id'])
+        self.assertNotIn('details', result)
+        with patch.object(workspace, 'saved_items', side_effect=AssertionError('full history loaded')):
+            state = self.workbench.state()
+        self.assertEqual(state['sets'][0]['samples'], 1)
+        self.assertNotIn('details', state['comparisons'][0])
+        self.assertNotIn('details', state['jobs'][-1]['result'])
+        with store.connect(self.database) as db:
+            detail = workspace.saved_item(db, 'rule_comparisons', state['comparisons'][0]['id'])
+        self.assertEqual(len(detail['details']), 1)

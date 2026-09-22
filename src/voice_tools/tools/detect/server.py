@@ -1,4 +1,5 @@
 """Loopback-only editor API, bounded to a selected library and startup recording list."""
+from contextlib import contextmanager
 import hmac
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -37,6 +38,7 @@ class EditorApplication:
             raise ValueError('检测库不能使用服务输出目录、标记文件或公开报告目录的位置')
         self.inputs = discover(sources)
         self.token = secrets.token_urlsafe(32)
+        # Jobs and short online saves share this gate before acquiring SQLite write locks.
         self.run_lock = threading.Lock()
         # Validate before opening SQLite: a new database may live inside the empty workspace.
         if self.output.exists() and not self.output.is_dir():
@@ -73,9 +75,18 @@ class EditorApplication:
                    'inputs': [path.name for path in self.inputs]}
         return document(data['definitions'], session=session, back_link='/workspace')
 
+    @contextmanager
+    def write_access(self):
+        if not self.run_lock.acquire(blocking=False):
+            raise workspace.WorkspaceBusyError()
+        try:
+            yield
+        finally:
+            self.run_lock.release()
+
     def save(self, config):
         config = validate(config)
-        with store.connect(self.database) as db:
+        with self.write_access(), store.connect(self.database) as db:
             existing = db.execute('SELECT config FROM definitions WHERE id=? AND version=?',
                                   (config['id'], config['version'])).fetchone()
             if existing:
@@ -95,7 +106,7 @@ class EditorApplication:
         batch = identifier(request['batch_id'], 'batch_id')
         target = self.output / 'reports' / batch
         if not self.run_lock.acquire(blocking=False):
-            raise ValueError('已有检测正在运行，请稍后再试')
+            raise workspace.WorkspaceBusyError()
         created = False
         try:
             if target.exists():
@@ -192,6 +203,8 @@ class EditorHandler(SimpleHTTPRequestHandler):
                 self.json_response(404, {'ok': False, 'error': '未知操作'})
                 return
             self.json_response(200, {'ok': True, **result})
+        except workspace.WorkspaceBusyError as error:
+            self.json_response(409, {'ok': False, 'code': 'workspace_busy', 'error': str(error)})
         except (ValueError, OSError, RecursionError) as error:
             self.json_response(400, {'ok': False, 'error': '配置嵌套过深' if isinstance(error, RecursionError) else str(error)})
 
@@ -207,9 +220,7 @@ class EditorHandler(SimpleHTTPRequestHandler):
             try:
                 if route.startswith('/api/comparisons/'):
                     with store.connect(self.app.database) as db:
-                        comparison = next((item for item in workspace.saved_items(db, 'rule_comparisons') if item['id'] == route.rsplit('/', 1)[-1]), None)
-                    if comparison is None:
-                        raise ValueError('对比记录不存在')
+                        comparison = workspace.saved_item(db, 'rule_comparisons', route.rsplit('/', 1)[-1])
                     result = {'comparison': comparison}
                 elif route == '/api/workspace':
                     result = self.app.workbench.state()

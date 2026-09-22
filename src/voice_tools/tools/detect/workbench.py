@@ -63,8 +63,8 @@ class Workbench:
 
     def state(self):
         with store.connect(self.app.database) as db:
-            sets = workspace.saved_items(db, 'sample_sets')
-            comparisons = workspace.saved_items(db, 'rule_comparisons')
+            sets = workspace.saved_summaries(db, 'sample_sets')
+            comparisons = workspace.saved_summaries(db, 'rule_comparisons')
             batches = store.batch_details(db)
             for batch in batches:
                 target = self.app.output / 'reports' / batch['id'] / 'index.html'
@@ -73,8 +73,7 @@ class Workbench:
             samples = [{**item, 'recording_name': Path(records[item['recording_id']][0]).name} for item in workspace.standards(db)]
             result = {'settings': workspace.settings(db, self.id), 'definitions': store.definitions(db),
                       'inputs': self.input_rows(), 'batches': batches, 'standards': samples,
-                      'sets': [{'id': item['id'], 'name': item['name'], 'samples': len(item['samples']), 'hash': item['hash']} for item in sets],
-                      'comparisons': [{key: value for key, value in item.items() if key != 'details'} for item in comparisons]}
+                      'sets': sets, 'comparisons': comparisons}
         with self.jobs_lock:
             result['jobs'] = list(self.jobs.values())
         return result
@@ -91,7 +90,7 @@ class Workbench:
 
     def start_job(self, kind, action):
         if not self.app.run_lock.acquire(blocking=False):
-            raise ValueError('已有检测或版本比较正在运行')
+            raise workspace.WorkspaceBusyError()
         identity = str(uuid.uuid4())
         with self.jobs_lock:
             self.jobs[identity] = {'id': identity, 'kind': kind, 'status': 'running', 'done': 0, 'total': 0}
@@ -107,6 +106,8 @@ class Workbench:
         return {'job_id': identity}
 
     def run(self, request):
+        if self.app.run_lock.locked():
+            raise workspace.WorkspaceBusyError()
         fields(request, ('definitions', 'mode'), ('limit', 'selected'), '批跑请求')
         mode = request['mode']
         if mode not in ('all', 'new', 'trial'):
@@ -160,13 +161,16 @@ class Workbench:
         if route == '/api/workspace/run':
             return self.run(request)
         if route == '/api/workspace/compare':
+            if self.app.run_lock.locked():
+                raise workspace.WorkspaceBusyError()
             fields(request, ('set_id', 'before', 'after'), name='版本比较')
             paths = self.scan()
             def action(progress):
                 with store.connect(self.app.database) as db:
-                    return workspace.compare_set(db, request['set_id'], request['before'], request['after'], paths, progress)
+                    result = workspace.compare_set(db, request['set_id'], request['before'], request['after'], paths, progress)
+                    return workspace.history_summary('rule_comparisons', result)
             return self.start_job('版本比较', action)
-        with store.connect(self.app.database) as db:
+        with self.app.write_access(), store.connect(self.app.database) as db:
             if route == '/api/workspace/settings':
                 fields(request, ('name', 'definitions', 'expected_revision'), name='工作区设置')
                 value = {'name': request['name'], 'definitions': request['definitions'], 'roots': [str(path) for path in self.roots]}

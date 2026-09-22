@@ -11,6 +11,11 @@ from .engine import analyze
 from .metrics import finite
 
 
+class WorkspaceBusyError(ValueError):
+    def __init__(self):
+        super().__init__('检测、版本比较或其他保存正在进行，请完成后重试；未保存内容仍保留在页面中。')
+
+
 def initialize(db):
     # Additive tables leave the 1.0 CLI and historical detection records readable.
     statements = (
@@ -18,9 +23,16 @@ def initialize(db):
         'CREATE TABLE IF NOT EXISTS standards (id TEXT NOT NULL, revision INTEGER NOT NULL, created_at TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(id, revision))',
         'CREATE TABLE IF NOT EXISTS sample_sets (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, payload TEXT NOT NULL)',
         'CREATE TABLE IF NOT EXISTS rule_comparisons (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, payload TEXT NOT NULL)',
+        'CREATE TABLE IF NOT EXISTS saved_summaries (kind TEXT NOT NULL, id TEXT NOT NULL, created_at TEXT NOT NULL, payload TEXT NOT NULL, PRIMARY KEY(kind, id))',
     )
     for statement in statements:
         db.execute(statement)
+    # Existing immutable payloads are decoded only once, before the HTTP service starts.
+    for table in ('sample_sets', 'rule_comparisons'):
+        rows = db.execute(f"""SELECT h.* FROM {table} h WHERE NOT EXISTS
+            (SELECT 1 FROM saved_summaries s WHERE s.kind=? AND s.id=h.id)""", (table,))
+        for row in rows:
+            save_summary(db, table, row['id'], row['created_at'], json.loads(row['payload']))
 
 
 def settings(db, workspace_id):
@@ -107,6 +119,9 @@ def save_standard(db, item):
 
 def standard_from_finding(db, finding):
     key = 'finding-' + finding['id']
+    if len(key) > 80:
+        # Different prefix prevents a hashed long ID from aliasing a short finding ID.
+        key = 'derived-' + hashlib.sha256(finding['id'].encode()).hexdigest()
     row = db.execute('SELECT revision FROM standards WHERE id=? ORDER BY revision DESC LIMIT 1', (key,)).fetchone()
     revision = row['revision'] if row else 0
     verdict = {'confirmed': 'problem', 'corrected': 'problem', 'false_positive': 'normal', 'pending': 'withdrawn'}[finding['status']]
@@ -144,7 +159,7 @@ def freeze(db, name, ids):
     payload = {'name': name, 'samples': [available[key] for key in sorted(ids)]}
     payload['hash'] = hashlib.sha256(canonical(payload).encode()).hexdigest()
     identity = str(uuid.uuid4())
-    db.execute('INSERT INTO sample_sets VALUES (?, ?, ?)', (identity, store.now(), canonical(payload)))
+    save_history(db, 'sample_sets', identity, payload)
     return {'id': identity, **payload}
 
 
@@ -153,6 +168,45 @@ def saved_items(db, table):
         raise ValueError('未知历史类型')
     return [{'id': row['id'], 'created_at': row['created_at'], **json.loads(row['payload'])}
             for row in db.execute('SELECT * FROM ' + table + ' ORDER BY created_at DESC')]
+
+
+def history_summary(table, payload):
+    if table == 'sample_sets':
+        return {'name': payload['name'], 'samples': len(payload['samples']), 'hash': payload['hash']}
+    if table == 'rule_comparisons':
+        return {key: value for key, value in payload.items() if key != 'details'}
+    raise ValueError('未知历史类型')
+
+
+def save_summary(db, table, identity, created_at, payload):
+    summary = history_summary(table, payload)
+    db.execute('INSERT INTO saved_summaries VALUES (?, ?, ?, ?)',
+               (table, identity, created_at, canonical(summary)))
+
+
+def save_history(db, table, identity, payload):
+    # Summary and complete evidence always commit or roll back together.
+    if table not in ('sample_sets', 'rule_comparisons'):
+        raise ValueError('未知历史类型')
+    created_at = store.now()
+    db.execute('INSERT INTO ' + table + ' VALUES (?, ?, ?)', (identity, created_at, canonical(payload)))
+    save_summary(db, table, identity, created_at, payload)
+
+
+def saved_summaries(db, table):
+    if table not in ('sample_sets', 'rule_comparisons'):
+        raise ValueError('未知历史类型')
+    rows = db.execute('SELECT id,created_at,payload FROM saved_summaries WHERE kind=? ORDER BY created_at DESC', (table,))
+    return [{'id': row['id'], 'created_at': row['created_at'], **json.loads(row['payload'])} for row in rows]
+
+
+def saved_item(db, table, identity):
+    if table not in ('sample_sets', 'rule_comparisons'):
+        raise ValueError('未知历史类型')
+    row = db.execute('SELECT * FROM ' + table + ' WHERE id=?', (identity,)).fetchone()
+    if row is None:
+        raise ValueError('历史记录不存在')
+    return {'id': row['id'], 'created_at': row['created_at'], **json.loads(row['payload'])}
 
 
 def merge_intervals(items):
@@ -267,5 +321,5 @@ def compare_set(db, set_id, before, after, paths, progress=None):
                'recordings': len(results), 'comparable': len(comparable), 'totals': totals, 'details': results,
                'matching': '同标签重叠片段合并；问题片段按 IoU >= 0.3 一对一匹配；正常范围内命中记误报，未检查范围保留未知。'}
     identity = str(uuid.uuid4())
-    db.execute('INSERT INTO rule_comparisons VALUES (?, ?, ?)', (identity, store.now(), canonical(payload)))
+    save_history(db, 'rule_comparisons', identity, payload)
     return {'id': identity, **payload}

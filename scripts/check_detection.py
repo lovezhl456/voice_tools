@@ -79,14 +79,14 @@ def main():
                 visit(child)
         visit(report)
         coverage={key:sorted(values) for key,values in coverage.items()}
-        expected={name:['D01','D02','D03','D04','D05','E01','E02','E03','E04','E05','E06','W01','W02','W03'] for name in ('desktop','mobile')}
+        expected={name:['D01','D02','D03','D04','D05','E01','E02','E03','E04','E05','E06','W01','W02','W03','W04'] for name in ('desktop','mobile')}
         result['capabilities']=coverage
         if coverage != expected:
-            raise RuntimeError('D01–D05, E01–E06 and W01–W03 desktop/mobile capability coverage is incomplete')
-        if stats['expected'] != 28 or any(stats[key] for key in ('unexpected','skipped','flaky')):
-            raise RuntimeError('Expected D01–D05, E01–E06 and W01–W03 on desktop/mobile with no failures, skips or retries')
+            raise RuntimeError('D01–D05, E01–E06 and W01–W04 desktop/mobile capability coverage is incomplete')
+        if stats['expected'] != 30 or any(stats[key] for key in ('unexpected','skipped','flaky')):
+            raise RuntimeError('Expected D01–D05, E01–E06 and W01–W04 on desktop/mobile with no failures, skips or retries')
         result['status']='passed'
-        print('Passed 28 installed detection/editor/workspace browser cases: '+str(output))
+        print('Passed 30 installed detection/editor/workspace browser cases: '+str(output))
         return 0
     except (OSError,ValueError,RuntimeError) as error:
         result['error']=str(error); print(error,file=sys.stderr); return 1
