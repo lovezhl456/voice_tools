@@ -13,6 +13,15 @@ from .definition import load, fingerprint, read_document
 def register(commands):
     parser = commands.add_parser('detect', help='可配置指标、业务标签、跨批次检索与人工复核')
     actions = parser.add_subparsers(dest='action', required=True)
+    editor = actions.add_parser('config-ui', help='生成离线图形配置编辑器，可导入、保存浏览器版本和导出 JSON')
+    editor.add_argument('--out', type=Path, required=True)
+    editor.set_defaults(run=run_editor)
+    server = actions.add_parser('serve', help='启动仅本机可访问的配置编辑、版本保存与检测服务')
+    server.add_argument('inputs', nargs='+', type=Path, help='启动时明确指定的录音文件或目录')
+    server.add_argument('--db', type=Path, required=True)
+    server.add_argument('--out', type=Path, required=True, help='本机服务报告目录；可复用同一检测库的服务目录')
+    server.add_argument('--port', type=int, default=8766)
+    server.set_defaults(run=run_server)
     catalog = actions.add_parser('catalog', help='输出指标、单位、参数默认值与范围')
     catalog.set_defaults(run=run_catalog)
     schema = actions.add_parser('schema', help='输出检测定义 JSON Schema 1.0')
@@ -238,3 +247,16 @@ def run_report(args):
     with store.connect(args.db) as db:
         result = render(db, args.out, args.include_audio, args.hide_paths)
     return emit(args, result, f"复核页面：{args.out / 'index.html'}", {'report': args.out / 'index.html'}, code=3 if result['audio_unavailable'] else 0)
+
+
+def run_editor(args):
+    from .editor import render
+    render(new_file(args.out))
+    return emit(args, {'editor': str(args.out)}, f'配置编辑界面：{args.out}', {'editor': args.out})
+
+
+def run_server(args):
+    from .server import serve
+    if not 0 <= args.port <= 65535:
+        raise ValueError('端口必须为 0–65535；0 由系统分配')
+    return serve(args)

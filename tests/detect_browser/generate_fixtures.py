@@ -35,4 +35,6 @@ with store.connect(db_path,create=True) as db:
     service.run(db,[inputs],[value],'escaped')
     report.render(db,args.out/'report',include_audio=True,hide_paths=True)
     report.render(db,args.out/'no-audio',include_audio=False,hide_paths=True)
+from voice_tools.tools.recording_qa.batch import analyze_batch
+analyze_batch([inputs], args.out/'qa', include_audio=True, hide_paths=True)
 print(json.dumps({'package':str(Path(voice_tools.__file__).resolve()),'report':str(args.out/'report/index.html')}))

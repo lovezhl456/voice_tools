@@ -37,4 +37,7 @@ def render(path, records, summary, hide_paths=False, back_link=None):
         import html
         page = page.replace('href="summary.csv"', 'href="' + html.escape(back_link, quote=True) + '"')
         page = page.replace('下载整通汇总', '返回任务报告')
+    from voice_tools.tools.detect.editor import render as render_editor
+    render_editor(Path(path).with_name('config.html'), back_link=Path(path).name)
+    page = page.replace('<h1>', '<p><a href="config.html"><strong>定义指标与标签</strong></a></p><h1>', 1)
     Path(path).write_text(page, encoding='utf-8')

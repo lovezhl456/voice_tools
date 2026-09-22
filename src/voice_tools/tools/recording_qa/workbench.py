@@ -43,4 +43,9 @@ def render_workbench(output, records, summary, hide_paths=False):
             "fields": REVIEW_FIELDS + EXTRA_REVIEW_FIELDS}
     from voice_tools.core.review.page import render_page
     script = Path(__file__).with_name("review.js").read_text(encoding="utf-8")
-    render_page(output / "review.html", data, script)
+    from voice_tools.tools.detect.editor import render as render_editor
+    render_editor(output / "config.html", back_link="review.html")
+    render_page(output / "review.html", data, script, replacements={
+        '<a href="report.html">查看完整静态报告</a>':
+        '<nav><a href="config.html"><strong>定义指标与标签</strong></a> · '
+        '<a href="report.html">查看完整静态报告</a></nav>'})

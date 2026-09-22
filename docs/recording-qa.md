@@ -108,6 +108,7 @@ voice-tools qa analyze data/calls data/another.wav \
 | `summary.csv` | 逐文件汇总 |
 | `review.csv` | 逐应答机会的人工复核表，判断列默认留空 |
 | `review.html` | 波形、左右轨试听、循环、人工标注和 CSV 导入/导出 |
+| `config.html` | 图形化定义检测指标、规则和业务标签；[本机保存与运行](detection-editor.md) |
 | `report.html` | 中文可读报告，附带音频时可以试听对应窗口 |
 | `audio/` | 仅在 `--include-audio` 时复制原始录音，按摘要命名避免同名覆盖 |
 
