@@ -14,8 +14,9 @@ CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 CREATE TABLE definitions (hash TEXT PRIMARY KEY, id TEXT NOT NULL, version TEXT NOT NULL,
                           name TEXT NOT NULL, config TEXT NOT NULL, UNIQUE(id, version));
 CREATE TABLE recordings (id TEXT PRIMARY KEY, duration_s REAL NOT NULL, channels INTEGER NOT NULL,
-                         sources TEXT NOT NULL);
-CREATE TABLE batches (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, status TEXT NOT NULL);
+                         sources TEXT NOT NULL, waveform TEXT NOT NULL);
+CREATE TABLE batches (id TEXT PRIMARY KEY, created_at TEXT NOT NULL, status TEXT NOT NULL,
+                      tool_version TEXT NOT NULL, engine_version TEXT NOT NULL);
 CREATE TABLE evaluations (batch_id TEXT NOT NULL REFERENCES batches(id),
                          recording_id TEXT NOT NULL REFERENCES recordings(id),
                          config_hash TEXT NOT NULL REFERENCES definitions(hash),
@@ -102,6 +103,9 @@ def batch_details(db):
         item = dict(row)
         item['evaluations'] = db.execute('SELECT COUNT(*) FROM evaluations WHERE batch_id=?', (row['id'],)).fetchone()[0]
         item['errors'] = [dict(error) for error in db.execute('SELECT source,error FROM input_errors WHERE batch_id=?', (row['id'],))]
+        item['evaluation_issues'] = [dict(issue) for issue in db.execute(
+            'SELECT recording_id,config_hash,status,note FROM evaluations WHERE batch_id=? AND status<>?',
+            (row['id'], 'ok'))]
         result.append(item)
     return result
 
@@ -166,6 +170,8 @@ def query(db, tags=(), tag_mode='any', recording=None, batch=None, definition=No
                 grouped.setdefault((row['batch_id'], row['recording_id']), set()).add(row['label'])
             rows = [row for row in rows if required <= grouped[(row['batch_id'], row['recording_id'])]]
         rows = [row for row in rows if row['label'] in required]
+    rows.sort(key=lambda row: (row['batch_id'], row['sources'][0], row['recording_id'],
+                               row['start_s'], row['end_s'], row['label'], row['definition_id'], row['id']))
     return rows
 
 

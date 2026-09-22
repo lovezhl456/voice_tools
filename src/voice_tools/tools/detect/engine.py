@@ -92,6 +92,8 @@ def analyze(audio, config):
                 continue
             if 'unless' in rule and evaluate(rule['unless'], values):
                 continue
+            if len(findings) >= 100000:
+                raise ValueError('单录音单配置命中超过 100000 条，请增大步长或缩小范围')
             findings.append({'rule_id': rule['id'], 'label': rule['label'],
                              'start_s': start / audio.sample_rate, 'end_s': end / audio.sample_rate,
                              'reason': rule['description'], 'values': dict(values),

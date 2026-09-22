@@ -1,5 +1,7 @@
 # voice_tools · 语音工具导航
 
+新增：`voice-tools detect` 支持[自定义指标与规则、业务标签检索和人工复核](docs/detection-rules.md)。先用 `detect config-example` 导出格式，再按业务参数编辑；原专项脚本可后续迁移。
+
 面向语音业务的工具集，统一安装，通过 `voice-tools <工具> <操作>` 使用。各工具独立维护功能、配置、输出和测试；从下面选择当前要解决的问题。
 
 [版本记录与迭代规则](CHANGELOG.md)：统一查看历史版本编排、开发分支命名和下一版本计划。

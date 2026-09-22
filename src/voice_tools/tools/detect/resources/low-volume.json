@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0", "id": "low-volume", "version": "example-1", "name": "AI 低音量候选（格式示例）",
+  "description": "假设右轨为 AI；静音不计作低音量；示例参数须由实际业务样本校准。",
+  "window": {"kind": "sliding", "length_s": 2, "step_s": 1},
+  "metrics": {
+    "ai_level": {"kind": "rms_dbfs", "channel": 1},
+    "ai_active": {"kind": "activity_total_s", "channel": 1, "params": {"threshold_dbfs": -65, "min_duration_s": 0.1}}
+  },
+  "rules": [{"id": "low", "label": "AI低音量", "when": {"all": [
+    {"metric": "ai_level", "op": "lt", "value": -35}, {"metric": "ai_active", "op": "ge", "value": 0.5}
+  ]}}]
+}

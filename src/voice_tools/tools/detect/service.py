@@ -1,8 +1,10 @@
 """Batch orchestration and comparable-version changes; never overwrites old runs."""
+import json
 import uuid
 
 from voice_tools import __version__
 from voice_tools.audio.io import read_wav
+from voice_tools.audio.health import waveform
 from voice_tools.core.files import sha256
 from voice_tools.tools.recording_qa.batch import discover
 from .definition import canonical, fingerprint, identifier, validate
@@ -23,7 +25,7 @@ def run(db, inputs, configs, batch_id=None):
         raise ValueError('batch_id 已存在，重跑必须使用新批次')
     for config in configs:
         save_definition(db, config)
-    db.execute('INSERT INTO batches VALUES (?, ?, ?)', (batch_id, now(), 'running'))
+    db.execute('INSERT INTO batches VALUES (?, ?, ?, ?, ?)', (batch_id, now(), 'running', __version__, 'detection-1'))
     summary = {'batch_id': batch_id, 'tool_version': __version__, 'files': len(paths), 'recordings': 0,
                'findings': 0, 'errors': 0, 'no_windows': 0, 'definitions': [config['id'] + '@' + config['version'] for config in configs]}
     seen = set()
@@ -38,11 +40,13 @@ def run(db, inputs, configs, batch_id=None):
             summary['errors'] += 1
             continue
         existing = db.execute('SELECT sources FROM recordings WHERE id=?', (digest,)).fetchone()
-        import json
         sources = set(json.loads(existing['sources'])) if existing else set()
         sources.add(str(path))
-        db.execute('INSERT OR REPLACE INTO recordings VALUES (?, ?, ?, ?)',
-                   (digest, audio.duration_s, audio.samples.shape[1], canonical(sorted(sources))))
+        if existing:
+            db.execute('UPDATE recordings SET sources=? WHERE id=?', (canonical(sorted(sources)), digest))
+        else:
+            db.execute('INSERT INTO recordings VALUES (?, ?, ?, ?, ?)',
+                       (digest, audio.duration_s, audio.samples.shape[1], canonical(sorted(sources)), canonical(waveform(audio))))
         if digest in seen:
             continue
         seen.add(digest)

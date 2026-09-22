@@ -1,0 +1,914 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "voice-tools detection definition 1.0",
+  "$defs": {
+    "condition": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 128,
+              "items": {
+                "$ref": "#/$defs/condition"
+              }
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 128,
+              "items": {
+                "$ref": "#/$defs/condition"
+              }
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/condition"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "metric": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+              "maxLength": 80
+            },
+            "op": {
+              "enum": [
+                "lt",
+                "le",
+                "gt",
+                "ge",
+                "eq",
+                "ne"
+              ]
+            },
+            "value": {
+              "type": "number",
+              "minimum": -1000000000000.0,
+              "maximum": 1000000000000.0
+            }
+          },
+          "required": [
+            "metric",
+            "op",
+            "value"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+      "maxLength": 80
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+      "maxLength": 80
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "start_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600
+        },
+        "end_s": {
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 3600
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "skip_first_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600
+        },
+        "skip_last_s": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 3600
+        },
+        "exclude": {
+          "type": "array",
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "properties": {
+              "start_s": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 3600
+              },
+              "end_s": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 3600
+              }
+            },
+            "required": [
+              "start_s",
+              "end_s"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "window": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "whole"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "sliding"
+            },
+            "length_s": {
+              "type": "number",
+              "minimum": 0.02,
+              "maximum": 3600,
+              "default": 5
+            },
+            "include_partial": {
+              "type": "boolean",
+              "default": false
+            },
+            "step_s": {
+              "type": "number",
+              "minimum": 0.02,
+              "maximum": 3600
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "after_activity"
+            },
+            "length_s": {
+              "type": "number",
+              "minimum": 0.02,
+              "maximum": 3600,
+              "default": 5
+            },
+            "include_partial": {
+              "type": "boolean",
+              "default": false
+            },
+            "channel": {
+              "type": "integer",
+              "enum": [
+                0,
+                1
+              ]
+            },
+            "delay_s": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 120,
+              "default": 0
+            },
+            "params": {
+              "type": "object",
+              "properties": {
+                "frame_ms": {
+                  "type": "number",
+                  "minimum": 5,
+                  "maximum": 100,
+                  "default": 20
+                },
+                "threshold_dbfs": {
+                  "type": "number",
+                  "minimum": -120,
+                  "maximum": 0,
+                  "default": -45
+                },
+                "min_duration_s": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 3600,
+                  "default": 0.1
+                },
+                "join_gap_s": {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 120,
+                  "default": 0
+                },
+                "remove_dc": {
+                  "type": "boolean",
+                  "default": true
+                }
+              },
+              "required": [],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "metrics": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 32,
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+        "maxLength": 80
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "rms_dbfs"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "peak_dbfs"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "clipping_ratio"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "clip_level": {
+                    "type": "number",
+                    "minimum": 0.01,
+                    "maximum": 1,
+                    "default": 0.999
+                  },
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "duration_s"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "silence_ratio"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "frame_ms": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 100,
+                    "default": 20
+                  },
+                  "threshold_dbfs": {
+                    "type": "number",
+                    "minimum": -120,
+                    "maximum": 0,
+                    "default": -45
+                  },
+                  "min_duration_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 3600,
+                    "default": 0.1
+                  },
+                  "join_gap_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "default": 0
+                  },
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "silence_total_s"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "frame_ms": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 100,
+                    "default": 20
+                  },
+                  "threshold_dbfs": {
+                    "type": "number",
+                    "minimum": -120,
+                    "maximum": 0,
+                    "default": -45
+                  },
+                  "min_duration_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 3600,
+                    "default": 0.1
+                  },
+                  "join_gap_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "default": 0
+                  },
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "silence_longest_s"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "frame_ms": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 100,
+                    "default": 20
+                  },
+                  "threshold_dbfs": {
+                    "type": "number",
+                    "minimum": -120,
+                    "maximum": 0,
+                    "default": -45
+                  },
+                  "min_duration_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 3600,
+                    "default": 0.1
+                  },
+                  "join_gap_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "default": 0
+                  },
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "silence_count"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "frame_ms": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 100,
+                    "default": 20
+                  },
+                  "threshold_dbfs": {
+                    "type": "number",
+                    "minimum": -120,
+                    "maximum": 0,
+                    "default": -45
+                  },
+                  "min_duration_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 3600,
+                    "default": 0.1
+                  },
+                  "join_gap_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "default": 0
+                  },
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "activity_ratio"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "frame_ms": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 100,
+                    "default": 20
+                  },
+                  "threshold_dbfs": {
+                    "type": "number",
+                    "minimum": -120,
+                    "maximum": 0,
+                    "default": -45
+                  },
+                  "min_duration_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 3600,
+                    "default": 0.1
+                  },
+                  "join_gap_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "default": 0
+                  },
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "activity_total_s"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "frame_ms": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 100,
+                    "default": 20
+                  },
+                  "threshold_dbfs": {
+                    "type": "number",
+                    "minimum": -120,
+                    "maximum": 0,
+                    "default": -45
+                  },
+                  "min_duration_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 3600,
+                    "default": 0.1
+                  },
+                  "join_gap_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "default": 0
+                  },
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "activity_longest_s"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "frame_ms": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 100,
+                    "default": 20
+                  },
+                  "threshold_dbfs": {
+                    "type": "number",
+                    "minimum": -120,
+                    "maximum": 0,
+                    "default": -45
+                  },
+                  "min_duration_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 3600,
+                    "default": 0.1
+                  },
+                  "join_gap_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "default": 0
+                  },
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "const": "activity_count"
+              },
+              "channel": {
+                "type": "integer",
+                "enum": [
+                  0,
+                  1
+                ]
+              },
+              "params": {
+                "type": "object",
+                "properties": {
+                  "frame_ms": {
+                    "type": "number",
+                    "minimum": 5,
+                    "maximum": 100,
+                    "default": 20
+                  },
+                  "threshold_dbfs": {
+                    "type": "number",
+                    "minimum": -120,
+                    "maximum": 0,
+                    "default": -45
+                  },
+                  "min_duration_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 3600,
+                    "default": 0.1
+                  },
+                  "join_gap_s": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "default": 0
+                  },
+                  "remove_dc": {
+                    "type": "boolean",
+                    "default": true
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "kind",
+              "channel"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$",
+            "maxLength": 80
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1000
+          },
+          "when": {
+            "$ref": "#/$defs/condition"
+          },
+          "unless": {
+            "$ref": "#/$defs/condition"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "when"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "schema_version",
+    "id",
+    "version",
+    "name",
+    "metrics",
+    "rules"
+  ],
+  "additionalProperties": false
+}

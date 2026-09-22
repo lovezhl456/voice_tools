@@ -1,10 +1,6 @@
 """Small, explicit metric registry. Definitions contain data, never executable code."""
 import math
 
-import numpy as np
-
-from voice_tools.audio.activity import spans_from_mask
-
 # Each parameter is (default, minimum, maximum). Unknown parameters are rejected.
 ACTIVITY_PARAMS = {'frame_ms': (20, 5, 100), 'threshold_dbfs': (-45, -120, 0),
                    'min_duration_s': (0.1, 0, 3600), 'join_gap_s': (0, 0, 120)}
@@ -48,6 +44,8 @@ def parameters(kind, supplied):
 
 def activity_spans(samples, rate, params, silence=False):
     """Frame means are removed before energy calculation; tail is not zero-padded."""
+    import numpy as np
+    from voice_tools.audio.activity import spans_from_mask
     frame = max(1, round(rate * params['frame_ms'] / 1000))
     levels = []
     for offset in range(0, len(samples), frame * 512):
@@ -71,6 +69,7 @@ def activity_spans(samples, rate, params, silence=False):
 
 
 def measure(kind, samples, rate, params):
+    import numpy as np
     duration = len(samples) / rate
     if not len(samples):
         raise ValueError('窗口没有样本，不能当作静音')

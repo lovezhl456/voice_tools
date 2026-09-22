@@ -4,7 +4,6 @@ import hashlib
 import json
 import re
 
-from voice_tools.core.files import read_json
 from .metrics import finite, parameters
 
 SCHEMA_VERSION = '1.0'
@@ -139,10 +138,29 @@ def validate(raw):
     return config
 
 
+def read_document(path, limit_bytes=1024 * 1024):
+    if path.stat().st_size > limit_bytes:
+        raise ValueError(f'JSON 文件不能超过 {limit_bytes} 字节')
+    def pairs(items):
+        result = {}
+        for key, value in items:
+            if key in result:
+                raise ValueError('JSON 含重复字段：' + key)
+            result[key] = value
+        return result
+    def invalid(value):
+        raise ValueError('JSON 不允许非有限数值：' + value)
+    try:
+        return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=pairs, parse_constant=invalid)
+    except RecursionError as error:
+        raise ValueError('JSON 嵌套过深') from error
+
+
 def load(path):
-    if path.stat().st_size > 1024 * 1024:
-        raise ValueError('配置文件不能超过 1 MiB')
-    return validate(read_json(path))
+    try:
+        return validate(read_document(path))
+    except RecursionError as error:
+        raise ValueError('配置嵌套过深') from error
 
 
 def canonical(config):
