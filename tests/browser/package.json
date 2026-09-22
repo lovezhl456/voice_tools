@@ -1,0 +1,8 @@
+{
+  "name": "voice-tools-review-acceptance",
+  "private": true,
+  "version": "1.0.0",
+  "engines": {"node": ">=20"},
+  "scripts": {"test": "playwright test"},
+  "devDependencies": {"@playwright/test": "1.63.0"}
+}

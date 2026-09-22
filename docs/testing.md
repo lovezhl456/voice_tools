@@ -118,6 +118,42 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 
 合并结果时按用例去重，注明哪些组来自补跑。旧验收文档只证明其日期和基线下的结果，不替代当前验证。
 
+## 安装包浏览器验收
+
+复核流程的能力保留与拒绝条件见 [R01–R08 基线](review-acceptance.md)。从仓库根目录，在隔离的开发环境准备 Python 3.10+、Node.js 20+，然后安装开发依赖：
+
+```bash
+python -m venv .venv-review
+. .venv-review/bin/activate
+python -m pip install 'numpy>=1.24,<3' 'setuptools>=61' wheel
+npm ci --prefix tests/browser --ignore-scripts --no-audit --no-fund
+tests/browser/node_modules/.bin/playwright install chromium
+python scripts/check_review.py
+```
+
+Linux 缺少浏览器系统库时，将安装浏览器的命令改为 `playwright install --with-deps chromium`（使用上面的本地可执行文件路径）；系统包安装可能需要管理员权限。Playwright 版本由 `tests/browser/package-lock.json` 固定，仅用于开发验收，不加入产品运行依赖。
+
+运行器构建并安装 wheel，确认夹具从安装目录导入产品，生成合成音频和确定性模型证据，启动临时本机服务，再执行桌面和手机两组 Chromium 流程。整个过程不依赖个人录音、本机固定端口、真实模型或外部页面。退出时关闭服务。浏览器视口模拟不代表真实手机设备或其他浏览器已验证；模拟模型也不代表实际准确率。
+
+默认产物位于新的 `.artifacts/review-时间-随机后缀/`；可用 `--out .artifacts/review-check` 指定**新的或空的目录**，避免覆盖历史证据。关键文件：
+
+- `verification.json`：提交、工作区状态、wheel SHA-256、版本、命令、能力覆盖及最终状态。
+- `browser-results.json` 和 `browser-report/index.html`：逐项结果与可查看的报告。
+- `browser-results/`：实际页面截图、导出 CSV，失败时的截图和 trace。
+- `build.log`、`install.log`、`fixtures.log`、`browser.log`：分阶段日志；复现用 wheel 和夹具保存在 `wheels/`、`site/`。
+
+需要定位问题时，可以选测；既有 wheel 的产品内容未变时可以复用，避免再次构建：
+
+```bash
+python scripts/check_review.py --project desktop --grep R03
+python scripts/check_review.py --wheel .artifacts/previous-run/wheels/voice_tools-0.16.2-py3-none-any.whl
+tests/browser/node_modules/.bin/playwright show-report .artifacts/review-check/browser-report
+```
+
+第一条仅验证所选项，记录为 `coverage=selected_cases`。完整验收必须不带 `--project`／`--grep`，得到 `status=passed`、`coverage=full_baseline`，且 desktop/mobile 各包含 R01–R08；失败、跳过、空测试、遗漏能力、仅重试后成功都不算通过。使用 `--wheel` 时应确认其包含当前产品改动，并以记录的摘要为准。
+
+[Review acceptance 工作流](../.github/workflows/review-acceptance.yml) 在每个 PR、main 更新和手动触发时运行关键规则回归及相同的安装包浏览器检查，上传有效期为 7 天的日志、报告、截图和 wheel。CI 不替代 Python／Node／CLI 默认全量，也不自动改变 GitHub 分支保护；判断是否可交付应查看当前 PR 提交的实际结果。
+
 ## 整通自动质检
 
 普通规则、模型合同及工作流验证无需权重：`tests.recording_qa.test_assessment`、`test_assessment_workflow`、`test_speech_model`、`test_assessment_delivery`。波形摘要、离线资源和旧结果兼容用 `test_assessment_waveform`；共享波形壳变化另跑原 QA `test_p0`、筛选与 gaps 交付组，并在实际浏览器验证缩放、拖动、区间播放和手机布局。安装器契约用 `test_setup`，以假子进程覆盖选择、JSON、当前解释器、部分失败、重试和任务排除，不在普通测试中执行 pip 下载。变更影响共享证据加载、任务执行或复查时加原 QA、task、gaps 交付组；页面变更另做桌面／移动端实浏览器验证。
