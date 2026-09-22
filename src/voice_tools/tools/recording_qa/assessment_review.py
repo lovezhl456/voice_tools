@@ -16,6 +16,32 @@ def blank_row(record):
             'audio_sha256': record['audio_sha256'], 'automatic_decision': record['result']['decision']}
 
 
+def validate_waveform(waveform, duration):
+    """Bound optional display data before rendering imported result packages."""
+    if not isinstance(waveform, dict) or duration is None:
+        raise ValueError('波形摘要缺少有效时长')
+    length, bin_s = waveform.get('duration_s'), waveform.get('bin_s')
+    if (any(type(value) not in (int, float) or not math.isfinite(value) for value in (length, bin_s))
+            or abs(length - duration) > 1e-5 or not 0 < bin_s <= duration + 1e-5):
+        raise ValueError('波形摘要时间范围无效')
+    channels = waveform.get('channels')
+    if not isinstance(channels, list) or not 1 <= len(channels) <= 2:
+        raise ValueError('波形摘要须为单轨或双轨')
+    counts = []
+    for channel in channels:
+        if not isinstance(channel, list) or not 1 <= len(channel) <= 1200:
+            raise ValueError('波形摘要每轨须为 1–1200 格')
+        counts.append(len(channel))
+        for pair in channel:
+            if (not isinstance(pair, (list, tuple)) or len(pair) != 2 or
+                    any(type(value) not in (int, float) or not math.isfinite(value) for value in pair) or
+                    not -1 <= pair[0] <= pair[1] <= 1):
+                raise ValueError('波形幅度摘要无效')
+    covered_s = counts[0] * bin_s
+    if len(set(counts)) != 1 or not duration - 1e-5 <= covered_s < duration + bin_s + 1e-5:
+        raise ValueError('波形摘要未覆盖完整录音')
+
+
 def validate_record(record):
     if (not isinstance(record, dict) or record.get('kind') != 'qa_assessment' or
             record.get('schema_version') != '1.0' or not isinstance(record.get('input'), str) or
@@ -31,6 +57,13 @@ def validate_record(record):
     for field in ('review_required', 'audit_selected'):
         if type(result.get(field)) is not bool:
             raise ValueError('复核或抽检标志无效')
+    if 'channel_verified' in result and type(result['channel_verified']) is not bool:
+        raise ValueError('声道核实标志须为布尔值')
+    if 'system_channel' in result and (type(result['system_channel']) is not int or
+                                       result['system_channel'] not in (0, 1)):
+        raise ValueError('系统声道须为 0 或 1')
+    if result.get('channel_verified') is True and 'system_channel' not in result:
+        raise ValueError('已核实角色缺少系统声道')
     for field in ('blockers', 'findings', 'turns', 'review_windows'):
         if not isinstance(result.get(field), list):
             raise ValueError('整通质检证据结构无效')
@@ -42,7 +75,12 @@ def validate_record(record):
             raise ValueError('缺少有效录音时长')
     elif type(duration) not in (int, float) or not math.isfinite(duration) or duration <= 0:
         raise ValueError('录音时长无效')
-    for window in result['review_windows']:
+    if 'waveform' in record:
+        validate_waveform(record['waveform'], duration)
+    windows = result['review_windows']
+    if result.get('checked_range') is not None:
+        windows = [*windows, result['checked_range']]
+    for window in windows:
         if (not isinstance(window, (list, tuple)) or len(window) != 2 or duration is None or
                 any(type(v) not in (int, float) or not math.isfinite(v) for v in window) or
                 not 0 <= window[0] <= window[1] <= duration + 1e-5):

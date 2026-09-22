@@ -1,0 +1,13 @@
+<section class="wave-panel" aria-labelledby="waveHeading">
+<div class="wave-heading"><div><h3 id="waveHeading">双轨波形</h3><span id="waveScale" class="muted">原始幅度 · 同一时间轴</span></div><div class="wave-tools">
+<div class="zoom-controls" role="group" aria-label="波形缩放"><button id="zoomOut" type="button" aria-label="缩小波形">−</button><output id="zoomValue" aria-live="polite">全长</output><button id="zoomIn" type="button" aria-label="放大波形">＋</button></div>
+<button id="fitWave" type="button">全长</button><button id="focusWave" type="button">当前机会</button>
+<label class="gain-control">显示增益<select id="waveGain"><option value="1">×1</option><option value="2">×2</option><option value="4">×4</option><option value="8">×8</option></select></label>
+</div></div>
+<div class="wave-stage" id="waveStage">
+<div class="track-labels"><div class="track-label left-track" id="leftTitle"><span class="track-letter">L</span><strong class="role-name"></strong><small class="role-meta"></small></div><div class="track-label right-track" id="rightTitle"><span class="track-letter">R</span><strong class="role-name"></strong><small class="role-meta"></small></div><div class="axis-label">时间 / 秒</div></div>
+<div class="wave-view"><div id="waveform" role="group" aria-label="同步双轨录音波形"></div><p id="waveEmpty" class="muted" hidden>此录音未附带波形数据。</p></div>
+</div>
+<div class="wave-legend"><span><i class="legend-window"></i>标注窗口 · 固定</span><span><i class="legend-listen"></i>试听范围 · 可调整</span><span id="waveResolution" class="muted"></span></div>
+<p class="wave-hint muted">点击波形定位；拖动青色边缘调整试听范围。显示增益仅放大图形，不改变音量。</p>
+</section>

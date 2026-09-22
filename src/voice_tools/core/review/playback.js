@@ -22,6 +22,11 @@ window.createReviewPlayback = (player, {duration, seek, rangeChanged, error}) =>
     $("seek").value = player.currentTime;
     $("time").textContent = `${player.currentTime.toFixed(2)} / ${length.toFixed(2)} 秒`;
   }
+  function showVolume() {
+    $("volume").value = player.volume;
+    $("volume").setAttribute("aria-valuetext", `${Math.round(player.volume * 100)}%`);
+    $("mute").checked = player.muted;
+  }
   function stopFrame() { cancelAnimationFrame(frame); frame = 0; }
   function pause() {
     wantsToPlay = false; if (pending) pending.resume = false;
@@ -103,6 +108,10 @@ window.createReviewPlayback = (player, {duration, seek, rangeChanged, error}) =>
     catch (e) { pause(); error(e.message); }
   });
   $("play").onclick = toggle;
+  $("volume").oninput = () => { player.volume = $("volume").valueAsNumber; };
+  $("mute").onchange = () => { player.muted = $("mute").checked; };
+  player.addEventListener("volumechange", showVolume);
+  showVolume();
   $("seek").oninput = () => { const value = $("seek").valueAsNumber; if (Number.isFinite(value)) { seek(value); checkRange(); } };
   for (const id of ["start", "end"]) $(id).onchange = () => applyRange(true);
   return {bounds, toggle, pause, setSource, setRange, applyRange};

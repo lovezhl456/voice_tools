@@ -16,7 +16,7 @@ window.createReviewWaveform = (player, onRangeChange, onError, {focusSelection =
     plugins: [regions, WaveSurfer.Timeline.create({height: 28, secondaryLabelOpacity: 1, style: {fontSize: "11px"},
       formatTimeCallback: value => value < 60 ? `${Number(value.toFixed(1))}s` : `${Math.floor(value / 60)}:${String(Math.floor(value % 60)).padStart(2, "0")}`})],
   });
-  let entry = null, audition = null, ready = false, generation = 0, zoom = 1;
+  let entry = null, audition = null, annotation = null, ready = false, generation = 0, zoom = 1;
   const duration = () => entry?.record.result.duration_s || 0;
   const minRange = () => Math.min(.05, duration());
   function enable(value) {
@@ -78,7 +78,7 @@ window.createReviewWaveform = (player, onRangeChange, onError, {focusSelection =
   new ResizeObserver(() => { if (ready) setZoom(zoom); }).observe($("waveform"));
   return {
     async load(value) {
-      entry = value; ready = false; audition = null; enable(false);
+      entry = value; ready = false; audition = null; annotation = null; enable(false);
       const ticket = ++generation, peaks = entry.record.waveform?.channels;
       regions.clearRegions(); $("waveform").hidden = !peaks?.length; $("waveEmpty").hidden = !!peaks?.length;
       $("waveStage").querySelector(".track-labels").hidden = !peaks?.length;
@@ -94,10 +94,10 @@ window.createReviewWaveform = (player, onRangeChange, onError, {focusSelection =
         // Precomputed min/max pairs are rendered without decoding or fetching the recording.
         await wave.load(player.getAttribute("src") ? player.src : "", peaks.map(channel => channel.flat()), duration());
         if (ticket !== generation) return;
-        const fixed = regions.addRegion({id: "annotation-window", start: entry.op.at_s, end: entry.op.observed_until_s,
+        annotation = regions.addRegion({id: "annotation-window", start: entry.op.at_s, end: entry.op.observed_until_s,
           drag: false, resize: false, color: "rgba(232, 174, 53, .10)"});
-        fixed.element.style.pointerEvents = "none";
-        fixed.element.style.borderInline = "1px dashed #bd8617";
+        annotation.element.style.pointerEvents = "none";
+        annotation.element.style.borderInline = "1px dashed #bd8617";
         audition = regions.addRegion({id: "audition-range", start: Number($("start").value), end: Number($("end").value),
           drag: false, resize: true, minLength: minRange(), color: "rgba(24, 156, 151, .07)"});
         audition.element.style.pointerEvents = "none";
@@ -107,6 +107,11 @@ window.createReviewWaveform = (player, onRangeChange, onError, {focusSelection =
       } catch (error) { if (ticket === generation) onError(`波形无法加载：${error.message}`); }
     },
     syncRange,
+    setEvidenceRange(start, end) {
+      if (!entry || !Number.isFinite(start + end) || start < 0 || end <= start || end > duration()) return;
+      entry = {...entry, op: {...entry.op, at_s: start, observed_until_s: end}};
+      if (annotation) annotation.setOptions({start, end});
+    },
     setTime(value) { if (!Number.isFinite(value)) return; if (ready) wave.setTime(value); else if (player.getAttribute("src")) player.currentTime = value; },
     syncChannel(channel) {
       $("leftTitle").classList.toggle("is-muted", channel === "right");
