@@ -1,7 +1,29 @@
 'use strict';
-(() => {
+(async () => {
   const $ = (id) => document.getElementById(id);
   const data = JSON.parse($('reviewData').textContent);
+  const session = JSON.parse($('liveSession').textContent);
+  let standardRows = [];
+  async function liveApi(path, body) {
+    const response = await fetch(path, {method:body === undefined ? 'GET' : 'POST',
+      headers:{'Content-Type':'application/json','X-Voice-Tools-Session':session.token},
+      ...(body === undefined ? {} : {body:JSON.stringify(body)})});
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw Error(result.error || '保存失败，请检查本机服务');
+    return result;
+  }
+  if (session) {
+    try {
+      const live = await liveApi('/api/review-state');
+      const batches = new Set(data.batches.map((item) => item.id));
+      data.findings = live.findings.filter((item) => batches.has(item.batch_id));
+      standardRows = live.standards;
+      $('liveToolbar').hidden=false; $('auditPanel').hidden=false; $('normalControls').hidden=false;
+      $('reviewForm').querySelector('[type=submit]').textContent='保存到检测库';
+      $('manualForm').querySelector('[type=submit]').textContent='保存漏检到检测库';
+      $('reviewForm').querySelector('p.muted').textContent='在线保存直接入库；问题确认和误报原因同时积累为人工标准。';
+    } catch(error) { $('message').textContent=error.message + '；请重新打开服务后刷新。'; return; }
+  }
   const names = {pending:'待复核', confirmed:'已确认', false_positive:'误报', corrected:'已修正'};
   const records = new Map(data.records.map((record) => [record.id, record]));
   const originals = new Map(data.findings.map((row) => [row.id, row]));
@@ -40,6 +62,53 @@
     $('manualEvaluation').add(new Option(`${filename(item.sources[0])} · ${item.batch_id} · ${item.definition_id}@${item.version} · ${item.status}`, String(index)));
   });
 
+  async function submitPacket(value) {
+    const response = await liveApi('/api/workspace/reviews', value);
+    for (const row of response.findings) {
+      if (!data.batches.some((batch) => batch.id === row.batch_id)) continue;
+      const index = data.findings.findIndex((item) => item.id === row.id);
+      if (index < 0) data.findings.push(row); else data.findings[index] = row;
+      originals.set(row.id, row);
+    }
+    for (const item of value.reviews) decisions.delete(item.finding_id);
+    for (const item of value.manual) manual.delete(item.id);
+    formDirty=false; notExported=decisions.size > 0 || manual.size > 0;
+    try { localStorage.setItem(key,JSON.stringify(packet())); }
+    catch(error) { /* The database save succeeded even if browser draft storage is unavailable. */ }
+    renderManual(); refresh();
+    if (current && originals.has(current.id)) select(originals.get(current.id));
+    message('已保存到检测库，重新打开仍可继续复核。');
+  }
+  if (session) {
+    const empty = data.evaluations.map((item,index)=>({item,index})).filter(({item})=>item.status==='ok' &&
+      !data.findings.some((finding)=>finding.origin==='auto' && finding.batch_id===item.batch_id && finding.recording_id===item.recording_id && finding.config_hash===item.config_hash));
+    for (const {item,index} of empty) $('auditEvaluation').add(new Option(`${filename(item.sources[0])} · ${item.definition_id}@${item.version}`,String(index)));
+    $('auditProgress').textContent=`${empty.length} 项未命中检测可抽检；${standardRows.filter((row)=>row.verdict==='normal' && records.has(row.recording_id)).length} 个正常范围已保存。`;
+    $('auditListen').onclick=()=>{
+      if (formDirty) { message('请先保存或放弃当前复核。'); return; }
+      if (!$('auditEvaluation').options.length) { message('本批没有可抽检的未命中录音。'); return; }
+      $('manualEvaluation').value=$('auditEvaluation').value; $('listenManual').click();
+      const evaluation=data.evaluations[Number($('manualEvaluation').value)];
+      const definition=data.definitions.find((item)=>item.hash===evaluation.config_hash);
+      $('manualLabel').value=definition?.config.rules.length===1 ? definition.config.rules[0].label : '';
+      $('normalChecked').checked=false;
+    };
+    $('saveDrafts').onclick=async()=>{
+      try { if(formDirty) throw Error('请先保存当前表单修改'); await submitPacket(packet()); }
+      catch(error){ message(error.message); }
+    };
+    $('saveNormal').onclick=async()=>{
+      try {
+        const evaluation=data.evaluations[Number($('manualEvaluation').value)];
+        if (!evaluation || evaluation.status!=='ok') throw Error('只能对已成功分析的录音保存正常抽检结论');
+        await liveApi('/api/workspace/standard',{id:crypto.randomUUID(),expected_revision:0,recording_id:evaluation.recording_id,
+          label:$('manualLabel').value,start_s:$('manualStart').valueAsNumber,end_s:$('manualEnd').valueAsNumber,
+          verdict:'normal',reviewer:$('manualReviewer').value,comment:$('manualComment').value,checked:$('normalChecked').checked,
+          source:'audit:'+evaluation.batch_id});
+        $('normalChecked').checked=false; message('正常范围已保存到标准样本；未检查范围仍保持未知。');
+      } catch(error) { message(error.message); }
+    };
+  }
   function renderQueue() {
     $('queue').replaceChildren();
     for (const row of visible) {
@@ -155,12 +224,15 @@
     const link = document.createElement('a'); link.href=url; link.download=name; link.click();
     setTimeout(() => URL.revokeObjectURL(url),1000);
   }
-  $('reviewForm').onsubmit = (event) => {
+  $('reviewForm').onsubmit = async (event) => {
     event.preventDefault();
     const item = {finding_id:current.id, expected_revision:current.revision, status:$('reviewStatus').value,
       label:$('reviewLabel').value, start_s:$('reviewStart').valueAsNumber, end_s:$('reviewEnd').valueAsNumber,
       reviewer:$('reviewer').value, comment:$('comment').value};
-    try { validateReview(item); decisions.set(item.finding_id,item); formDirty=false; persist(); refresh(); }
+    try { validateReview(item);
+      if (session) await submitPacket({schema_version:'1.0',library_id:data.library_id,reviews:[item],manual:[]});
+      else { decisions.set(item.finding_id,item); formDirty=false; persist(); refresh(); }
+    }
     catch(error) { message(error.message); }
   };
   for (const id of ['reviewStatus','reviewLabel','reviewStart','reviewEnd','reviewer','comment']) $(id).oninput = () => { formDirty=true; renderQueue(); };
@@ -197,13 +269,20 @@
     $('manualStart').value=0; $('manualEnd').value=item.duration_s;
     showAudio(records.get(item.recording_id),0,item.duration_s); $('detail').scrollIntoView({block:'start'});
   };
-  $('manualForm').onsubmit = (event) => {
+  for (const id of ['manualEvaluation','manualLabel','manualStart','manualEnd','manualReviewer','manualComment']) {
+    $(id).addEventListener('input', () => { $('normalChecked').checked=false; });
+    $(id).addEventListener('change', () => { $('normalChecked').checked=false; });
+  }
+  $('manualForm').onsubmit = async (event) => {
     event.preventDefault(); const evaluation = data.evaluations[Number($('manualEvaluation').value)];
     if (!evaluation) { message('没有可补标的检测记录。'); return; }
     const item = {id:crypto.randomUUID(), batch_id:evaluation.batch_id, recording_id:evaluation.recording_id,
       config_hash:evaluation.config_hash, label:$('manualLabel').value, start_s:$('manualStart').valueAsNumber,
       end_s:$('manualEnd').valueAsNumber, reviewer:$('manualReviewer').value, comment:$('manualComment').value};
-    try { validateManual(item); manual.set(item.id,item); persist(); renderManual(); renderQueue(); }
+    try { validateManual(item);
+      if (session) await submitPacket({schema_version:'1.0',library_id:data.library_id,reviews:[],manual:[item]});
+      else { manual.set(item.id,item); persist(); renderManual(); renderQueue(); }
+    }
     catch(error) { message(error.message); }
   };
   window.addEventListener('beforeunload',(event) => { if (formDirty || notExported) { event.preventDefault(); event.returnValue=''; } });

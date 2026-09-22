@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import tempfile
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
@@ -99,11 +100,94 @@ class EditorServer(unittest.TestCase):
         self.server.application.inputs=[mono]
         self.post('/api/definitions',{'config':value})
         self.server.application.run_lock.acquire()
-        try:self.assertEqual(self.post('/api/run',{'definitions':['level@1'],'batch_id':'busy'})[0],400)
+        try:self.assertEqual(self.post('/api/run',{'definitions':['level@1'],'batch_id':'busy'})[0],409)
         finally:self.server.application.run_lock.release()
         code,result,_=self.post('/api/run',{'definitions':['level@1'],'batch_id':'partial'})
         self.assertEqual(code,200);self.assertEqual(result['summary']['status'],'partial');self.assertEqual(result['summary']['errors'],1)
         self.assertEqual(self.request(result['report_url'])[0],200)
+
+    def test_workspace_routes_require_session_and_reject_malformed_reviews(self):
+        self.assertEqual(self.request('/workspace')[0], 200)
+        for route in ('/api/workspace', '/api/review-state', '/api/comparisons/missing'):
+            self.assertEqual(self.request(route, headers={'X-Voice-Tools-Session':'wrong'})[0], 403)
+        self.assertEqual(self.post('/api/workspace/reviews', {'reviews':['bad']})[0], 400)
+        self.assertEqual(self.post('/api/workspace/run', {'definitions':['level@1'],'mode':'all','inputs':['/outside']})[0], 400)
+
+    def test_live_report_session_is_injected_only_when_served(self):
+        self.post('/api/definitions', {'config':config()})
+        _, result, _ = self.post('/api/run', {'definitions':['level@1'],'batch_id':'live'})
+        disk = (self.out/'reports/live/index.html').read_text()
+        self.assertIn('id="liveSession" type="application/json">null', disk)
+        page = self.request(result['report_url'])[1].decode()
+        self.assertIn(self.server.application.token, page)
+        self.assertNotIn(self.server.application.token, disk)
+
+    def test_online_review_api_updates_state_and_preserves_offline_export(self):
+        self.post('/api/definitions', {'config':config()})
+        self.post('/api/run', {'definitions':['level@1'],'batch_id':'review'})
+        with store.connect(self.db) as db:
+            finding = store.query(db)[0]
+            packet = {'schema_version':'1.0','library_id':store.library_id(db),'manual':[], 'reviews':[{
+                'finding_id':finding['id'],'expected_revision':0,'status':'false_positive','reviewer':'test','comment':'试听正常'}]}
+        self.assertEqual(self.post('/api/workspace/reviews', packet)[0], 200)
+        latest = json.loads(self.request('/api/review-state')[1])
+        self.assertEqual(latest['findings'][0]['status'], 'false_positive')
+        self.assertEqual(latest['standards'][0]['verdict'], 'normal')
+        self.assertEqual(self.post('/api/workspace/reviews', packet)[0], 400)
+
+    def test_real_batch_write_lock_rejects_all_online_writes_without_waiting(self):
+        from voice_tools.tools.detect import service
+        self.post('/api/definitions', {'config':config()})
+        self.post('/api/run', {'definitions':['level@1'],'batch_id':'seed'})
+        with store.connect(self.db) as db:
+            finding = store.query(db)[0]
+            packet = {'schema_version':'1.0','library_id':store.library_id(db),'manual':[], 'reviews':[{
+                'finding_id':finding['id'],'expected_revision':0,'status':'confirmed','reviewer':'test','comment':'已试听'}]}
+        self.assertEqual(self.post('/api/workspace/reviews', packet)[0], 200)
+        state = json.loads(self.request('/api/workspace')[1])
+        packet['reviews'][0]['expected_revision'] = 1
+        saved = state['standards'][0]
+        setting = {'name':'daily','definitions':['level@1'],'expected_revision':state['settings']['revision']}
+        requests = [
+            ('/api/definitions', {'config':config(version='2')}),
+            ('/api/workspace/settings', setting),
+            ('/api/workspace/reviews', packet),
+            ('/api/workspace/standard', {'id':saved['id'],'expected_revision':saved['revision'],
+              **{key:saved[key] for key in ('recording_id','label','start_s','end_s','verdict','reviewer','comment')},'checked':True}),
+            ('/api/workspace/freeze', {'name':'fixed','ids':[saved['id']]}),
+        ]
+        entered, release = threading.Event(), threading.Event()
+        real_analyze = service.analyze
+        def held_analysis(*args, **kwargs):
+            # service.run has inserted the batch: SQLite really holds a write transaction here.
+            entered.set()
+            if not release.wait(15):
+                raise RuntimeError('test failed to release batch')
+            return real_analyze(*args, **kwargs)
+        with patch.object(service, 'analyze', side_effect=held_analysis):
+            code, job, _ = self.post('/api/workspace/run', {'definitions':['level@1'],'mode':'all'})
+            self.assertEqual(code, 200)
+            try:
+                self.assertTrue(entered.wait(3))
+                for route, body in requests:
+                    with self.subTest(route=route):
+                        started = time.monotonic()
+                        status, result, _ = self.post(route, body)
+                        self.assertEqual(status, 409)
+                        self.assertEqual(result['code'], 'workspace_busy')
+                        self.assertIn('未保存内容仍保留', result['error'])
+                        self.assertLess(time.monotonic() - started, 1)
+                self.assertEqual(self.request('/api/workspace')[0], 200)
+                self.assertEqual(self.post('/api/validate', {'config':config()})[0], 200)
+            finally:
+                release.set()
+                deadline = time.monotonic() + 5
+                while self.server.application.run_lock.locked() and time.monotonic() < deadline:
+                    time.sleep(.01)
+        self.assertFalse(self.server.application.run_lock.locked())
+        self.assertEqual(self.post('/api/workspace/settings', setting)[0], 200)
+        with store.connect(self.db) as db:
+            self.assertEqual(store.current_finding(db, finding['id'])['revision'], 1)
 
 
 class EditorWorkspace(unittest.TestCase):

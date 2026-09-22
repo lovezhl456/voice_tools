@@ -12,7 +12,7 @@ from .engine import analyze
 from .store import evaluation_rows, now, query, save_definition
 
 
-def run(db, inputs, configs, batch_id=None):
+def run(db, inputs, configs, batch_id=None, progress=None):
     paths = discover(inputs)
     configs = [validate(config) for config in configs]
     if not configs or len(configs) > 32:
@@ -29,7 +29,9 @@ def run(db, inputs, configs, batch_id=None):
     summary = {'batch_id': batch_id, 'tool_version': __version__, 'files': len(paths), 'recordings': 0,
                'findings': 0, 'errors': 0, 'no_windows': 0, 'definitions': [config['id'] + '@' + config['version'] for config in configs]}
     seen = set()
-    for path in paths:
+    for index, path in enumerate(paths):
+        if progress:
+            progress(index, len(paths))
         try:
             digest = sha256(path)
             audio = read_wav(path)
@@ -67,6 +69,8 @@ def run(db, inputs, configs, batch_id=None):
                 db.execute('INSERT INTO findings VALUES (?, ?, ?, ?, ?, ?)',
                            (str(uuid.uuid4()), batch_id, digest, config_hash, 'auto', canonical(finding)))
                 summary['findings'] += 1
+    if progress:
+        progress(len(paths), len(paths))
     status = 'partial' if summary['errors'] or summary['no_windows'] else 'completed'
     db.execute('UPDATE batches SET status=? WHERE id=?', (status, batch_id))
     summary['status'] = status
