@@ -1,0 +1,22 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>业务标签 · 录音复核</title><style>__STYLE__
+__WAVEFORM_STYLE__</style></head><body><main>
+<header><div><p class="eyebrow">VOICE TOOLS · 可配置检测</p><h1>业务标签与录音复核</h1><p id="summary" class="muted"></p></div><a href="results.json" download>下载完整快照</a></header>
+<p class="notice">标签是配置的自动判断，需结合片段核实。声道编号与角色由配置约定，能量活动不等于有效回答。此页为本地快照；导出复核后，用 <code>voice-tools detect review-import 文件 --db 检测库</code> 保存到库。</p>
+<section class="filters" aria-label="检索条件">
+<label>目录<select id="directoryFilter"></select></label><label>录音<select id="fileFilter"></select></label><label>文件／路径关键词<input id="fileSearch" type="search" placeholder="支持多个关键词"></label>
+<label>标签（逗号分隔）<input id="tags" placeholder="AI无声,AI低音量" list="tagOptions"><datalist id="tagOptions"></datalist></label><label>标签匹配<select id="tagMode"><option value="any">任一标签</option><option value="all">同批录音包含全部标签</option></select></label>
+<label>批次<select id="batch"><option value="">全部批次</option></select></label><label>检测定义<select id="definition"><option value="">全部定义</option></select></label><label>配置版本<select id="version"><option value="">全部版本</option></select></label>
+<label>复核状态<select id="status"><option value="">全部状态</option><option value="pending">待复核</option><option value="confirmed">已确认</option><option value="false_positive">误报</option><option value="corrected">已修正</option></select></label>
+</section>
+<div class="toolbar"><button id="exportResults">导出筛选结果</button><button id="exportReviews" class="primary">导出复核文件</button><label class="fileButton">重新导入草稿<input type="file" id="importDraft" accept=".json"></label><button id="clearFilters">清空筛选</button></div>
+<p id="message" role="status" aria-live="polite"></p><p id="progress" class="muted"></p>
+<div class="workspace"><aside><h2>命中片段</h2><div id="queue"></div></aside><section id="detail" hidden>
+<h2 id="name"></h2><p id="identity" class="muted"></p><p id="reason"></p><details><summary>指标、判定条件与原始标签</summary><pre id="evidence"></pre></details>
+__WAVEFORM_PANEL__
+__PLAYBACK_CONTROLS__
+<p id="audioHint" class="muted"></p>
+<form id="reviewForm"><h3>人工结论</h3><div class="formGrid"><label>状态<select id="reviewStatus"><option value="pending">待复核</option><option value="confirmed">已确认</option><option value="false_positive">误报</option><option value="corrected">修正标签／片段</option></select></label><label>标签<input id="reviewLabel" required maxlength="100"></label><label>起点（秒）<input id="reviewStart" type="number" min="0" step="any" required></label><label>终点（秒）<input id="reviewEnd" type="number" min="0" step="any" required></label><label>复核人<input id="reviewer" required maxlength="100"></label><label>备注<input id="comment" maxlength="4000"></label></div><button class="primary" type="submit">保存到草稿</button><button id="discard" type="button">放弃表单修改</button><p class="muted">草稿保存在本浏览器，尚未写入检测库。修正标签／时间后请选择“修正标签／片段”。</p></form>
+</section></div>
+<section class="card"><h2>补充漏检</h2><p class="muted">包含无命中的录音。先选择检测记录试听，再补标问题片段；检测失败和无窗口的状态会明确展示。</p><form id="manualForm"><div class="formGrid"><label class="wide">录音 · 批次 · 定义<select id="manualEvaluation" required></select></label><label>业务标签<input id="manualLabel" required maxlength="100"></label><label>起点（秒）<input id="manualStart" type="number" min="0" step="any" required></label><label>终点（秒）<input id="manualEnd" type="number" min="0" step="any" required></label><label>复核人<input id="manualReviewer" required maxlength="100"></label><label>漏检原因<input id="manualComment" required maxlength="4000"></label></div><button id="listenManual" type="button">查看录音并试听</button><button class="primary" type="submit">补标到草稿</button></form><ul id="manualQueue"></ul></section>
+<section class="card"><h2>批次与检测状态</h2><div id="batchSummary"></div><details><summary>查看检测定义与参数</summary><pre id="configs"></pre></details><p class="muted">版本对比：<code>voice-tools detect compare --db 检测库 --definition 定义ID --before 旧批次 --after 新批次</code>。对比保留未知、错误及人工结论冲突。</p></section>
+</main><script type="application/json" id="reviewData">__DATA__</script><script>__WAVEFORM_VENDOR__</script><script>__WAVEFORM_SCRIPT__</script><script>__PLAYBACK_SCRIPT__</script><script>__FILTER__</script><script>__SCRIPT__</script></body></html>

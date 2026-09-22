@@ -1,0 +1,18 @@
+{
+  "schema_version": "1.0",
+  "id": "ai-silence",
+  "version": "example-1",
+  "name": "用户活动后 AI 无声候选（格式示例）",
+  "description": "假设左轨为用户、右轨为 AI。用户轨能量活动结束后，检查 3 秒完整窗口；参数未用实际脚本或业务录音校准。",
+  "scope": {"skip_first_s": 0, "skip_last_s": 0, "exclude": []},
+  "window": {"kind": "after_activity", "channel": 0, "length_s": 3,
+             "params": {"threshold_dbfs": -40, "min_duration_s": 0.2, "join_gap_s": 0.3}},
+  "metrics": {
+    "ai_quiet": {"kind": "silence_ratio", "channel": 1, "params": {"threshold_dbfs": -45, "min_duration_s": 0.1}},
+    "ai_silence": {"kind": "silence_longest_s", "channel": 1, "params": {"threshold_dbfs": -45}},
+    "user_speaking": {"kind": "activity_ratio", "channel": 0, "params": {"threshold_dbfs": -40}}
+  },
+  "rules": [{"id": "no-reply", "label": "AI无声", "description": "用户活动结束后完整 3 秒内，AI 静音比例至少 90% 且连续静音至少 2 秒；排除用户续说占比超过 30% 的窗口。",
+    "when": {"all": [{"metric": "ai_quiet", "op": "ge", "value": 0.9}, {"metric": "ai_silence", "op": "ge", "value": 2}]},
+    "unless": {"metric": "user_speaking", "op": "gt", "value": 0.3}}]
+}

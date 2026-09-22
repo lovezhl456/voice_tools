@@ -169,3 +169,17 @@ PYTHONPATH="$PWD/src" python -m unittest tests.recording_qa.test_assessment_real
 ```
 
 该专项检查真实推理、状态隔离和重采样；不能替代真实业务录音上自动通过覆盖率和漏检率的评估。
+
+## 自定义检测与标签库
+
+选测：`python -m unittest discover -s tests/detect -t . -v`，覆盖组合配置、信号预期值、窗口／排除、跨批次检索、不可变版本、事务复核、历史与误报／漏报比较、CLI 和报告来源摘要。公共命令注册改变后执行默认全量。
+
+页面复用共享波形／播放器和目录筛选。先执行已有 `python scripts/check_review.py --out .local/review-acceptance`，验证安装 wheel 的 R01–R08；该过程构建并安装一次 wheel。再复用该安装目录：
+
+```bash
+python scripts/check_detection.py --package-root .local/review-acceptance/package --out .local/detect-acceptance
+```
+
+该运行器检查包中运行文件与源码一致，生成受控录音，使用同一固定版本 Playwright 与 HTTP Range 服务完成桌面／手机 D01–D05：组合筛选和导出、波形／播放／单轨／音量、复核草稿→导出→安装包 CLI 导入→重开、漏检补标、无音频、恶意标签、身份／修订冲突。任何失败、跳过或重试通过均不算完成。需要本机回环端口和 Chromium 启动权限。已有浏览器缓存可用 `PLAYWRIGHT_BROWSERS_PATH` 指定，无需重复安装。
+
+以上是配置执行和数据流程验证，尚未获得原专项脚本或真实业务录音，不证明脚本迁移一致性、真实误报／漏报率或生产容量。

@@ -15,7 +15,7 @@ outputs/
 *.flac
 .DS_Store
 .artifacts/
-tests/browser/node_modules/
+tests/browser/node_modules
 tests/browser/test-results/
 tests/browser/playwright-report/
 # Model checkpoints are downloaded into a local cache, never committed.
