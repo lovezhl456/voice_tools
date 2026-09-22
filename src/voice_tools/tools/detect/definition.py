@@ -138,9 +138,7 @@ def validate(raw):
     return config
 
 
-def read_document(path, limit_bytes=1024 * 1024):
-    if path.stat().st_size > limit_bytes:
-        raise ValueError(f'JSON 文件不能超过 {limit_bytes} 字节')
+def parse_document(text):
     def pairs(items):
         result = {}
         for key, value in items:
@@ -151,9 +149,15 @@ def read_document(path, limit_bytes=1024 * 1024):
     def invalid(value):
         raise ValueError('JSON 不允许非有限数值：' + value)
     try:
-        return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=pairs, parse_constant=invalid)
+        return json.loads(text, object_pairs_hook=pairs, parse_constant=invalid)
     except RecursionError as error:
         raise ValueError('JSON 嵌套过深') from error
+
+
+def read_document(path, limit_bytes=1024 * 1024):
+    if path.stat().st_size > limit_bytes:
+        raise ValueError(f'JSON 文件不能超过 {limit_bytes} 字节')
+    return parse_document(path.read_text(encoding='utf-8'))
 
 
 def load(path):

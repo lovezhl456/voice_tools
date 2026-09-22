@@ -66,6 +66,8 @@ def render(db, output, include_audio=False, hide_paths=False):
             for error in batch['errors']:
                 source = error['source']
                 error.update(source=Path(source).name, error=error['error'].replace(source, Path(source).name))
+    from .editor import render as render_editor
+    render_editor(output / 'config.html', [item['config'] for item in payload['definitions']], 'index.html')
     write_json(output / 'results.json', payload)
     data = json.dumps(payload, ensure_ascii=False, allow_nan=False).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
     page = embed_playback_assets((ROOT / 'report.html').read_text(encoding='utf-8'))
