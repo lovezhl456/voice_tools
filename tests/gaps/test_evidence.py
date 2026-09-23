@@ -14,9 +14,7 @@ from voice_tools.tools.gaps.detector import analyze
 from voice_tools.tools.gaps.evidence import associate, packet_metrics
 from voice_tools.tools.gaps.review import check, label_row, FIELDS
 from voice_tools.tools.gaps.service import analyze_batch
-from tests.gaps.test_detection import signal, HASH
-
-STREAM = {'src':'192.0.2.1','src_port':16000,'dst':'192.0.2.2','dst_port':24000,'ssrc':'0x1234'}
+from tests.gaps.fixtures import HASH, STREAM, signal
 
 
 class EvidenceTests(unittest.TestCase):

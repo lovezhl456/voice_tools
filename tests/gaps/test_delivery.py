@@ -12,8 +12,8 @@ from voice_tools.tools.task import bundle, runner, review
 from voice_tools.tools.gaps.service import analyze_batch
 from voice_tools.tools.recording_qa.batch import analyze_batch as qa_batch
 from voice_tools.tools.recording_qa.dataset import freeze
-from tests.gaps.test_detection import signal, metadata, expected, HASH
-from tests.gaps.test_evidence import STREAM
+from tests.benchmark.fixtures import write_evidence
+from tests.gaps.fixtures import STREAM, expected, metadata, signal
 
 
 class DeliveryTests(unittest.TestCase):
@@ -58,8 +58,7 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual(sha256(migrated), original_hash)
 
     def test_mixed_gap_and_benchmark_task_keeps_both_review_adapters(self):
-        from tests.benchmark.test_review_regressions import ReviewRegressionTests
-        ReviewRegressionTests().evidence(self.source / 'benchmark-input')
+        write_evidence(self.source / 'benchmark-input')
         task_path = self.task()
         task = read_json(task_path)
         task['inputs']['timing'] = 'benchmark-input'

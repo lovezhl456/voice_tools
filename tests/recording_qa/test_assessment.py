@@ -6,22 +6,7 @@ import numpy as np
 
 from voice_tools.audio.io import Audio
 from voice_tools.tools.recording_qa.assessment import Policy, assess, response_check
-
-HASH = 'a'*64
-
-
-def recording(user=((.5,1.5),), agent=((2,3),), duration=8, rate=8000):
-    data = np.zeros((round(duration*rate),2),dtype=np.float32)
-    for channel, spans in enumerate((user,agent)):
-        for a,b in spans:
-            start,stop=round(a*rate),round(b*rate)
-            data[start:stop,channel]=.2*np.sin(2*np.pi*(337 if channel==0 else 220)*np.arange(stop-start)/rate)
-    return Audio(data,rate)
-
-
-def evidence(audio, user=((.5,1.5),), agent=((2,3),)):
-    return {'name':'test-model','version':'fixture','sha256':'b'*64,'status':'completed',
-            'coverage_s':audio.duration_s,'speech':[list(user),list(agent)]}
+from tests.recording_qa.fixtures import HASH, evidence, recording
 
 
 class AssessmentTests(unittest.TestCase):

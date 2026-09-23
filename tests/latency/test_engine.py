@@ -111,15 +111,15 @@ class RealEngineTests(unittest.TestCase):
 
     def test_mixed_gaps_benchmark_latency_review_after_migration(self):
         from voice_tools.audio.io import write_wav
-        from tests.gaps.test_detection import signal
-        from tests.benchmark.test_review_regressions import ReviewRegressionTests
+        from tests.gaps.fixtures import signal
+        from tests.benchmark.fixtures import write_evidence
 
         source = self.root / 'mixed-source'
         source.mkdir()
         demo.recording(source / 'normal.wav')
         gap_audio = signal()
         write_wav(source / 'gap.wav', gap_audio.samples, gap_audio.sample_rate)
-        ReviewRegressionTests().evidence(source / 'timing')
+        write_evidence(source / 'timing')
         task = {
             'schema_version': '1.0', 'id': 'mixed-tools', 'title': '三工具迁移复查',
             'inputs': {'latency_audio': 'normal.wav', 'gap_audio': 'gap.wav', 'timing': 'timing'},

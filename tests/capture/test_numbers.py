@@ -19,36 +19,14 @@ from voice_tools.tools.sessions.number_bundle import process, select_calls
 from voice_tools.tools.capture.remote import Agent
 from voice_tools.tools.sessions.store import initialize, add
 from tests.sessions.fixtures import CALL_A, CALL_B, T0, packet, pcap, sip
-from tests.report.test_v2 import rtp
-
-
-def invite(call_id, caller='1001', callee='1002', port=16000):
-    return (sip(call_id, port=port).replace(b';tag=b', b'')
-            .replace(b'1001', caller.encode()).replace(b'1002', callee.encode()))
+from tests.capture.fixtures import invite, seed_capture
+from tests.report.fixtures import rtp
 
 
 class NumberCaptureTests(unittest.TestCase):
     def setUp(self):
         folder = tempfile.TemporaryDirectory(); self.addCleanup(folder.cleanup)
         self.root = Path(folder.name)
-
-    def config(self, **extra):
-        return dict(name='fs-a', host='fs-a', sensor_id='fs-a:any', seconds=2, segment_seconds=10,
-                    max_mib=8, snaplen=65535, mode='window', snapshot_seconds=0, bpf='udp',
-                    selection=selectors(['1001'], []), uid=os.getuid(), gid=os.getgid(),
-                    bundle_mib=8, max_sessions=100, max_packets=10000, processing_seconds=30, **extra)
-
-    def seed(self, rows=None):
-        root = self.root / 'remote'; root.mkdir()
-        config = self.config(); agent = Agent(root, config)
-        pcap(root / 'spool/a.pcap', rows or [
-            (0, packet(invite(CALL_A))), (.01, packet(invite(CALL_B, '9001', '9002', 16002))),
-            (.1, packet(rtp(1), 16000, 24000)), (.2, packet(rtp(2), 16002, 24002))])
-        agent.started = T0; agent.finished = T0 + 2
-        class Ended:
-            def poll(self): return 0
-        agent.process = Ended(); agent.status()
-        return root, config
 
     def test_role_selection_is_exact_and_does_not_combine_different_observations(self):
         path = self.root / 'index'; path.mkdir()
@@ -70,7 +48,7 @@ class NumberCaptureTests(unittest.TestCase):
         self.assertEqual(select_calls(path, selectors([], ['1002']), 1)[1], 4)
 
     def test_server_split_contains_only_selected_call_and_media(self):
-        root, config = self.seed(); process(root, config)
+        root, config = seed_capture(self.root); process(root, config)
         status = read_json(root / 'number-status.json')
         manifest = numbers.verify_archive(root / 'sessions.zip', status['archive'], 8 * 1048576)
         self.assertEqual(manifest['status'], 'complete')
@@ -86,7 +64,7 @@ class NumberCaptureTests(unittest.TestCase):
             self.assertFalse(any(p.endswith('config.json') or '/spool/' in p for p in bundle.namelist()))
 
     def test_cross_file_capture_exports_one_file_per_call(self):
-        root, config = self.seed([(0, packet(invite(CALL_A))), (.01, packet(invite(CALL_B, port=16002)))])
+        root, config = seed_capture(self.root, [(0, packet(invite(CALL_A))), (.01, packet(invite(CALL_B, port=16002)))])
         pcap(root/'spool/b.pcap', [(1, packet(rtp(1),16000,24000)), (1.1, packet(rtp(2),16002,24002))])
         agent = Agent(root, config); agent.started=T0; agent.finished=T0+2
         state = agent.status(); state['status']='complete'; write_json(root/'status.json',state)
@@ -98,7 +76,7 @@ class NumberCaptureTests(unittest.TestCase):
                 self.assertEqual(len([f for f in session['files'] if f['file'].endswith('.pcapng')]),1)
 
     def test_capture_partial_and_archive_quota_propagate(self):
-        root,config=self.seed()
+        root,config=seed_capture(self.root)
         state=read_json(root/'status.json');state['status']='partial';write_json(root/'status.json',state)
         process(root,config)
         self.assertEqual(read_json(root/'number-status.json')['status'],'partial')
@@ -110,7 +88,7 @@ class NumberCaptureTests(unittest.TestCase):
         self.assertLessEqual((other/'sessions.zip').stat().st_size,1048576)
 
     def test_archive_write_failure_never_publishes_incomplete_zip(self):
-        root,config=self.seed()
+        root,config=seed_capture(self.root)
         with patch.object(zipfile.ZipFile,'write',side_effect=OSError('disk full')):
             with self.assertRaisesRegex(OSError,'disk full'):process(root,config)
         self.assertFalse((root/'sessions.zip').exists())
@@ -118,14 +96,14 @@ class NumberCaptureTests(unittest.TestCase):
         self.assertTrue((root/'spool/a.pcap').exists())
 
     def test_missing_remote_dependency_fails_before_capture(self):
-        root,config=self.seed()
+        root,config=seed_capture(self.root)
         write_json(root/'config.json',config)
         with patch.object(sys,'argv',['worker','check',str(root)]), patch.object(number_remote.shutil,'which',return_value=None), patch.object(number_remote,'Agent') as agent:
             with self.assertRaisesRegex(ValueError,'缺少工具'):number_remote.main()
             agent.assert_not_called()
 
     def test_processing_timeout_stops_process_group_and_keeps_capture(self):
-        root,config=self.seed();write_json(root/'config.json',config)
+        root,config=seed_capture(self.root);write_json(root/'config.json',config)
         with patch.object(sys,'argv',['worker','run',str(root)]), patch.object(number_remote,'check'), patch.object(number_remote,'Agent'), patch.object(number_remote.subprocess,'Popen') as spawn, patch.object(number_remote.os,'killpg') as kill:
             spawn.return_value.pid=12345
             spawn.return_value.wait.side_effect=[subprocess.TimeoutExpired('worker',30),0]
@@ -135,7 +113,7 @@ class NumberCaptureTests(unittest.TestCase):
         self.assertTrue((root/'spool/a.pcap').exists())
 
     def test_session_limit_is_partial_and_no_matches_is_explicit(self):
-        root, config = self.seed([(0, packet(invite(CALL_A))), (.01, packet(invite(CALL_B, port=16002)))])
+        root, config = seed_capture(self.root, [(0, packet(invite(CALL_A))), (.01, packet(invite(CALL_B, port=16002)))])
         config['max_sessions'] = 1; process(root, config)
         state = read_json(root / 'number-status.json')
         self.assertEqual((state['status'], state['matched_sessions'], state['exported_sessions']), ('partial', 2, 1))
@@ -148,7 +126,7 @@ class NumberCaptureTests(unittest.TestCase):
             self.assertEqual(bundle.namelist(), ['manifest.json'])
 
     def test_fs_matching_without_initial_sip_and_unsafe_call_id_filename(self):
-        root, config = self.seed([(0, packet(rtp(1), 16000, 24000))])
+        root, config = seed_capture(self.root, [(0, packet(rtp(1), 16000, 24000))])
         event = dict(schema_version='1.0', call_id='../../escape;$(cmd)', caller='1001', callee='1002',
                      uuid='11111111-2222-3333-4444-555555555555', evidence='fs_snapshot',
                      observed_at='2026-09-15T08:00:00+00:00', window_seconds=10,
@@ -170,7 +148,7 @@ class NumberCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'SHA-256'): numbers.verify_archive(path, info, 2048)
 
     def test_no_identity_evidence_is_partial_and_active_capture_is_rejected(self):
-        root, config = self.seed([(0, packet(sip(CALL_A, 'BYE', 0)))])
+        root, config = seed_capture(self.root, [(0, packet(sip(CALL_A, 'BYE', 0)))])
         process(root, config)
         self.assertEqual(read_json(root / 'number-status.json')['status'], 'partial')
         write_json(root / 'status.json', {'status': 'running'})
@@ -199,7 +177,7 @@ class NumberCaptureTests(unittest.TestCase):
         self.assertEqual({h['name']:h['status'] for h in result['hosts']},{'good':'complete','bad':'failed'})
 
     def test_wait_can_recover_a_running_job_after_lost_launch_reply(self):
-        root,config=self.seed();process(root,config)
+        root,config=seed_capture(self.root);process(root,config)
         ready=read_json(root/'number-status.json')
         row=dict(name='fs-a',host='fs-a',remote_dir='/tmp/voice-tools-'+'a'*32,
                  seconds=1,processing_seconds=30,bundle_mib=8,status='failed',error='lost launch reply')

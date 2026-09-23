@@ -26,3 +26,7 @@ class FileFilterTests(unittest.TestCase):
         self.assertIn('id="fileSearch" type="search"', html)
         self.assertLess(html.index('function createReviewFileFilter'), html.index('/* business script */'))
         self.assertNotIn('__FILE_FILTER_SCRIPT__', html)
+        for identifier in ('waveform', 'start', 'end', 'player', 'channel', 'loop', 'play', 'volume', 'mute'):
+            self.assertEqual(html.count(f'id="{identifier}"'), 1)
+        for asset in ('waveform-panel.html', 'waveform-panel.css', 'playback-controls.html'):
+            self.assertTrue((ASSETS / asset).is_file())

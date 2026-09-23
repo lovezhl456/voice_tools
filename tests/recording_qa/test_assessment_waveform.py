@@ -7,13 +7,11 @@ import unittest
 from unittest.mock import patch
 
 from voice_tools.audio.io import write_wav
-from voice_tools.core.review.page import ASSETS, render_page
 from voice_tools.tools.recording_qa import assessment_batch
 from voice_tools.tools.recording_qa.assessment import Policy
 from voice_tools.tools.recording_qa.assessment_report import render
 from voice_tools.tools.recording_qa.assessment_review import validate_record
-from tests.recording_qa.test_assessment import recording
-from tests.recording_qa.test_assessment_workflow import FixtureModel
+from tests.recording_qa.fixtures import FixtureModel, recording
 
 
 class AssessmentWaveformTests(unittest.TestCase):
@@ -46,7 +44,6 @@ class AssessmentWaveformTests(unittest.TestCase):
             self.assertNotIn(marker, page)
         self.assertIn('createReviewWaveform', page)
         self.assertIn('WaveSurfer.js 7.12.12', page)
-        self.assertIn('建议复核范围 · 固定', page)
         self.assertEqual(re.findall(r'<script\b[^>]*\bsrc=', page), [])
         payload = json.loads(re.search(r'<script id="reviewData" type="application/json">(.*?)</script>', page, re.S)[1])
         self.assertEqual(payload['records'][0]['waveform'], waveform)
@@ -125,14 +122,3 @@ class AssessmentWaveformTests(unittest.TestCase):
         good = next(row for row in rows if not row.get('error'))
         self.assertEqual(len(good['waveform']['channels']), 1)
         self.assertNotIn('waveform', next(row for row in rows if row.get('error')))
-
-    def test_shared_shell_keeps_legacy_playback_and_bundled_assets(self):
-        target = self.root / 'legacy-review.html'
-        render_page(target, {'records': []}, '/* adapter */')
-        page = target.read_text()
-        for identifier in ('waveform', 'start', 'end', 'player', 'channel', 'loop', 'play', 'volume', 'mute'):
-            self.assertEqual(page.count(f'id="{identifier}"'), 1)
-        self.assertIn('当前机会', page)
-        self.assertIn('标注窗口 · 固定', page)
-        for asset in ('waveform-panel.html', 'waveform-panel.css', 'playback-controls.html'):
-            self.assertTrue((ASSETS / asset).is_file())

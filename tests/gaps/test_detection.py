@@ -12,26 +12,7 @@ from voice_tools.core.files import sha256, write_json
 from voice_tools.tools.gaps.detector import analyze, Config
 from voice_tools.tools.gaps.service import analyze_batch
 
-HASH = 'a'*64
-
-
-def signal(duration=7, agent=((1, 2), (4, 5)), caller=((0, .5),), rate=16000):
-    data = np.zeros((round(duration*rate), 2), dtype=np.float32)
-    for channel, intervals in ((0, caller), (1, agent)):
-        for start, end in intervals:
-            a, b = round(start*rate), round(end*rate)
-            data[a:b, channel] = .3*np.sin(2*np.pi*(337 if channel == 0 else 220)*np.arange(b-a)/rate)
-    return Audio(data, rate)
-
-
-def metadata(events, verified=True):
-    return {'schema_version':'1.0','system_channel':1,'channel_verified':True,
-            'output_events':{'schema_version':'1.0','audio_sha256':HASH,'alignment_verified':verified,
-                             'source':'test-expected-playback','events':events}}
-
-
-def expected(end=6, ident='u1', start=1):
-    return {'id':'expected-'+ident,'type':'tts_expected','utterance_id':ident,'start_s':start,'end_s':end}
+from tests.gaps.fixtures import HASH, expected, metadata, signal
 
 
 def candidates(result, kind=None):
