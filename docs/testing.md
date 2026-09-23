@@ -36,12 +36,16 @@ PYTHONPATH="$PWD/src" python -c 'import sys, voice_tools; from pathlib import Pa
 |---|---|
 | QA 分析／复核 | `tests.recording_qa.test_detector`、`test_workflow`、`test_p0`；涉及入口加 `tests.test_machine_cli` |
 | QA 事件／freeze 或共享复核资源 | 上述 QA 组，并加 `tests.gaps.test_delivery`；涉及旁证加 `tests.gaps.test_evidence` |
+| 整通 QA 判定／模型证据 | `tests.recording_qa.test_assessment`、`test_assessment_workflow`、`test_assessment_delivery`、`test_speech_model`；涉及报告加 `test_assessment_waveform`，涉及安装加 `test_setup`；真实模型行为变化另跑 `test_assessment_real_model` 的 CPU 模型专项 |
+| 检测定义／标签／固定集 | `tests.detect.test_engine`、`test_library`、`test_workspace`；涉及编辑合同加 `test_editor`，涉及本机服务加 `test_editor_server`，涉及 CLI 加 `tests.test_machine_cli` |
+| 共享复核页和播放器 | `tests.recording_qa.test_file_filter`、`test_p0`、`test_assessment_waveform`、`tests.gaps.test_delivery`；检查相关业务入口的内嵌数据和音频映射，交互变化另走桌面／移动端浏览器流程 |
 | 任务页／结果包复查 | `tests.task.test_delivery`、`tests.benchmark.test_delivery`、`tests.benchmark.test_review_regressions`、`tests.gaps.test_delivery`、`tests.latency.test_web`，含 gaps 与 benchmark 混合任务；涉及 latency 执行／迁移时另跑真实引擎专项 |
 | latency 参数／契约／共享渲染 | `tests.latency.test_contract`、`tests.latency.test_web`、`tests.task.test_delivery`、`tests.benchmark.test_delivery`；算法、引擎接入或依赖变化另跑 `tests.latency.test_engine`，含 gaps／benchmark／latency 混合任务 |
 | HOMER 参数或分发 | `tests.homer.test_client`、`tests.homer.test_entrypoints`；关联链路加 `tests.sessions.test_homer_link` |
 | NISQA 服务／评分来源 | `tests.nisqa.test_service`、`tests.nisqa.test_cli`、`tests.gaps.test_evidence`；真实推理接入变化另跑模型专项 |
 | 公共 CLI／封套／格式 | 先跑直接受影响工具和统一 CLI，再默认全量；不能只检查某一个工具 |
 | SIP／抓包／会话／报告 | 对应测试目录及下游调用方；公共媒体、证据或导出合同变化进入默认全量 |
+| 号码抓包归档／校验 | `tests.capture.test_numbers`、`test_number_review`、`tests.sessions.test_v2`；RTP 结构变化加 `tests.report.test_v2`，抓包轮转变化加 `tests.test_capture_v2_review` |
 | Studio 前端 | Node、CLI 兼容、`tests.sip.test_batch_load`；交互变化另做实际浏览器验收 |
 
 例如，只调整 QA 测试准备与退出码：
@@ -54,6 +58,7 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 ```
 
 只在选择依据需要时扩大范围。合成测试检查工程规则，不证明真实业务通话或人工听感准确率。
+同一代码、测试、依赖和执行条件未变时，复用本轮已完成的全量结果；不能用减少测试方法数代替功能覆盖或耗时比较。`soundfile` 缺失导致的 NISQA 服务与 gaps 评分来源跳过属于普通测试的依赖缺口，相关功能受影响时补齐依赖再验证。
 
 ## 默认全量：三项均需记录
 

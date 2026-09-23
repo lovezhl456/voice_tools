@@ -24,7 +24,7 @@ from voice_tools.tools.sessions.export import export
 from voice_tools.tools.report.media import codec_for
 from voice_tools.tools.report.service import build as report
 from tests.sessions.fixtures import CALL_A, T0, packet, pcap, sip
-from tests.report.test_v2 import rtp
+from tests.report.fixtures import rtp
 
 
 class CaptureReviewTests(unittest.TestCase):

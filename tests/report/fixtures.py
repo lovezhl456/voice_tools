@@ -26,3 +26,9 @@ def make_audio(path, silent=False):
     a[:rate] = 0
     b = np.zeros_like(a) if silent else a * .5
     write_wav(path, np.column_stack([a, b]), rate)
+
+
+def rtp(seq, stamp=None, pt=0, payload=None, ssrc=111):
+    """Return one synthetic RTP packet for report and capture tests."""
+    header = struct.pack('!BBHII', 0x80, pt, seq, seq * 160 if stamp is None else stamp, ssrc)
+    return header + (b'\xff' * 160 if payload is None else payload)

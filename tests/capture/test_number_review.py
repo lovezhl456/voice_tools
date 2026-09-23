@@ -1,8 +1,11 @@
 """Independent failure cases for the number-capture review."""
+import copy
 import hashlib
 import json
+from pathlib import Path
 import shutil
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -14,21 +17,33 @@ from voice_tools.core.capture_contract import selectors
 from voice_tools.tools.capture import numbers, number_remote
 from voice_tools.tools.capture.service import SSH
 from voice_tools.tools.sessions import number_bundle
-from tests.capture import test_numbers as fixtures
+from tests.capture.fixtures import invite, seed_capture
 from tests.sessions.fixtures import CALL_A, CALL_B, packet
-from tests.report.test_v2 import rtp
+from tests.report.fixtures import rtp
 
 
 class NumberReviewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.baseline = tempfile.TemporaryDirectory()
+        cls.addClassCleanup(cls.baseline.cleanup)
+        cls.baseline_remote = None
+
     def setUp(self):
-        self.fixture = fixtures.NumberCaptureTests()
-        self.fixture.setUp()
-        self.addCleanup(self.fixture.doCleanups)
-        self.root = self.fixture.root
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
 
     def bundle(self):
-        root, config = self.fixture.seed()
-        number_bundle.process(root, config)
+        if self.baseline_remote is None:
+            baseline_root = Path(self.baseline.name)
+            remote, config = seed_capture(baseline_root)
+            number_bundle.process(remote, config)
+            self.__class__.baseline_remote = remote
+            self.__class__.baseline_config = config
+        root = self.root / 'remote'
+        shutil.copytree(self.baseline_remote, root)
+        config = copy.deepcopy(self.baseline_config)
         return root, config, read_json(root / 'number-status.json')
 
     def rewrite(self, root, mutate):
@@ -44,7 +59,7 @@ class NumberReviewTests(unittest.TestCase):
         return path, {'file': 'sessions.zip', 'bytes': path.stat().st_size, 'sha256': sha256(path)}
 
     def test_bad_fs_row_keeps_other_mapping_rows(self):
-        root, config = self.fixture.seed([(0, packet(rtp(1), 16000, 24000))])
+        root, config = seed_capture(self.root, [(0, packet(rtp(1), 16000, 24000))])
         good = dict(schema_version='1.0', call_id=CALL_A, caller='1001', callee='1002',
                     uuid='11111111-2222-3333-4444-555555555555', evidence='fs_snapshot',
                     observed_at='2026-09-15T08:00:00+00:00', window_seconds=10,
@@ -112,8 +127,8 @@ class NumberReviewTests(unittest.TestCase):
         self.assertEqual({h['name']: h['status'] for h in result['hosts']}, {'fs-a': 'complete', 'fs-b': 'failed'})
 
     def test_producer_file_limit_keeps_previously_finished_sessions(self):
-        root, config = self.fixture.seed([(0, packet(fixtures.invite(CALL_A))),
-                                         (.01, packet(fixtures.invite(CALL_B, port=16002)))])
+        root, config = seed_capture(self.root, [(0, packet(invite(CALL_A))),
+                                                (.01, packet(invite(CALL_B, port=16002)))])
         with patch.object(number_bundle, 'MAX_BUNDLE_FILES', 3, create=True):
             number_bundle.process(root, config)
         state = read_json(root / 'number-status.json')
@@ -121,7 +136,7 @@ class NumberReviewTests(unittest.TestCase):
         numbers.verify_archive(root / 'sessions.zip', state['archive'], 8 * 1048576)
 
     def test_manifest_budget_keeps_a_valid_empty_partial_bundle(self):
-        root, config = self.fixture.seed()
+        root, config = seed_capture(self.root)
         with patch.object(number_bundle, 'MAX_BUNDLE_MANIFEST_BYTES', 4500):
             number_bundle.process(root, config)
         state = read_json(root / 'number-status.json')
@@ -129,7 +144,7 @@ class NumberReviewTests(unittest.TestCase):
         numbers.verify_archive(root / 'sessions.zip', state['archive'], 8 * 1048576)
 
     def test_invalid_utf8_event_does_not_abort_packet_export(self):
-        root, config = self.fixture.seed()
+        root, config = seed_capture(self.root)
         (root / 'events.jsonl').write_bytes(b'\xff\n')
         number_bundle.process(root, config)
         state = read_json(root / 'number-status.json')
@@ -153,7 +168,7 @@ class NumberReviewTests(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 3)
 
     def test_many_export_errors_have_a_bounded_manifest(self):
-        root, config = self.fixture.seed()
+        root, config = seed_capture(self.root)
         rows = [dict(call_id='通'*1000+str(i),caller='1001',callee='1002',basis='fs_roles',uuid=None) for i in range(100)]
         with patch.object(number_bundle, 'select_calls', return_value=(rows, 100, 100)), \
              patch('voice_tools.tools.sessions.export.export', side_effect=OSError('错'*500)):
@@ -172,7 +187,7 @@ class NumberReviewTests(unittest.TestCase):
         self.assertFalse((self.root / 'recovery').exists())
 
     def test_success_exit_without_final_receipt_is_failure(self):
-        root, config = self.fixture.seed(); write_json(root / 'config.json', config)
+        root, config = seed_capture(self.root); write_json(root / 'config.json', config)
         with patch.object(sys, 'argv', ['worker', 'run', str(root)]), patch.object(number_remote, 'check'), \
              patch.object(number_remote, 'Agent'), patch.object(number_remote.subprocess, 'Popen') as spawn:
             spawn.return_value.wait.return_value = 0

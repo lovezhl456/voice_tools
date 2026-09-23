@@ -9,11 +9,8 @@ import wave
 from voice_tools.audio.rtp import decode_g711, parse_rtp, reconstruct, segments
 from voice_tools.tools.report.rtcp import parse_compound, enrich
 from voice_tools.tools.report.service import build
+from tests.report.fixtures import rtp
 from tests.sessions.fixtures import pcap, packet, T0
-
-
-def rtp(seq, stamp=None, pt=0, payload=None, ssrc=111):
-    return struct.pack('!BBHII',0x80,pt,seq,seq*160 if stamp is None else stamp,ssrc)+(b'\xff'*160 if payload is None else payload)
 
 
 class MediaV2Tests(unittest.TestCase):

@@ -10,7 +10,7 @@ from voice_tools.tools.sessions.store import build, show
 from voice_tools.tools.sessions.export import export
 from voice_tools.tools.sessions.workflow import investigate
 from tests.sessions.fixtures import pcap, packet, sip, T0, CALL_A
-from tests.report.test_v2 import rtp
+from tests.report.fixtures import rtp
 
 
 class SessionV2Tests(unittest.TestCase):

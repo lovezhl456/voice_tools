@@ -8,12 +8,12 @@ import unittest
 
 from voice_tools.core.files import read_json, write_json
 from voice_tools.tools.benchmark.analysis import analyze
-from voice_tools.tools.benchmark.config import configuration, number
-from voice_tools.tools.benchmark.observation import Observation
+from voice_tools.tools.benchmark.config import number
 from voice_tools.tools.benchmark.summary import batch_jobs
 from voice_tools.tools.benchmark.templates import case
 from voice_tools.tools.sip.scenario import template
 from voice_tools.tools.task import bundle, runner
+from tests.benchmark.fixtures import write_evidence
 
 
 class ReviewRegressionTests(unittest.TestCase):
@@ -28,20 +28,6 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertNotIn("Traceback", result.stderr)
         return result.returncode, json.loads(result.stdout)
 
-    def evidence(self, directory):
-        directory.mkdir(parents=True)
-        config = configuration({"case_id": "threshold", "detector": {"backend": "energy"},
-                                "expectations": {"first_audio_max_ms": 50}})
-        observer = Observation(directory, lambda: 0, config["detector"])
-        for index in range(50):
-            pcm = b"\x00\x20\x00\xe0" * 80 if 5 <= index < 15 else bytes(320)
-            observer.submit("rx", pcm, at=index * .02)
-            observer.drain()
-        observer.close()
-        write_json(directory / "plan.json", {"benchmark": config, "steps": []})
-        write_json(directory / "result.json", {"status": "completed", "execution_status": "completed"})
-        (directory / "events.jsonl").write_text('{"event":"strategy_start","at_s":0}\n')
-
     def receipt(self, jobs=None):
         if jobs is None:
             jobs = [{"id": "job-1", "status": "completed", "output": "job-1/run"}]
@@ -52,7 +38,7 @@ class ReviewRegressionTests(unittest.TestCase):
             with self.subTest(action=action):
                 source = self.root / action / "source"
                 evidence = source / "input" if action == "analyze" else source / "input/job-1/run"
-                self.evidence(evidence)
+                write_evidence(evidence)
                 if action == "summarize":
                     write_json(source / "input/batch-result.json", self.receipt())
                 parameter = "run_dir" if action == "analyze" else "batch_dir"
@@ -106,7 +92,7 @@ class ReviewRegressionTests(unittest.TestCase):
             self.assertEqual(payload["error"]["code"], "INVALID_INPUT")
 
     def test_oversized_frame_time_is_insufficient_evidence(self):
-        self.evidence(self.root / "call")
+        write_evidence(self.root / "call")
         frames = self.root / "call/media-frames.jsonl"
         rows = [json.loads(line) for line in frames.read_text().splitlines()]
         rows[0]["at_s"] = 10**400

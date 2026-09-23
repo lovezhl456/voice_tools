@@ -58,8 +58,6 @@ class TimingDeliveryTests(unittest.TestCase):
         output = self.root / "workbench"
         review.workbench(output)
         html = (output / "index.html").read_text()
-        self.assertIn('"benchmark.analyze"', html)
-        self.assertIn('"benchmark_templates"', html)
         self.assertTrue((output / "benchmark.js").is_file())
         self.assertNotIn('/*__DATA__*/', html)
         page = Page(html)

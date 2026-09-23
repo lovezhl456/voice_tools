@@ -18,7 +18,9 @@ class EditorServer(unittest.TestCase):
         self.root=Path(self.tmp.name);self.audio=wav(self.root/'sample.wav')
         self.db=self.root/'library.sqlite3';self.out=self.root/'service'
         self.server=create_server(self.db,[self.audio],self.out)
-        self.thread=threading.Thread(target=self.server.serve_forever,daemon=True);self.thread.start()
+        self.thread=threading.Thread(target=self.server.serve_forever,
+                                     kwargs={'poll_interval': 0.01}, daemon=True)
+        self.thread.start()
         self.addCleanup(self.close)
 
     def close(self):

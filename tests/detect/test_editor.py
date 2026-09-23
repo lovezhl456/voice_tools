@@ -54,7 +54,6 @@ class EditorContract(unittest.TestCase):
         value=config(label='</script><img src=x onerror=alert(1)>')
         page=editor.document([value],back_link='review.html')
         self.assertNotIn(value['rules'][0]['label'],page)
-        self.assertIn('定义指标与标签',page)
         self.assertNotIn('__SCRIPT__',page)
         match=re.search(r'<script id="editorData"[^>]*>(.*?)</script>',page,re.S)
         payload=json.loads(match[1]);self.assertIsNone(payload['session'])

@@ -10,12 +10,7 @@ from voice_tools.core.files import read_json, write_json
 from voice_tools.tools.recording_qa.assessment import Policy
 from voice_tools.tools.recording_qa.assessment_batch import run
 from voice_tools.tools.recording_qa.assessment_review import FIELDS, check, evaluate
-from tests.recording_qa.test_assessment import recording, evidence
-
-
-class FixtureModel:
-    identity={'name':'test','version':'1','sha256':'a'*64}
-    def predict(self,audio):return evidence(audio)
+from tests.recording_qa.fixtures import FixtureModel, recording
 
 
 class WorkflowTests(unittest.TestCase):
