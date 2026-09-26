@@ -1,13 +1,15 @@
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 from voice_tools.tools.latency.contract import validate_parameters
-from voice_tools.tools.latency.runtime import doctor, invoke, RESOURCES
-from voice_tools.tools.latency.service import distribution, process
+from voice_tools.tools.latency.runtime import doctor, prefix, invoke, RESOURCES
+from voice_tools.tools.latency.service import distribution, inputs_in_order, process
 from voice_tools.tools.latency.install import installation_lock
 
 
@@ -26,6 +28,13 @@ class ContractTests(unittest.TestCase):
         self.assertIsNone(distribution([])['median_s'])
         self.assertAlmostEqual(distribution([.1,.2,.3,10])['p95_s'],8.545)
 
+    def test_normalized_inputs_and_precedence(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root=Path(folder).resolve(); (root/'a.wav').touch(); (root/'b.wav').touch()
+            self.assertEqual(inputs_in_order([root,root/'a.wav']),[root/'a.wav',root/'b.wav'])
+            with patch.dict(os.environ,{'VOICE_TOOLS_LATENCY_DIR':str(root/'env')}):
+                self.assertEqual(prefix(),root/'env')
+                self.assertEqual(prefix(root/'cli'),root/'cli')
 
     def test_missing_dependency_does_not_create_output(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -21,12 +21,12 @@
 
 ## 必须拒绝的判断
 
-以下是独立的规则／合同测试，不能仅凭浏览器展示正常代替。具体测试见 [test_assessment.py](../tests/recording_qa/test_assessment.py) 和 [test_assessment_delivery.py](../tests/recording_qa/test_assessment_delivery.py)。
+以下拒绝条件优先由安装包 E2E 验证。R05 的[夹具生成器](../tests/browser/generate_fixtures.py)执行实际安装包的整通分析，先断言模型冲突与旧输出均为 `NEEDS_REVIEW`，再由[浏览器 R05](../tests/browser/review.spec.cjs)验证例外队列及原因；并非只展示手工写好的结论。未被该输入覆盖的时序／任务失败仍由 [test_assessment.py](../tests/recording_qa/test_assessment.py) 和 [test_assessment_delivery.py](../tests/recording_qa/test_assessment_delivery.py) 补充。
 
 | 条件 | 不允许的结果 | 必须验证 |
 |---|---|---|
-| 模型说有回答，工程活动不支持或只出现在其他时段 | 自动通过 | `test_model_false_positive_on_silent_agent_cannot_auto_pass`、`test_engineering_support_must_overlap_the_model_response` |
-| AI 早于用户结束已经开始输出 | 当作零延迟的新回答 | `test_preexisting_agent_output_is_not_an_immediate_response`；其后确有新回答仍单独评估 |
+| 模型说有回答，工程活动不支持或只出现在其他时段 | 自动通过 | 安装包夹具 `model_conflict` 与浏览器 R05 验证活动不足；`test_engineering_support_must_overlap_the_model_response` 补充不重叠时段 |
+| AI 早于用户结束已经开始输出 | 当作零延迟的新回答 | 安装包夹具 `old_output` 与浏览器 R05 验证待复核及原因；其后确有新回答仍单独评估 |
 | 模型起点较早，实际声学支持迟到 | 隐藏迟答 | `test_model_onset_cannot_hide_late_engineering_evidence` |
 | 声道／接管范围未知、观察不足、模型未完整执行 | 自动通过 | 已有未知角色、短窗口、模型失败／覆盖不足回归 |
 | 无应答／迟答证据已充分，但后面还有很长录音 | 整段剩余录音都成为建议试听范围 | `test_response_findings_stop_at_deadline_or_response_not_recording_end` |
@@ -40,6 +40,8 @@
 ```bash
 python scripts/check_review.py
 ```
+
+仅复查上述模型冲突和旧输出时可运行 `python scripts/check_review.py --grep R05 --out .artifacts/review-r05`（使用新目录）。产物中的 `site/main/assessment.jsonl` 保存实际分析结论，`browser-results.json` 保存桌面／手机的 R05 断言结果；全量验收仍执行不带 `--grep` 的命令。
 
 它构建一次 wheel、安装到独立目录、确认导入来源、生成确定性合成音频和模拟模型证据，启动带音频字节范围支持的临时本机服务，执行两种视口，最后关闭服务。无需本机 8080、个人录音、系统 TTS、GPU 或模型权重；测试不会安装产品可选模型。
 

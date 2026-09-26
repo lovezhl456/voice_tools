@@ -2,11 +2,11 @@
   "baseline": "653288f",
   "scope": "SIP / capture / sessions / report / benchmark / HOMER",
   "counts": {
-    "delete": 24,
-    "keep": 290
+    "delete": 20,
+    "keep": 294
   },
   "category_counts": {
-    "integration": 159,
+    "integration": 163,
     "isolated": 104,
     "e2e": 27
   },
@@ -1109,31 +1109,31 @@
     },
     {
       "id": "tests/homer/test_entrypoints.py::Entrypoints::test_schema_matches_legacy_entrypoint",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "直接调用两个分发函数比对结果，重复真实 CLI 进程的 schema、离线 export→analyze 和参数位置流程。",
-      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_schema_is_offline_and_json_errors; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export; tests/homer/test_client.py::CliIntegration.test_global_options_before_and_after_subcommand"
+      "action": "keep",
+      "category": "integration",
+      "reason": "统一 HOMER 分发与独立 homerctl 对应的 client.main 可能返回不同 schema 或退出码；真实 CLI 集成组只执行 python -m voice_tools homer，没有调用独立入口，不能检出两个入口的协议分歧。此测试直接整合真实分发与解析器，不使用替身。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration::test_schema_is_offline_and_json_errors"
     },
     {
       "id": "tests/homer/test_entrypoints.py::Entrypoints::test_offline_analysis_matches_legacy_entrypoint",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "直接调用两个分发函数比对结果，重复真实 CLI 进程的 schema、离线 export→analyze 和参数位置流程。",
-      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_schema_is_offline_and_json_errors; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export; tests/homer/test_client.py::CliIntegration.test_global_options_before_and_after_subcommand"
+      "action": "keep",
+      "category": "integration",
+      "reason": "统一入口转发离线分析参数或输出时可能与独立 homerctl 入口分歧；现有 export/analyze 子进程流程只执行统一 CLI，没有比较 client.main 对同一真实示例文件的退出码、stdout 和 stderr。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration::test_offline_analysis_from_export"
     },
     {
       "id": "tests/homer/test_entrypoints.py::Entrypoints::test_json_errors_survive_dispatch",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "直接调用分发函数重复真实 CLI 对非法参数、schema unknown option、错误配置和时间输入的 JSON 错误契约。",
-      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_schema_is_offline_and_json_errors; tests/homer/test_client.py::CliIntegration.test_invalid_config_types_report_json_error; tests/homer/test_client.py::CliIntegration.test_time_validation_happens_before_network"
+      "action": "keep",
+      "category": "integration",
+      "reason": "统一 HOMER 分发可能将缺失/未知动作、未知参数、非法整数或缩写参数变成文本异常、错误退出码或污染 stdout；现有子进程错误流程未穷举这些分发边界输入，不能替代真实解析器与分发器的组合覆盖。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration::test_schema_is_offline_and_json_errors"
     },
     {
       "id": "tests/homer/test_entrypoints.py::Entrypoints::test_global_options_on_both_sides_of_action",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "直接调用两个分发函数比对结果，重复真实 CLI 进程的 schema、离线 export→analyze 和参数位置流程。",
-      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_schema_is_offline_and_json_errors; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export; tests/homer/test_client.py::CliIntegration.test_global_options_before_and_after_subcommand"
+      "action": "keep",
+      "category": "integration",
+      "reason": "统一 HOMER 分发可能只接受动作前或动作后的 --url，造成 schema 离线发现失败或输出变化；现有 HTTP 子进程流程验证 doctor 的参数位置，未覆盖 schema 动作的两侧参数路径。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration::test_global_options_before_and_after_subcommand"
     },
     {
       "id": "tests/homer/test_entrypoints.py::Entrypoints::test_help_uses_unified_command_path",

@@ -349,9 +349,9 @@
     },
     {
       "id": "tests/latency/test_contract.py::ContractTests::test_normalized_inputs_and_precedence",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "目录去重由真实引擎重复输入流程覆盖；其余断言只重复 env/参数简单路径优先级。",
+      "reason": "显式 latency 路径被 VOICE_TOOLS_LATENCY_DIR 覆盖会调用错误引擎；重复目录/文件输入会重复处理。真实引擎重复输入流程不同时设置环境变量与显式路径，无法检出配置优先级反转，因此保留该隔离缺口。",
       "coverage_reference": "tests/latency/test_engine.py::RealEngineTests::test_partial_failure_duplicate_and_identity"
     },
     {
@@ -482,9 +482,9 @@
     },
     {
       "id": "tests/test_machine_cli.py::MachineCliTests::test_schema_is_offline_and_covers_actual_p0_commands",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "硬编码当前命令集合与版本常量，新增命令即需同步，无独有真实执行覆盖。",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CLI 子进程查询 QA schema，可检出命令分发遗漏、QA 命令发现不完整及 golden_write/qa_assessment 契约版本丢失；Studio CLI 兼容检查不查询这些 QA 数据契约，不能替代该入口。",
       "coverage_reference": "tests/studio/check_cli_compat.py"
     },
     {
@@ -496,9 +496,9 @@
     },
     {
       "id": "tests/test_machine_cli.py::MachineCliTests::test_json_generator_preserves_all_scenarios",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "只检查固定 20 数量且不验证生成语音内容；实际分析 CLI 和浏览器夹具已有生成/消费流程。",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CLI 子进程执行 --json qa generate，可检出命令分发损坏、JSON 汇总遗漏及 WAV 场景未写全；现有分析 CLI 和浏览器流程直接调用 write_case 生成夹具，没有执行 qa generate，不能替代该入口。",
       "coverage_reference": "tests/test_machine_cli.py::MachineCliTests::test_analysis_exit_codes_in_text_and_json"
     },
     {
@@ -671,9 +671,9 @@
     },
     {
       "id": "tests/visqol/test_installer.py::InstallerTests::test_tflite_patch_is_exact_and_idempotent",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "以实现自身 OLD/NEW 常量合成输入再检验相同常量，不能证明真实上游补丁可构建；未知修改保护另保留。",
+      "reason": "macOS TFLite 补丁可能在已知源码上不替换目标或重复安装时拒绝已打补丁文件；未知修改保护只覆盖拒绝路径，无法检出成功修改和幂等性回归。保留合成文件隔离测试，不能据此宣称真实上游源码编译通过。",
       "coverage_reference": "tests/visqol/test_installer.py::InstallerTests::test_tflite_unknown_edits_are_preserved"
     },
     {
@@ -1098,12 +1098,12 @@
     }
   ],
   "counts": {
-    "delete": 15,
-    "keep": 140
+    "delete": 11,
+    "keep": 144
   },
   "category_counts": {
-    "isolated": 79,
-    "integration": 54,
+    "isolated": 81,
+    "integration": 56,
     "e2e": 7
   }
 }

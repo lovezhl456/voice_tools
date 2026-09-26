@@ -1,4 +1,5 @@
 """安装器的文件保护与超时测试，不联网也不伪造已完成原生安装。"""
+import hashlib
 import importlib.util
 import io
 from pathlib import Path
@@ -101,6 +102,18 @@ class InstallerTests(unittest.TestCase):
             installer.download('https://example.invalid/file', p, '0' * 64)
         self.assertEqual(p.read_bytes(), b'verified')
 
+    def test_tflite_patch_is_exact_and_idempotent(self):
+        target = self.root / 'bazel-cache/unit/external/org_tensorflow/tensorflow/lite/kernels/elementwise.cc'
+        target.parent.mkdir(parents=True)
+        original = b'prefix\n' + installer.TF_ABS_OLD + b'\nsuffix'
+        target.write_bytes(original)
+        expected = hashlib.sha256(original).hexdigest()
+        with patch.object(installer, 'TF_ELEMENTWISE_SHA256', expected):
+            first = installer.patch_tflite_for_mac(self.root)
+            second = installer.patch_tflite_for_mac(self.root)
+            self.assertEqual(first, second)
+            self.assertIn(installer.TF_ABS_NEW, target.read_bytes())
+            self.assertNotIn(installer.TF_ABS_OLD, target.read_bytes())
 
     def test_tflite_unknown_edits_are_preserved(self):
         target = self.root / 'bazel-cache/unit/external/org_tensorflow/tensorflow/lite/kernels/elementwise.cc'
