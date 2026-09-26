@@ -100,12 +100,6 @@ class ServiceTests(unittest.TestCase):
         self.assertEqual((code, summary["errors"]), (3, 2))
         self.assertTrue(all(r["scores"] is None for r in rows))
 
-    def test_runtime_error_is_recorded_and_next_segment_continues(self):
-        self.write("valid.wav", np.full(32000, 0.03))
-        self.factory.return_value = Mock(side_effect=[RuntimeError("test failure"), dict.fromkeys(SCORE_NAMES, 3.0)])
-        summary, code, rows = self.run_analysis(segment_seconds=1)
-        self.assertEqual((code, summary["errors"], summary["scored"]), (3, 1, 1))
-        self.assertEqual(rows[0]["reason"], "test failure")
 
     def test_duration_and_rms_gates_include_exact_boundary(self):
         samples = np.concatenate([np.full(16000, 0.125), np.full(16000, 0.0625), np.zeros(7999)])

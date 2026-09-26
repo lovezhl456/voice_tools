@@ -21,15 +21,6 @@ def row(seq, when, stamp, pt=0):
 
 
 class ReportTests(unittest.TestCase):
-    def test_wrap_reorder_duplicates_and_one_missing(self):
-        seq = [65534, 65535, 0, 2, 1, 2, 4]
-        rows = [row(s, i * .02, ((s - seq[0]) % 65536) * 160) for i, s in enumerate(seq)]
-        stream = analyze_rows(rows)['streams'][0]
-        self.assertEqual(stream['sequence_gap_candidates'], 1)
-        self.assertEqual(stream['duplicate_candidates'], 1)
-        self.assertEqual(stream['reordered_packets'], 1)
-        self.assertEqual(stream['sequence_discontinuities'], 0)
-        self.assertEqual(stream['unique_packets'], 6)
 
     def test_pt_switch_does_not_create_false_loss(self):
         streams = analyze_rows([row(1, 0, 0), row(2, .02, 160, 101), row(3, .04, 320)])['streams']

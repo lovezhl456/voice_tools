@@ -6,12 +6,11 @@ import sys
 import tempfile
 import unittest
 
-from voice_tools.core.files import read_json, write_json
+from voice_tools.core.files import write_json
 from voice_tools.tools.benchmark.analysis import analyze
 from voice_tools.tools.benchmark.config import number
 from voice_tools.tools.benchmark.summary import batch_jobs
 from voice_tools.tools.benchmark.templates import case
-from voice_tools.tools.sip.scenario import template
 from voice_tools.tools.task import bundle, runner
 from tests.benchmark.fixtures import write_evidence
 
@@ -139,15 +138,3 @@ class ReviewRegressionTests(unittest.TestCase):
         self.assertEqual(code, 3)
         self.assertEqual(payload["summary"]["calls"], 3)
         self.assertEqual(payload["summary"]["counts"], {"valid": 0, "failed": 2, "invalid": 0, "insufficient_evidence": 1})
-
-    def test_runtime_and_snapshot_describe_supported_scenario_versions(self):
-        code, schema = self.command("schema", "--tool", "benchmark")
-        self.assertEqual(code, 0)
-        contracts = schema["data_contracts"]
-        self.assertEqual(contracts["sip_scenario_read"], ["1.0", "1.1"])
-        self.assertEqual(contracts["sip_scenario_write"], template()["schema_version"])
-        self.assertEqual(contracts["sip_scenario"], contracts["sip_scenario_write"])
-        self.assertEqual(contracts["benchmark_scenario_write"], case("greeting")["schema_version"])
-        self.assertIn("benchmark", schema["exit_codes"]["1"])
-        snapshot = read_json(Path(__file__).resolve().parents[2] / "docs/cli-schema.json")
-        self.assertEqual(snapshot["data_contracts"], contracts)

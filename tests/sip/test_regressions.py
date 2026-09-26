@@ -93,7 +93,7 @@ class ServiceFailures(unittest.TestCase):
 
 class FinalizationFailure(unittest.TestCase):
     def test_details_failure_does_not_skip_native_cleanup(self):
-        fixture = test_runner.RunnerTests('test_ordered_actions_and_evidence_semantics'); fixture.setUp()
+        fixture = test_runner.RunnerTests(); fixture.setUp()
         self.addCleanup(fixture.doCleanups)
         def configure(backend):
             def broken(): raise RuntimeError('details unavailable')
@@ -104,7 +104,7 @@ class FinalizationFailure(unittest.TestCase):
         self.assertTrue((fixture.root / 'result.json').exists())
 
     def test_cleanup_failure_keeps_original_call_failure(self):
-        fixture = test_runner.RunnerTests('test_ordered_actions_and_evidence_semantics'); fixture.setUp()
+        fixture = test_runner.RunnerTests(); fixture.setUp()
         self.addCleanup(fixture.doCleanups)
         def configure(backend):
             backend.failure = 'media transport failed'
@@ -117,7 +117,7 @@ class FinalizationFailure(unittest.TestCase):
 
     def test_final_journal_failure_still_saves_result(self):
         from voice_tools.tools.sip.runner import Journal
-        fixture = test_runner.RunnerTests('test_ordered_actions_and_evidence_semantics'); fixture.setUp()
+        fixture = test_runner.RunnerTests(); fixture.setUp()
         self.addCleanup(fixture.doCleanups)
         original = Journal.emit
         def emit(journal, event, **fields):
@@ -147,20 +147,6 @@ class NativeAdapterLifecycle(unittest.TestCase):
         b.observation = b.rx_tap = None
         b.plan = {'record_early': True}; b.clock = lambda: 2.0; b.emit = lambda *a, **k: None
 
-    def test_active_media_replacement_reconnects_existing_recorder(self):
-        class Audio:
-            def __init__(self, port): self.port = port; self.connected = set()
-            def getPortId(self): return self.port
-            def startTransmit(self, sink): self.connected.add(sink)
-            def stopTransmit(self, sink): self.connected.discard(sink)
-        old, new = Audio(1), Audio(2); b = self.backend
-        old.connected.add(b.recorder); b.audio = old
-        b.call = types.SimpleNamespace(getInfo=lambda: types.SimpleNamespace(media=[types.SimpleNamespace(type=1, status=1, index=0)]),
-                                       getAudioMedia=lambda index: new, getStreamInfo=lambda index: types.SimpleNamespace(codecName='PCMA'))
-        b.attach_media()
-        self.assertIn(b.recorder, new.connected)
-        self.assertNotIn(b.recorder, old.connected)
-        self.assertEqual(b.record_started, 1.0)
 
     def test_inactive_media_clears_readiness(self):
         b = self.backend; b.audio = None

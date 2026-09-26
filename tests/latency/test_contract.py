@@ -1,30 +1,17 @@
-import json
-import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 import zipfile
 
 from voice_tools.tools.latency.contract import validate_parameters
-from voice_tools.tools.latency.runtime import doctor, prefix, invoke, RESOURCES
-from voice_tools.tools.latency.service import distribution, inputs_in_order, process
+from voice_tools.tools.latency.runtime import doctor, invoke, RESOURCES
+from voice_tools.tools.latency.service import distribution, process
 from voice_tools.tools.latency.install import installation_lock
-from voice_tools.tools.task.catalog import catalog, capabilities
-from voice_tools.tools.task.runner import profile
 
 
 class ContractTests(unittest.TestCase):
-    def test_schema_task_runtime_and_old_profile(self):
-        spec = catalog()['latency.batch']
-        self.assertEqual(next(a['role'] for a in spec['arguments'] if a['name']=='latency_dir'),'runtime')
-        self.assertEqual(next(a['role'] for a in spec['arguments'] if a['name']=='inputs'),'input')
-        self.assertEqual(capabilities({'tool':'latency','action':'batch'})['dependencies'],['latency'])
-        self.assertNotIn('latency',capabilities({'tool':'qa','action':'analyze'})['dependencies'])
-        self.assertNotIn('latency_dir',profile())
-        self.assertFalse(any(k.startswith('latency.install') for k in catalog()))
 
     def test_effective_values_and_rejections(self):
         values,sources=validate_parameters({'energy_threshold':100})
@@ -39,13 +26,6 @@ class ContractTests(unittest.TestCase):
         self.assertIsNone(distribution([])['median_s'])
         self.assertAlmostEqual(distribution([.1,.2,.3,10])['p95_s'],8.545)
 
-    def test_normalized_inputs_and_precedence(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root=Path(folder).resolve(); (root/'a.wav').touch(); (root/'b.wav').touch()
-            self.assertEqual(inputs_in_order([root,root/'a.wav']),[root/'a.wav',root/'b.wav'])
-            with patch.dict(os.environ,{'VOICE_TOOLS_LATENCY_DIR':str(root/'env')}):
-                self.assertEqual(prefix(),root/'env')
-                self.assertEqual(prefix(root/'cli'),root/'cli')
 
     def test_missing_dependency_does_not_create_output(self):
         with tempfile.TemporaryDirectory() as folder:

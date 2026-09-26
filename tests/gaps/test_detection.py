@@ -1,5 +1,3 @@
-import copy
-from dataclasses import replace
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -8,7 +6,7 @@ from pathlib import Path
 import numpy as np
 
 from voice_tools.audio.io import Audio, write_wav
-from voice_tools.core.files import sha256, write_json
+from voice_tools.core.files import write_json
 from voice_tools.tools.gaps.detector import analyze, Config
 from voice_tools.tools.gaps.service import analyze_batch
 

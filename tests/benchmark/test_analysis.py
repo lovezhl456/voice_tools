@@ -42,13 +42,6 @@ class TimingTests(unittest.TestCase):
         write_json(self.root / "result.json", {"status": "completed", "execution_status": "completed"})
         (self.root / "events.jsonl").write_text('{"event":"strategy_start","at_s":0}\n')
 
-    def test_continuous_silent_pcm_is_an_800ms_gap(self):
-        self.evidence()
-        report = analyze(self.root)
-        self.assertEqual(report["issues"], [])
-        gap = next(m for m in report["metrics"] if m["kind"] == "longest_silence")
-        self.assertAlmostEqual(gap["value_ms"], 800)
-        self.assertAlmostEqual(gap["total_silence_ms"], 800)
 
     def test_payload_duration_comes_from_samples(self):
         self.evidence(voiced=((0, .4),), duration=.4, frame_ms=40)
@@ -56,11 +49,6 @@ class TimingTests(unittest.TestCase):
         self.assertEqual(report["issues"], [])
         self.assertAlmostEqual(report["activity"]["rx"][0]["end_s"], .4)
 
-    def test_new_answer_is_not_counted_as_old_audio(self):
-        rows = metrics([span(0, 1.1), span(2, 2.2)], [span(1, 1.4)], 0, 0, 3, self.config)
-        stop = next(m for m in rows if m["kind"] == "barge_stop")
-        self.assertAlmostEqual(stop["value_ms"], 100)
-        self.assertEqual(stop["end_s"], 1.1)
 
     def test_already_quiet_is_invalid_not_zero_ms(self):
         self.config["expectations"]["expect_interrupt"] = True
@@ -69,21 +57,11 @@ class TimingTests(unittest.TestCase):
         self.assertEqual(stop["status"], "invalid")
         self.assertIsNone(stop["value_ms"])
 
-    def test_unfinished_audio_reports_lower_bound(self):
-        rows = metrics([span(0, 3)], [span(1, 1.4)], 0, 0, 3, self.config)
-        stop = next(m for m in rows if m["kind"] == "barge_stop")
-        self.assertEqual(stop["status"], "insufficient_evidence")
-        self.assertEqual(stop["lower_bound_ms"], 2000)
 
     def test_short_pause_does_not_end_old_segment(self):
         rows = metrics([span(0, 1.1), span(1.2, 1.5)], [span(1, 1.4)], 0, 0, 3, self.config)
         self.assertAlmostEqual(next(m["value_ms"] for m in rows if m["kind"] == "barge_stop"), 500)
 
-    def test_missing_first_audio_stays_unknown(self):
-        self.evidence(voiced=())
-        report = analyze(self.root)
-        self.assertEqual(report["status"], "insufficient_evidence")
-        self.assertIsNone(report["metrics"][0]["value_ms"])
 
     def test_low_volume_is_below_configured_floor(self):
         import wave

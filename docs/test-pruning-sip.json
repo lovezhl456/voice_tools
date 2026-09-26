@@ -1,0 +1,2252 @@
+{
+  "baseline": "653288f",
+  "scope": "SIP / capture / sessions / report / benchmark / HOMER",
+  "counts": {
+    "delete": 24,
+    "keep": 290
+  },
+  "category_counts": {
+    "integration": 159,
+    "isolated": 104,
+    "e2e": 27
+  },
+  "validation": [
+    {
+      "scope": "SIP/capture/sessions/report/benchmark/review selected modules before final import cleanup",
+      "command": "PYTHONPATH=\"$PWD/src\" .venv/bin/python -m unittest tests.sip.test_assertions tests.sip.test_offline tests.sip.test_runner tests.sip.test_regressions tests.sip.test_interop_metrics tests.sip.test_batch_load tests.capture.test_batch tests.capture.test_capture tests.capture.test_numbers tests.capture.test_number_review tests.capture.test_v2 tests.sessions.test_index_inputs tests.sessions.test_sessions tests.sessions.test_v2 tests.report.test_report tests.report.test_v2 tests.report.test_timeline_provenance tests.benchmark.test_analysis tests.benchmark.test_delivery tests.benchmark.test_review_regressions tests.test_capture_v2_review -v",
+      "tests": 204,
+      "result": "passed",
+      "seconds": 35.497,
+      "log_sha256": "ec7f864a9511a4f3afb8829a380b9533a2199a998f4711f460e5efff88d4662a"
+    },
+    {
+      "scope": "HOMER client/entrypoints and sessions HOMER link",
+      "command": "PYTHONPATH=\"$PWD/src\" .venv/bin/python -m unittest tests.homer.test_client tests.homer.test_entrypoints tests.sessions.test_homer_link -v",
+      "tests": 55,
+      "result": "passed",
+      "seconds": 7.025,
+      "environment": "Sandbox denied loopback bind; rerun with approved escalation succeeded.",
+      "log_sha256": "2392cd0e2c09684171ff42eddb9943b67572099e1ce6ff78021f3f365d047017"
+    },
+    {
+      "scope": "Affected modules after final import cleanup and retained include_peer switch check",
+      "command": "PYTHONPATH=\"$PWD/src\" .venv/bin/python -m unittest tests.capture.test_capture tests.benchmark.test_analysis tests.benchmark.test_delivery tests.benchmark.test_review_regressions tests.capture.test_v2 tests.sip.test_runner tests.homer.test_entrypoints -v",
+      "tests": 53,
+      "result": "passed",
+      "seconds": 4.686,
+      "log_sha256": "69aa956ffa4c37da6d82fa936fbb6a22b9e4aeac83d21d41962196249ad131f3"
+    },
+    {
+      "scope": "Deleted test references, exact coverage references and diff whitespace",
+      "result": "passed"
+    },
+    {
+      "scope": "Restored distinct tcpdump entrypoint, author workbench resources and generated templates after independent review",
+      "command": "PYTHONPATH=\"$PWD/src\" .venv/bin/python -m unittest tests.capture.test_capture tests.benchmark.test_analysis tests.benchmark.test_delivery -v",
+      "tests": 36,
+      "seconds": 0.738,
+      "result": "passed",
+      "log_sha256": "49b87baca276df842798e200435f9de2d361c468fae85f8d66e4ede9d356b7ab"
+    }
+  ],
+  "tests": [
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_continuous_silent_pcm_is_an_800ms_gap",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "人工提交静音帧的间隙计算重复真实 RTP 静音间隙测量。",
+      "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_pcm_gap_is_detected_over_real_rtp"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_payload_duration_comes_from_samples",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 payload duration comes from samples；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_new_answer_is_not_counted_as_old_audio",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "孤立区间计算重复原生对端停止旧音频后再回复的时序测量。",
+      "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_stopping_then_reply_is_measured_separately"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_already_quiet_is_invalid_not_zero_ms",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "对端已经静音时打断必须无效而非 0ms 成功；原生打断场景都在讲话中发起。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_unfinished_audio_reports_lower_bound",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "人工区间中的持续讲话下界重复原生对端忽略打断的测量。",
+      "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_ignoring_interruption_is_not_a_success"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_short_pause_does_not_end_old_segment",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "不足结束阈值的短停顿不能视为旧音频结束；原生 timing_reply 只有明确长停顿。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_missing_first_audio_stays_unknown",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "无语音人工波形重复原生静音对端等待超时并保留未知首音指标。",
+      "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_audio_trigger_timeout_preserves_evidence"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_low_volume_is_below_configured_floor",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 low volume is below configured floor；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_missing_pcm_preserves_unknown_and_reason",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 missing pcm preserves unknown and reason；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_manifest_loss_disables_precise_metrics",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 manifest loss disables precise metrics；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_truncated_pcm_is_not_silence",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 truncated pcm is not silence；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_missing_frame_is_detected_independently_of_manifest",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 missing frame is detected independently of manifest；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_early_media_is_separate_from_opening",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 early media is separate from opening；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_human_source_annotations_override_vad_with_provenance",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 human source annotations override vad with provenance；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_queue_overflow_is_recorded",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "回调队列溢出必须记录丢帧而非完整证据；原生回环低负载不强制填满队列。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_aggregate_keeps_failures_and_invalid_calls",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "分布统计不得过滤失败、无效与证据不足通话；原生专项逐通检查，不覆盖混合分母。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_empty_measurement_is_not_valid",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "空 metrics 却正常执行的记录不能计为有效样本；原生流程均配置测量项。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_clock_gap_and_epoch_are_verified_without_manifest",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 clock gap and epoch are verified without manifest；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_partial_final_silence_does_not_extend_observed_stop_lower_bound",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "录音结尾不足判定窗口的静音不能扩展打断下界；原生持续讲话用例没有恰好截断的短静音。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_hangup_silence_cannot_count_as_interrupt_success",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 hangup silence cannot count as interrupt success；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_missing_tx_cannot_skip_configured_response_assertion",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 missing tx cannot skip configured response assertion；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_failed_drain_leaves_incomplete_manifest_and_closes_wav",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "写盘异常 drain 失败也要标证据不完整并关闭 WAV；原生回环没有磁盘错误。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_existing_error_is_not_overwritten_by_timing_assertions",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "时序断言证据不足不能覆盖既有 INTERRUPTED 错误；原生中断未同时配置时序断言。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_version_gate_annotations_and_original_scenario",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "1.0 场景不能静默接受仅 1.1 支持的 benchmark 注释；迁移流程只有合法 1.1 场景。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_analysis.py::TimingTests::test_templates_do_not_invent_chinese_recordings",
+      "action": "keep",
+      "category": "integration",
+      "reason": "消费 init 生成的 greeting/interrupt 模板，检查可加载模板和缺录音时明确拒绝；offline CLI 测试只看 init 返回码，validate 消费另一个自建场景。",
+      "coverage_reference": "tests/benchmark/test_delivery.py::TimingDeliveryTests.test_offline_cli_never_imports_native_modules; tests/benchmark/test_delivery.py::TimingDeliveryTests.test_annotation_and_audio_survive_migration"
+    },
+    {
+      "id": "tests/benchmark/test_delivery.py::TimingDeliveryTests::test_annotation_and_audio_survive_migration",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 annotation and audio survive migration；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_delivery.py::TimingDeliveryTests::test_network_disabled_blocks_actual_call",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 network disabled blocks actual call；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_delivery.py::TimingDeliveryTests::test_new_workbench_contains_editor_and_offline_catalog",
+      "action": "keep",
+      "category": "integration",
+      "reason": "生成 author 工作台时缺少脚本/CSS 或离线目录会使编辑器不可用；现有 browser/task 流程只打开 review 模式，未消费 author 产物。",
+      "coverage_reference": "tests/browser/review.spec.cjs; tests/task/test_delivery.py"
+    },
+    {
+      "id": "tests/benchmark/test_delivery.py::TimingDeliveryTests::test_offline_cli_never_imports_native_modules",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 offline cli never imports native modules；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_native.py::NativeObservationTests::test_bidirectional_frames_and_audio_trigger",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 bidirectional frames and audio trigger；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_native.py::NativeObservationTests::test_interrupt_preserves_manifest",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 interrupt preserves manifest；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_native.py::NativeObservationTests::test_stopping_then_reply_is_measured_separately",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 stopping then reply is measured separately；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_native.py::NativeObservationTests::test_ignoring_interruption_is_not_a_success",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 ignoring interruption is not a success；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_native.py::NativeObservationTests::test_pcm_gap_is_detected_over_real_rtp",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 pcm gap is detected over real rtp；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_native.py::NativeObservationTests::test_audio_trigger_timeout_preserves_evidence",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 audio trigger timeout preserves evidence；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_native.py::NativeObservationTests::test_early_hangup_preserves_partial_measurement",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 early hangup preserves partial measurement；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_native.py::NativeObservationTests::test_media_recreation_does_not_claim_precision",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 media recreation does not claim precision；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_findings_do_not_skip_dependent_task_steps",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 findings do not skip dependent task steps；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_classification_keeps_actual_failures_and_partial_results",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "退出码 1 的畸形/错误 payload 不能混同 findings；任务执行 E2E 只产生合法 findings payload。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_all_numeric_rejections_are_value_errors",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "bool/None/NaN/无穷等可能漏过数值检查或抛非契约异常；CLI 大整数用例不覆盖这些 Python 输入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_oversized_json_numbers_keep_invalid_input_envelope",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 oversized json numbers keep invalid input envelope；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_oversized_frame_time_is_insufficient_evidence",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 oversized frame time is insufficient evidence；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_rejects_wrong_and_incomplete_batch_receipts",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "伪造/缺失任务列表、重复任务 id 和错类型回执不能计入统计；CLI 无效回执流程只有空对象，不覆盖这些独立输入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_invalid_batch_cli_cannot_emit_successful_summary",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 invalid batch cli cannot emit successful summary；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_cancelled_and_missing_evidence_jobs_stay_in_denominator",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 cancelled and missing evidence jobs stay in denominator；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/benchmark/test_native.py"
+    },
+    {
+      "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_runtime_and_snapshot_describe_supported_scenario_versions",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "对比快照与常量版本字段，未验证跨版本任务可执行性；迁移流程验证带注释媒体的场景实际运行。",
+      "coverage_reference": "tests/benchmark/test_delivery.py::TimingDeliveryTests.test_annotation_and_audio_survive_migration"
+    },
+    {
+      "id": "tests/capture/test_batch.py::BatchTests::test_dry_run_never_constructs_ssh_connection",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 dry run never constructs ssh connection；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_batch.py::BatchTests::test_hosts_capture_concurrently_and_transfer_fragments",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 hosts capture concurrently and transfer fragments；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_batch.py::BatchTests::test_failed_host_does_not_discard_other_host",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 failed host does not discard other host；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_batch.py::BatchTests::test_scope_validation_and_rotation_bound",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "空/全网地址和倒置端口范围可能扩大抓包；批量正向流程未覆盖非法 scope 和时长文件数上限。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_batch.py::BatchTests::test_batch_bpf_compiles_and_selects_scoped_packets",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 batch bpf compiles and selects scoped packets；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_batch.py::BatchTests::test_recover_batch_fragments",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 recover batch fragments；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_batch.py::BatchTests::test_snapshots_whitelist_fields_and_preserve_media_mapping",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "FS snapshot 凭据泄漏或丢失媒体映射；agent 生命周期关闭 snapshot，ESL 走另一解析器。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_uuid_and_peer_whitelist",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "include_peer=False 必须仅查询主腿；传输 E2E 总是启用默认桥接腿，无法捕获忽略该开关的真实范围扩大。",
+      "coverage_reference": "tests/capture/test_capture.py::CaptureTests.test_capture_transfer_and_timeout_success"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_no_call_or_no_primary_media_refuses_capture",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "失效 UUID/无主腿媒体时不能启动无边界抓包；正常本地 agent 流程已有合法媒体。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_peer_failure_explicit_warning",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "桥接腿单独失效必须保留主腿及警告；流程使用两条正常桥接腿。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_invalid_endpoints_and_ssh_injection",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "SSH 参数注入、通配地址和错误媒体端口必须拒绝；本地 transport 绕过真实 SSH 参数解析。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_host_checking_and_remote_shell_quoting",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "远端命令 shell 展开或关闭 host key 验证会执行注入；现有本地 transport 不经过 SSH shell。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_manual_dry_run_is_offline_and_size_bound",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 manual dry run is offline and size bound；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_capture_transfer_and_timeout_success",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 capture transfer and timeout success；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_failure_keeps_recovery_manifest_and_corruption_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 failure keeps recovery manifest and corruption rejected；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_empty_capture_and_fetch",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 empty capture and fetch；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_generated_ipv4_ipv6_bpf_compiles_without_capture",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 generated ipv4 ipv6 bpf compiles without capture；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_capture.py::CaptureTests::test_bounded_command",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "service.capture_argv 使用 tcpdump 的超时信号和 sudo 参数；FIFO E2E 走 remote.capture_command 的 dumpcap，不能捕获该独立入口失去超时/数量边界。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_bad_fs_row_keeps_other_mapping_rows",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 bad fs row keeps other mapping rows；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_declared_session_count_must_match_actual_members",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 declared session count must match actual members；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_each_session_requires_pcap_and_inner_manifest",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 each session requires pcap and inner manifest；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_inner_session_identity_must_agree_with_bundle",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 inner session identity must agree with bundle；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_download_must_match_requested_selection",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 download must match requested selection；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_invalid_manifest_type_does_not_abort_other_hosts",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 invalid manifest type does not abort other hosts；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_producer_file_limit_keeps_previously_finished_sessions",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 producer file limit keeps previously finished sessions；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_manifest_budget_keeps_a_valid_empty_partial_bundle",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 manifest budget keeps a valid empty partial bundle；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_invalid_utf8_event_does_not_abort_packet_export",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 invalid utf8 event does not abort packet export；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_scp_cancellation_terminates_local_transfer",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 scp cancellation terminates local transfer；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_scp_cancel_also_reaps_helper_after_transfer_parent_exits",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 scp cancel also reaps helper after transfer parent exits；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_many_export_errors_have_a_bounded_manifest",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 many export errors have a bounded manifest；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_recovery_rejects_unbounded_or_malformed_duration",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 recovery rejects unbounded or malformed duration；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_number_review.py::NumberReviewTests::test_success_exit_without_final_receipt_is_failure",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "worker 返回 0 却无 final receipt 不能宣告完成；生命周期总会产出合法回执。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_role_selection_is_exact_and_does_not_combine_different_observations",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 role selection is exact and does not combine different observations；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_server_split_contains_only_selected_call_and_media",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 server split contains only selected call and media；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_cross_file_capture_exports_one_file_per_call",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 cross file capture exports one file per call；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_capture_partial_and_archive_quota_propagate",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 capture partial and archive quota propagate；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_archive_write_failure_never_publishes_incomplete_zip",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 archive write failure never publishes incomplete zip；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_missing_remote_dependency_fails_before_capture",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "缺远端工具必须阻止 Agent 构建；生命周期使用完备工具链。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_processing_timeout_stops_process_group_and_keeps_capture",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "解析子进程超时后必须杀进程组并保留原 PCAP；真实生命周期未故意挂死解析器。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_session_limit_is_partial_and_no_matches_is_explicit",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 session limit is partial and no matches is explicit；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_fs_matching_without_initial_sip_and_unsafe_call_id_filename",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 fs matching without initial sip and unsafe call id filename；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_archive_rejects_tampering_and_unsafe_paths",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 archive rejects tampering and unsafe paths；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_no_identity_evidence_is_partial_and_active_capture_is_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 no identity evidence is partial and active capture is rejected；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_dry_run_requires_selector_and_has_no_remote_side_effects",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 dry run requires selector and has no remote side effects；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_multiple_hosts_keep_success_when_one_fails",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "mock collect_host 返回值重复真实归档收集流程的单主机损坏隔离。",
+      "coverage_reference": "tests/capture/test_number_review.py::NumberReviewTests.test_invalid_manifest_type_does_not_abort_other_hosts"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_wait_can_recover_a_running_job_after_lost_launch_reply",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 wait can recover a running job after lost launch reply；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_cli_contract_dry_run_and_validation",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 cli contract dry run and validation；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_deployed_runtime_lifecycle_and_failed_download_recovery",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 deployed runtime lifecycle and failed download recovery；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_v2.py::CaptureV2Tests::test_byte_quota_is_independent_of_packet_count",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "比对生成参数与同一配额公式，真实 FIFO dumpcap 已检查轮转、保留数和实际字节上限。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_v2.py::CaptureV2Tests::test_fragment_bpf_keeps_noninitial_fragments",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 fragment bpf keeps noninitial fragments；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_v2.py::CaptureV2Tests::test_esl_frame_fragmentation_and_secret_whitelist",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "极短 socket 分段、URL 转义和密码字段不可导致解析错位/泄漏；本地 agent 关闭 ESL，auth 用例不含这些字段。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_v2.py::CaptureV2Tests::test_esl_disconnect_marks_gap_without_echoing_secret",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "连接异常包含密码时不能泄漏，必须记录事件缺口；本地 agent 关闭 ESL。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_v2.py::CaptureV2Tests::test_agent_freezes_closed_files_and_preserves_source",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 agent freezes closed files and preserves source；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_v2.py::CaptureV2Tests::test_ring_plan_is_offline_and_rejects_secret_value",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 ring plan is offline and rejects secret value；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_v2.py::CaptureV2Tests::test_damaged_truncated_and_dropped_capture_is_partial",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 damaged truncated and dropped capture is partial；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_v2.py::CaptureV2Tests::test_esl_auth_subscription_and_eof_are_observable",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "ESL 认证→订阅→事件→EOF 必须保留事件并报告缺口；agent 本地生命周期关闭 ESL，这里使用受控 socket 协议。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/capture/test_v2.py::CaptureV2Tests::test_remote_agent_lifecycle_with_local_transport_and_fake_capture",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 remote agent lifecycle with local transport and fake capture；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/capture/test_numbers.py::NumberCaptureTests.test_deployed_runtime_lifecycle_and_failed_download_recovery; tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_init_login_cached_doctor_logout",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 init login cached doctor logout；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_environment_password_login_without_cache",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 environment password login without cache；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_api_token_auth",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 api token auth；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_conflicting_credentials",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 conflicting credentials；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_global_options_before_and_after_subcommand",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 global options before and after subcommand；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_mapping_string_and_malformed_field",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 mapping string and malformed field；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_multi_dimension_and_filters",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 multi dimension and filters；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_or_conditions_and_response_status",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 or conditions and response status；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_semicolon_list_wildcard_and_string_exclusion",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 semicolon list wildcard and string exclusion；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_raw_contains_is_server_query",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 raw contains is server query；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_unknown_profile_field_and_ambiguous_values_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 unknown profile field and ambiguous values rejected；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_dry_run_does_not_execute_search",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 dry run does not execute search；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_single_query_limit_is_partial",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 single query limit is partial；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_all_recovers_unordered_limited_rows",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 all recovers unordered limited rows；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_multinode_id_collisions_survive_dedup",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 multinode id collisions survive dedup；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_multinode_combined_total_is_not_per_node_limit",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 multinode combined total is not per node limit；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_dense_second_is_explicitly_incomplete",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 dense second is explicitly incomplete；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_budget_keeps_partial_results",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 budget keeps partial results；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_later_http_failure_preserves_rows",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 later http failure preserves rows；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_millisecond_interval_and_exclusive_end",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 millisecond interval and exclusive end；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_whole_second_overlap_deduplicated",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 whole second overlap deduplicated；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_empty_query_result_is_valid",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 empty query result is valid；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_trace_raw_is_opt_in_and_schema_is_transaction",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 trace raw is opt in and schema is transaction；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_message_requires_node_and_returns_reference",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 message requires node and returns reference；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_exports_pcap_text_json_and_no_clobber",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 exports pcap text json and no clobber；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_bad_pcap_and_json_text_exports_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 bad pcap and json text exports rejected；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_offline_analysis_from_export",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 offline analysis from export；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_http_error_json_and_no_secret_echo",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 http error json and no secret echo；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_html_and_wrong_json_shape_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 html and wrong json shape rejected；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_redirect_not_followed",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 redirect not followed；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_response_size_limit",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 response size limit；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_nonfinite_json_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 nonfinite json rejected；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_zero_timeout_and_response_budget_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 zero timeout and response budget rejected；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_invalid_config_types_report_json_error",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 invalid config types report json error；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_truncated_http_response_is_structured_error",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 truncated http response is structured error；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_timeout",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 timeout；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_time_validation_happens_before_network",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 time validation happens before network；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::CliIntegration::test_schema_is_offline_and_json_errors",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 schema is offline and json errors；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_timezone_conversion",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "等价 Z/+08 时间若转错会查错通话窗口；本地 HTTP CLI 使用 epoch，无非 UTC 输入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_url_prefix_and_credentials",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "URL 内嵌凭据/查询参数及 file scheme 必须拒绝；CLI 流程只使用合法本机 URL。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_source_route_allowlist_blocks_mapping_reset_and_import",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "只读客户端被扩展误发 reset/import/DELETE 必须硬拒绝；现有 CLI 没有公开这些危险路由入口。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_tls_verification_enabled",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "关闭证书或 hostname 验证无法由纯 HTTP 模拟服务捕获。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_oversize_is_only_risk_and_tcp_excluded",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "大 UDP/TCP 包不能被判为已证实碎片故障；export→analyze 正常样例无超长 TCP/UDP 对照。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_cross_sensor_duplicates_not_classified_as_retransmission",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "跨探针同一消息不能判重传；CLI 去重多节点用例验证检索数量，不验证 retransmission 分析。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_content_length_counts_utf8_bytes",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "中文 SIP body 按字符数而非 UTF8 字节计长会假报截断；HTTP 导出样本只有 ASCII。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_analysis_without_raw_does_not_claim_clean_capture",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "缺 raw 的行不能宣称抓包干净；export→analyze 包含 raw。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_token_cache_scoped_by_url_and_user",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "不同 URL/用户 token 缓存冲突会串身份；登录 E2E 只有一个 URL/用户。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_client.py::LocalRegression::test_atomic_output_does_not_follow_or_replace_symlink",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "强制写出软链接不能覆盖其目标；导出 E2E 仅检查普通文件 no-clobber。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_entrypoints.py::Entrypoints::test_schema_matches_legacy_entrypoint",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "直接调用两个分发函数比对结果，重复真实 CLI 进程的 schema、离线 export→analyze 和参数位置流程。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_schema_is_offline_and_json_errors; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export; tests/homer/test_client.py::CliIntegration.test_global_options_before_and_after_subcommand"
+    },
+    {
+      "id": "tests/homer/test_entrypoints.py::Entrypoints::test_offline_analysis_matches_legacy_entrypoint",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "直接调用两个分发函数比对结果，重复真实 CLI 进程的 schema、离线 export→analyze 和参数位置流程。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_schema_is_offline_and_json_errors; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export; tests/homer/test_client.py::CliIntegration.test_global_options_before_and_after_subcommand"
+    },
+    {
+      "id": "tests/homer/test_entrypoints.py::Entrypoints::test_json_errors_survive_dispatch",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "直接调用分发函数重复真实 CLI 对非法参数、schema unknown option、错误配置和时间输入的 JSON 错误契约。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_schema_is_offline_and_json_errors; tests/homer/test_client.py::CliIntegration.test_invalid_config_types_report_json_error; tests/homer/test_client.py::CliIntegration.test_time_validation_happens_before_network"
+    },
+    {
+      "id": "tests/homer/test_entrypoints.py::Entrypoints::test_global_options_on_both_sides_of_action",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "直接调用两个分发函数比对结果，重复真实 CLI 进程的 schema、离线 export→analyze 和参数位置流程。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_schema_is_offline_and_json_errors; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export; tests/homer/test_client.py::CliIntegration.test_global_options_before_and_after_subcommand"
+    },
+    {
+      "id": "tests/homer/test_entrypoints.py::Entrypoints::test_help_uses_unified_command_path",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "帮助文本中包含名称的静态断言，不能证明功能可用；保留真实 CLI 和 AI runner 入口流程。",
+      "coverage_reference": "tests/homer/test_entrypoints.py::Entrypoints.test_ai_runner_schema_and_operator_option_boundary; tests/homer/test_client.py"
+    },
+    {
+      "id": "tests/homer/test_entrypoints.py::Entrypoints::test_top_level_navigation",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "帮助文本中包含名称的静态断言，不能证明功能可用；保留真实 CLI 和 AI runner 入口流程。",
+      "coverage_reference": "tests/homer/test_entrypoints.py::Entrypoints.test_ai_runner_schema_and_operator_option_boundary; tests/homer/test_client.py"
+    },
+    {
+      "id": "tests/homer/test_entrypoints.py::Entrypoints::test_homer_runs_without_site_packages",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 homer runs without site packages；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/homer/test_entrypoints.py::Entrypoints::test_ai_runner_schema_and_operator_option_boundary",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 ai runner schema and operator option boundary；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/homer/test_client.py::CliIntegration.test_init_login_cached_doctor_logout; tests/homer/test_client.py::CliIntegration.test_offline_analysis_from_export"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_wrap_reorder_duplicates_and_one_missing",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "数组构造的 RTP 序号统计重复真实 tshark PCAP 中环绕、乱序、重复和缺包统计。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_pt_switch_does_not_create_false_loss",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "同 SSRC 切换 DTMF PT 不能制造丢包和错误时钟；真实统计 PCAP 使用单一 PT。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_known_clock_and_timestamp_wrap",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "时钟/时间戳环绕或未知动态 PT 会产生虚假 jitter；真实报告夹具没有 timestamp 环绕。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_restart_and_analysis_cap_are_explicit",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "大序号跳变不能按大量丢包计算；真实 PCAP 用例只覆盖普通缺包和 packet cap。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_audio_batch_error_isolation_and_html_escaping",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 audio batch error isolation and html escaping；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_capture_checksum_and_per_file_ports",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "多来源不同 RTP 端口不能交叉污染，checksum 错误需拒绝；正常 report 流程未组合不同端口的 direct+capture。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_missing_tshark_still_writes_audio_and_error_report",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 missing tshark still writes audio and error report；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_cli_invalid_clock_and_no_input",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非法 clock-rate 和空输入应由 CLI 明确拒绝；真实构建流程只用合法输入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_new_tools_machine_envelope_and_schema",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 new tools machine envelope and schema；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_compressed_recording_keeps_channels_and_playable_wav",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 compressed recording keeps channels and playable wav；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_report.py::ReportTests::test_real_tshark_and_corrupt_pcap",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 real tshark and corrupt pcap；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_timeline_provenance.py::TimelineProvenanceTests::test_unchanged_group_publishes_original_hashes",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "多源 timeline 必须记录每个原始摘要而非合并产物；现有实际报告 E2E 未逐源核对 provenance。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_timeline_provenance.py::TimelineProvenanceTests::test_changed_second_source_does_not_publish_manifest",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "读取时第二源被换掉不能发布错误 provenance；实际 PCAP 流程不在分析中替换输入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_timeline_provenance.py::TimelineProvenanceTests::test_removed_source_keeps_error_report_without_timeline",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "读取中源删除也应产出错误报告且不发布 timeline；实际 PCAP 流程不会并发删源。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_timeline_provenance.py::TimelineProvenanceTests::test_default_report_does_not_add_timeline_hash_passes",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "仅锁定 sha256 调用次数与默认字段，既非用户流程错误也非独立故障。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_new_tools_machine_envelope_and_schema"
+    },
+    {
+      "id": "tests/report/test_v2.py::MediaV2Tests::test_g711_known_codewords",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "报告模块独立 G711 解码器的符号和极值错误会失真；真实 report 只断言生成音频，未比对标准样值。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_v2.py::MediaV2Tests::test_rtp_header_extensions_and_padding",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "RTP 扩展头和 padding 被误当载荷会损坏音频；真实 PCAP 无扩展头/padding。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_v2.py::MediaV2Tests::test_audio_reconstruction_has_two_distinct_timing_models",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "原始/时间轴音频帧数混淆或超预算仍导出文件；真实 report 只检查生成两种文件，未校验两种帧数。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_v2.py::MediaV2Tests::test_srtp_and_unknown_codecs_never_become_fake_audio",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "未知 Opus codec 不能伪造 PCM；真实 mux 流程含 SRTP，却没有 Opus 反例。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_v2.py::MediaV2Tests::test_rtcp_sr_rr_clock_units_and_rtt",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "RTCP 负累计丢包、NTP 中段和 RTT 换算错误；真实 compound 夹具只验证 packet type 与 jitter。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_v2.py::MediaV2Tests::test_rtcp_xr_mos_is_endpoint_report_not_prediction",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "XR 中保留值 127 不能当 MOS 分数；真实 compound PCAP 没有 XR VoIP metrics。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_v2.py::MediaV2Tests::test_continuous_files_fix_boundary_loss_without_merging_sensors",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 continuous files fix boundary loss without merging sensors；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_v2.py::MediaV2Tests::test_real_tshark_rtcp_compound_and_audio",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 real tshark rtcp compound and audio；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/report/test_v2.py::MediaV2Tests::test_mux_dynamic_codec_and_encryption_mapping",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 mux dynamic codec and encryption mapping；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap; tests/report/test_v2.py::MediaV2Tests.test_real_tshark_rtcp_compound_and_audio"
+    },
+    {
+      "id": "tests/sessions/test_homer_link.py::HomerLinkTests::test_real_existing_cli_search_and_trace_by_local_call",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 real existing cli search and trace by local call；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_homer_link.py::HomerLinkTests::test_homer_first_number_search_can_be_indexed",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 homer first number search can be indexed；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_homer_link.py::HomerLinkTests::test_homer_partial_exit_six_is_preserved_and_trace_still_runs",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 homer partial exit six is preserved and trace still runs；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_homer_link.py::HomerLinkTests::test_homer_failure_keeps_local_correlation_receipt",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 homer failure keeps local correlation receipt；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_homer_link.py::HomerLinkTests::test_fs_bridge_peer_call_id_is_included_in_homer_trace",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 fs bridge peer call id is included in homer trace；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_index_inputs.py::IndexInputTests::test_resolved_duplicate_overrides_metadata_without_moving_source",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "同一源的路径别名和组/direct 重复可能覆盖错误传感器或重复扫描；真实跨片流程只有不同路径。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_index_inputs.py::IndexInputTests::test_manifest_overrides_direct_inputs_and_discovers_snapshots",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "manifest 与 direct inputs 同时出现时 SIP 端口/host 元数据优先级错误会漏会话；真实流程没有同源双入口。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_index_inputs.py::IndexInputTests::test_batch_and_event_gaps_keep_warning_order",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "缺 host manifest/事件文件仍有有效 snapshot 时不能丢可用证据或误标完整；流程夹具都有清单。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_index_inputs.py::IndexInputTests::test_merged_group_appends_after_unmerged_sources_and_keeps_group_number",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "模拟 merge 的顺序、目录编号和参数排序主要锁定实现；跨片重组、来源记录及导出再索引已有真实流程。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_ip_fragmented_sip_reassembles_across_files; tests/sessions/test_v2.py::SessionV2Tests.test_tcp_sip_reassembles_across_files"
+    },
+    {
+      "id": "tests/sessions/test_index_inputs.py::IndexInputTests::test_merge_failure_falls_back_to_each_original_in_order",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "mergecap 失败不能丢原文件索引；真实跨片 E2E 使用正常 mergecap。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_index_inputs.py::IndexInputTests::test_manifest_digest_failure_prevents_merge_and_isolates_bad_source",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "清单摘要不符的源不能进入合并污染其他片段；真实跨片测试在导出阶段篡改，不覆盖合并前。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_index_inputs.py::IndexInputTests::test_invalid_manifests_fail_before_output_creation",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "坏版本和清单路径穿越须在创建输出前拒绝；真实 PCAP 流程只用合法 manifest。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_index_inputs.py::IndexInputTests::test_partial_source_rows_roll_back_but_other_sources_and_warnings_remain",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 partial source rows roll back but other sources and warnings remain；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_sessions.py::SessionTests::test_real_sip_sdp_index_and_search_many_hosts_same_number",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 real sip sdp index and search many hosts same number；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_sessions.py::SessionTests::test_session_export_excludes_other_overlapping_call_and_reports",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 session export excludes other overlapping call and reports；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_sessions.py::SessionTests::test_no_media_export_and_changed_source_refused",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 no media export and changed source refused；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_sessions.py::SessionTests::test_fs_uuid_and_homer_refs_join_exact_call_id",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 fs uuid and homer refs join exact call id；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_sessions.py::SessionTests::test_corrupt_input_rolls_back_only_that_source_and_limit_is_explicit",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 corrupt input rolls back only that source and limit is explicit；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_sessions.py::SessionTests::test_multiple_sip_messages_in_one_tcp_frame",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 multiple sip messages in one tcp frame；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_sessions.py::SessionTests::test_invalid_index_and_unknown_call",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 invalid index and unknown call；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_v2.py::SessionV2Tests::test_ip_fragmented_sip_reassembles_across_files",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 ip fragmented sip reassembles across files；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_v2.py::SessionV2Tests::test_tcp_sip_reassembles_across_files",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 tcp sip reassembles across files；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_v2.py::SessionV2Tests::test_events_preserve_short_calls_and_media_changes",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 events preserve short calls and media changes；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_v2.py::SessionV2Tests::test_esl_gap_and_explicit_cross_host_correlation",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 esl gap and explicit cross host correlation；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_v2.py::SessionV2Tests::test_workflow_plan_performs_no_external_actions",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 workflow plan performs no external actions；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_v2.py::SessionV2Tests::test_workflow_runs_real_index_export_report_and_isolates_homer_failure",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 workflow runs real index export report and isolates homer failure；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_workflow_runs_real_index_export_report_and_isolates_homer_failure"
+    },
+    {
+      "id": "tests/sessions/test_v2.py::SessionV2Tests::test_media_tags_and_bye_keep_other_fork_open",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "孤立 timeline 分叉关闭断言重复真实 PCAP 索引、分叉挂断、媒体导出流程。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_bye_for_one_fork_does_not_truncate_open_fork_export"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_response_uses_invite_not_last_bye_code",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "INVITE 成功但 BYE 返回不同码会误判呼叫；回环正常 BYE 没有制造冲突码。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_missing_response_not_local_timeout",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "合成正常/拒绝/无媒体结果重复原生回环的对应接收证据断言。",
+      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_no_response_is_not_expected_408; tests/sip/test_loopback.py::LoopbackTests.test_no_rtp_is_failure_even_with_recording; tests/sip/test_loopback.py::LoopbackTests.test_expected_busy_is_successful_response_test"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_rtp_missing_zero_positive_and_incomplete",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "RTP 末次统计缺失时零计数不能判为确定失败；真实回环没有损坏 final-sample 标记。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_rtp_not_proven_by_wav",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "合成正常/拒绝/无媒体结果重复原生回环的对应接收证据断言。",
+      "coverage_reference": "tests/sip/test_assertions.py::ServiceAssertionTests.test_missing_worker_evidence_and_artifact_contract; tests/sip/test_loopback.py::LoopbackTests.test_no_rtp_is_failure_even_with_recording"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_effective_audio_rejects_silence_and_dc",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "DC 偏置和不足持续时长不能冒充有效音频；回环 silence 仅覆盖零值静音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_tone_simultaneous_and_duration",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "缺少第二频率或持续不足仍可能误判双音通过；回环 dual-tone 只有合格样本。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_tone_rejects_noise_dc_and_missing_frequency",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "噪声、DC、单频会形成双音假阳性；回环没有这些反例波形。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_missing_and_truncated_wav_are_unknown",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "接收录音缺失或截断必须保持未知；回环不会篡改已落盘 WAV。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_dtmf_exact_contains_and_repeated_digits",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "exact/contains、重复数字和只发送未接收的日志不能混淆；回环只检验完整接收重复数字。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_partial_observation_is_not_negative_proof",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "被中断的观测不能把未收到完整数字当否定证明；回环中断未同时配置 DTMF/音频断言。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_aggregate_failure_unknown_and_preserve_execution_error",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "汇总未知断言时不能覆盖原有中断错误；回环没有缺损证据与原错误叠加输入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_strict_validation",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "布尔/NaN、重复 id、Nyquist 以上频率等会让断言漏验；现有 CLI 反例未覆盖这些断言组合。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_expected_rejection_skips_media_steps",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "合成正常/拒绝/无媒体结果重复原生回环的对应接收证据断言。",
+      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_no_response_is_not_expected_408; tests/sip/test_loopback.py::LoopbackTests.test_no_rtp_is_failure_even_with_recording; tests/sip/test_loopback.py::LoopbackTests.test_expected_busy_is_successful_response_test"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::AssertionTests::test_auth_challenge_followed_by_local_timeout_is_not_expected_rejection",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "401 挑战后本地超时不能伪装预期拒绝；回环 auth 会成功，不覆盖此序列。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::ServiceAssertionTests::test_missing_worker_evidence_and_artifact_contract",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "worker 正常退出却缺接收证据时不能通过，assertions.json 必须一致；回环 worker 会产生正常证据。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::ServiceAssertionTests::test_dry_run_does_not_claim_passed",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 dry run does not claim passed；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::NativeEvidenceTests::test_only_received_invite_then_freeze",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非 INVITE、发送事件或接通后响应会覆盖 INVITE 最终码；真实回环没注入这些事件冲突。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_assertions.py::NativeEvidenceTests::test_rtp_uses_receive_counts_and_keeps_lower_bound",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "发送统计、媒体重建归零或末次采样抛错会伪造接收数；回环没有 SDK 统计归零/读取异常。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_dry_run_is_offline_and_assigns_nonoverlapping_ports",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 dry run is offline and assigns nonoverlapping ports；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_preflight_rejects_entire_queue_before_spawning",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 preflight rejects entire queue before spawning；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_caps_and_port_pool_boundaries",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "过多任务、布尔并发和 RTP 奇数/越界端口会碰撞或越过负载上限；批量流程只用合法小队列。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_real_child_processes_are_bounded_and_failures_do_not_block_later_jobs",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 real child processes are bounded and failures do not block later jobs；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_interrupt_cleans_children_and_cancels_pending",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 interrupt cleans children and cancels pending；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_invalid_receipt_and_launch_failure_are_not_success",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 invalid receipt and launch failure are not success；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_sipp_offline_package_xml_and_rate_limits",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 sipp offline package xml and rate limits；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_sipp_refuses_tampered_xml_and_pcap",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 sipp refuses tampered xml and pcap；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_no_silent_dropping_of_unsupported_features",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "SIPp 不支持认证/早媒体/混合 target 时必须拒绝；真实 SIP 回环没有执行 SIPp 降级导出。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_browser_export_is_byte_identical_and_zip_is_consumable",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 browser export is byte identical and zip is consumable；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_sipp_requires_complete_statistics_even_when_exit_zero",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 sipp requires complete statistics even when exit zero；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_generated_dtmf_decodes_as_rfc4733_with_repeat_keys_and_duration",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 generated dtmf decodes as rfc4733 with repeat keys and duration；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_sipp_launch_error_still_writes_failure_receipt",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "无法创建 SIPp 进程也要写失败回执；现有真实子进程流程没有注入 Popen 错误。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_batch_preserves_mainline_assertions_in_each_job",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 batch preserves mainline assertions in each job；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_sipp_rejects_mainline_assertions_without_dropping_them",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "SIPp 无法执行功能断言时不能静默删掉，避免伪成功；原生 SIP 会执行断言而不是 SIPp。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_batch_load.py::BatchLoadTests::test_existing_output_preserved",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 existing output preserved；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_interop_metrics.py::InteropMetricsTests::test_shifted_gain_and_small_clock_adjustment_match",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "验收音频匹配器需容忍偏移、增益和小幅时钟变化；原生通话测试依赖此判据，正常回环不覆盖受控变换。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_interop_metrics.py::InteropMetricsTests::test_silence_wrong_signal_and_truncated_audio_do_not_match",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "防止验收匹配器把静音、错误信号和短录音判为通过；正常原生通话不会产生这些验收反例。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_structured_assertions_receive_evidence",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 structured assertions receive evidence；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_expected_busy_is_successful_response_test",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 expected busy is successful response test；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_received_dtmf_repeated_digits",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 received dtmf repeated digits；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_silent_rtp_is_not_effective_audio",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 silent rtp is not effective audio；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_received_sip_info_dtmf",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 received sip info dtmf；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_received_dual_tone",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 received dual tone；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_no_rtp_is_failure_even_with_recording",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 no rtp is failure even with recording；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_no_response_is_not_expected_408",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 no response is not expected 408；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_real_udp_play_dtmf_info_record_and_bye",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 real udp play dtmf info record and bye；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_digest_auth_does_not_leak_secret",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 digest auth does not leak secret；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_optional_registration_before_call",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 optional registration before call；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_registration_digest_challenge_before_call",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 registration digest challenge before call；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_operator_interrupt_hangs_up_and_preserves_result",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 operator interrupt hangs up and preserves result；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_sigterm_hangs_up_and_preserves_result",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 sigterm hangs up and preserves result；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_reinvite_media_port_switch_keeps_both_directions",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 reinvite media port switch keeps both directions；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_early_media_is_recorded_before_strategy",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 early media is recorded before strategy；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_busy_is_failure_not_success",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 busy is failure not success；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_remote_hangup_during_play_keeps_artifacts",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 remote hangup during play keeps artifacts；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_loopback.py::LoopbackTests::test_imported_pcap_media_and_dtmf_timeline",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "保留真实本机 SIP/RTP 原生通话专项，验证 imported pcap media and dtmf timeline；产物含 JSON 回执、日志和录音。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::ScenarioTests::test_valid_defaults_and_offline_plan",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 valid defaults and offline plan；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::ScenarioTests::test_reject_unknown_fields_nonfinite_bool_and_plaintext_password",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "场景中明文密码、换行注入、非有限值和无效端口必须拒绝；回环只使用合法场景。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::ScenarioTests::test_validate_relative_wav_and_final_hangup",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "相对媒体路径和非最后 hangup 的非法序列可能被接受；回环不提交非法步骤顺序。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::ScenarioTests::test_reject_unsupported_wav_and_budget",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "立体声输入和超出总时长预算需在拨号前拒绝；回环只用受支持单声道场景。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::ScenarioTests::test_machine_entrypoints_and_unknown_option",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 machine entrypoints and unknown option；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::ScenarioTests::test_run_snapshots_source_before_starting_worker",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "启动时删除源音频仍须使用已保存快照；回环不会在 worker 启动边界删除输入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::DecoderTests::test_known_g711_values",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "SIP 导入器独立实现 G711 解码，符号/极值错误会失真；现有导入回环只验通话和 DTMF，未验独立标准码值。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::DecoderTests::test_wrap_reorder_gap_and_duplicate",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "导入流序号/时间戳同时环绕导致重复或补静音错误；回环导入夹具无环绕。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::DecoderTests::test_reject_unknown_payload_conflict_and_clock_reset",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "冲突重复包、未映射 PT 和巨大时钟跳变不能导出伪音频；回环 PCAP 无这些损坏条件。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::CaptureTests::test_actual_tshark_import_deduplicates_dtmf_and_separates_direction",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 actual tshark import deduplicates dtmf and separates direction；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::CaptureTests::test_explicit_mapping_and_selection_required",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 explicit mapping and selection required；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::CaptureTests::test_sipp_export_contains_one_stream_and_no_arbitrary_command",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 sipp export contains one stream and no arbitrary command；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_offline.py::CaptureTests::test_raw_socket_permission_fails_before_subprocess",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "无 raw socket 权限必须在拨号前拒绝；本机回环没有切换操作系统权限。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::InputBoundaries::test_malformed_json_values_stay_in_cli_error_contract",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 malformed json values stay in cli error contract；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::InputBoundaries::test_import_rejects_dtmf_that_cannot_be_loaded",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "导入超长音和超过 256 个 DTMF 事件会产出不可加载场景；回环导入仅一个合法事件。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::ServiceFailures::test_worker_timeout_is_not_operator_interrupt",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "worker 超时必须区别人为中断；回环中断通过 SIGINT/SIGTERM，无 worker wait 超时。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::ServiceFailures::test_truncated_nonempty_recording_cannot_complete",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非空 WAV 截断可能被当作完整录音；回环不会截断 worker 产物。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::ServiceFailures::test_corrupt_worker_receipt_is_execution_failure_and_preserved",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "损坏 JSON worker 回执不能判成功且须留原件；回环 worker 正常写 JSON。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::FinalizationFailure::test_details_failure_does_not_skip_native_cleanup",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "读取 native details 抛错仍要清理和保存结果；回环不注入 SDK details 错误。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::FinalizationFailure::test_cleanup_failure_keeps_original_call_failure",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "清理抛错不能覆盖原媒体故障；回环没有叠加双重异常。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::FinalizationFailure::test_final_journal_failure_still_saves_result",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "最后日志写入失败仍应保存回执；回环不注入日志磁盘故障。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::NativeAdapterLifecycle::test_active_media_replacement_reconnects_existing_recorder",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "模拟 SDK 端口重接已由真实 re-INVITE 保持双向媒体并且只创建一次录音的流程覆盖。",
+      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_reinvite_media_port_switch_keeps_both_directions"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::NativeAdapterLifecycle::test_inactive_media_clears_readiness",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "SDK 返回无活动媒体后旧 readiness 不能继续为真；回环 re-INVITE 切换到有效新媒体而非空列表。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_regressions.py::NativeAdapterLifecycle::test_shutdown_exception_still_destroys_endpoint",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "account.shutdown 抛错也要销毁 endpoint；回环不注入该 SDK 异常。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_runner.py::RunnerTests::test_ordered_actions_and_evidence_semantics",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "假后端的动作顺序和正常回执重复真实 UDP 播放、DTMF、录音、挂断流程。",
+      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_real_udp_play_dtmf_info_record_and_bye"
+    },
+    {
+      "id": "tests/sip/test_runner.py::RunnerTests::test_early_hangup_saves_partial_evidence_and_closes",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "假后端提前挂断重复真实对端播放中挂断、保留证据流程。",
+      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_remote_hangup_during_play_keeps_artifacts"
+    },
+    {
+      "id": "tests/sip/test_runner.py::RunnerTests::test_connect_timeout_always_closes",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "模拟连接超时重复真实对端丢弃呼叫后的失败流程。",
+      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_no_response_is_not_expected_408"
+    },
+    {
+      "id": "tests/sip/test_runner.py::RunnerTests::test_native_media_failure_is_not_success",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "SDK 媒体初始化错误不能标完成，仍须释放资源；回环使用兼容 codec，未触发 SDK failure。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/sip/test_runner.py::RunnerTests::test_recording_postprocess_error_still_closes_native_resources",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "录音后处理磁盘满不能泄漏 native 资源；回环没有注入磁盘故障。",
+      "coverage_reference": "tests/sip/test_loopback.py"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_freeze_preserves_last_media_mapping_before_nonmedia_event",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 freeze preserves last media mapping before nonmedia event；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_stop_request_does_not_publish_immutable_status_before_exit",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "请求停止但 dumpcap 未退出时不能宣告文件不可变；原生 FIFO 会自然退出，无延迟退出边界。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_equal_mtime_never_makes_an_open_file_freezable",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "相同 mtime 不能证明活动文件已关闭；实际轮转测试依赖真实关闭通知，无此竞态构造。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_srtp_offer_protects_both_directions",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "单方向 SAVP SDP 必须阻止对向错误明文解码；mux 集成测试只核验映射方向。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_timestamp_regression_after_first_packet_is_rejected",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "中途 RTP 时间戳倒退必须拒绝重建，避免输出虚假时序音频；真实 report PCAP 没有该序列。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_reverse_tag_reinvite_replaces_same_sender_media",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "反向 tags 的 re-INVITE 不应保留同发送者旧媒体；原生回环仅验证音频，不验证离线 timeline tags。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_late_hangup_does_not_extend_expired_snapshot",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "晚到 hangup 不能扩大已过期 snapshot 范围，避免导出无关媒体；实际导出夹具没有此序列。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_bye_for_one_fork_does_not_truncate_open_fork_export",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 bye for one fork does not truncate open fork export；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_report_keeps_known_calls_separate_when_ssrc_and_ports_reused",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 report keeps known calls separate when ssrc and ports reused；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_size_rotation_freezes_without_waiting_for_time_rotation",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 size rotation freezes without waiting for time rotation；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_damaged_event_keeps_capture_and_marks_gap",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 damaged event keeps capture and marks gap；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_rotation_during_directory_scan_does_not_abort_capture",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "目录扫描时轮转删除文件的竞态不能中止抓包；真实 FIFO 不确定触发此 lstat 时间窗。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_capture_log_is_bounded_under_frequent_rotation",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "密集轮转日志必须有实际文件大小上限；真实 FIFO 仅少量轮转，不能触发日志容量边界。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_status_heartbeat_uses_remote_clock",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "本地远端时钟不一致不能误判心跳过期；本地 transport 使用同一时钟。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_interrupted_startup_retains_path_before_remote_mutation",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 interrupted startup retains path before remote mutation；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_snapshot_without_call_id_is_retained_as_incomplete_evidence",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 snapshot without call id is retained as incomplete evidence；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_direct_pcap_index_propagates_capture_truncation",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 direct pcap index propagates capture truncation；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_corrupt_event_log_cannot_amplify_beyond_freeze_quota",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 corrupt event log cannot amplify beyond freeze quota；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_snapshot_preceding_window_can_select_an_earlier_pcap",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 snapshot preceding window can select an earlier pcap；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    },
+    {
+      "id": "tests/test_capture_v2_review.py::CaptureReviewTests::test_native_dumpcap_agent_rotation_via_fifo",
+      "action": "keep",
+      "category": "integration",
+      "reason": "保留现有文件/协议/进程集成流程，实际验证 native dumpcap agent rotation via fifo；所引正常/原生流程没有代替此输入组合或故障注入。",
+      "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
+    }
+  ]
+}

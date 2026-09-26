@@ -6,7 +6,7 @@ import unittest
 from unittest.mock import patch
 
 from voice_tools.audio.io import write_wav
-from voice_tools.core.files import read_json, write_json
+from voice_tools.core.files import write_json
 from voice_tools.tools.recording_qa.assessment import Policy
 from voice_tools.tools.recording_qa.assessment_batch import run
 from voice_tools.tools.recording_qa.assessment_review import FIELDS, check, evaluate

@@ -38,9 +38,6 @@ class AssertionTests(unittest.TestCase):
         self.assertEqual(self.check('response_code', codes=[200])['status'], 'passed')
         self.assertEqual(self.check('response_code', codes=[486])['status'], 'failed')
 
-    def test_missing_response_not_local_timeout(self):
-        self.result['call'] = {'last_sip_code': 408}
-        self.assertEqual(self.check('response_code', codes=[408])['status'], 'insufficient_evidence')
 
     def test_rtp_missing_zero_positive_and_incomplete(self):
         evidence = self.result['call']['assertion_evidence']
@@ -49,9 +46,6 @@ class AssertionTests(unittest.TestCase):
             evidence.update(rx_rtp_packets_lower_bound=packets, rtp_final_sample=final)
             self.assertEqual(self.check('received_rtp')['status'], expected)
 
-    def test_rtp_not_proven_by_wav(self):
-        self.wav(); self.result['call'] = {}
-        self.assertEqual(self.check('received_rtp')['status'], 'insufficient_evidence')
 
     def test_effective_audio_rejects_silence_and_dc(self):
         for dc in (False, True):
@@ -116,19 +110,6 @@ class AssertionTests(unittest.TestCase):
         for case in cases:
             with self.subTest(case=case), self.assertRaises(ValueError): validate_assertions(case)
 
-    def test_expected_rejection_skips_media_steps(self):
-        spec = template(); spec['assertions'] = [{'type': 'response_code', 'codes': [486]}]
-        write_json(self.root / 'scenario.json', spec)
-        plan = load_scenario(self.root / 'scenario.json')
-        class Rejected(FakeBackend):
-            def dial(self):
-                self.disconnected = True; self.ever_connected = False
-                self.invite_final_code = self.last_code = 486
-        result = execute(plan, self.root, Rejected, Clock())
-        self.assertEqual(result['status'], 'completed')
-        self.assertTrue(result['expected_rejection'])
-        self.assertEqual(result['steps_completed'], 0)
-        self.assertEqual(result['steps_skipped'], len(plan['steps']))
 
     def test_auth_challenge_followed_by_local_timeout_is_not_expected_rejection(self):
         spec = template(); spec['assertions'] = [{'type': 'response_code', 'codes': [401]}]

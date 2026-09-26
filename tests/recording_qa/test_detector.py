@@ -26,12 +26,6 @@ class DetectorTests(unittest.TestCase):
         self.assertEqual(inferred["opportunities"][0]["evidence_level"], "acoustic_only")
         self.assertEqual(inferred["opportunities"][0]["status"], "NO_OUTPUT_CANDIDATE")
 
-    def test_noise_is_never_called_a_successful_response(self):
-        data, events = fixture("noise")
-        result = analyze(Audio(data, 8000), events)
-        self.assertEqual(result["opportunities"][0]["status"], "OUTPUT_NEEDS_REVIEW")
-        self.assertTrue(any("噪声" in warning for warning in result["warnings"]))
-
     def test_deadline_exact_boundary(self):
         data, events = fixture("missing")
         rate = 8000

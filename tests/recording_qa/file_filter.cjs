@@ -35,15 +35,6 @@ function fixture(records, recordId = (record) => record.sample_id) {
 function record(input, id) { return { input, sample_id: id, result: { fingerprint: id } }; }
 const optionValues = (select) => select.options.map((option) => option.value);
 
-test('all directories preserves the original recording order and identities', () => {
-  const records = [record('b/call.wav', 'b'), record('a/call.wav', 'a')];
-  const ui = fixture(records);
-  assert.deepEqual(optionValues(ui.fileFilter), ['', 'b', 'a']);
-  assert.deepEqual(ui.visible(), records);
-  ui.fileFilter.value = 'a';
-  assert.deepEqual(ui.visible(), [records[1]]);
-});
-
 test('a directory restricts all recordings and excludes nested and sibling directories', () => {
   const records = [record('a/one.wav', '1'), record('a/two.wav', '2'),
     record('a/nested/one.wav', '3'), record('ab/one.wav', '4')];
@@ -99,14 +90,6 @@ test('failed records do not create options and an empty batch stays selectable',
   assert.deepEqual(ui.visible(), []);
   ui.chooseDirectory('');
   assert.equal(ui.fileFilter.value, '');
-});
-
-test('directory and filename text is passed literally to options', () => {
-  const directory = '中文 <img onerror=alert(1)> & "录音"';
-  const ui = fixture([record(`${directory}/<b>call.wav`, '1')]);
-  assert.equal(ui.directoryFilter.options[1].text, directory);
-  ui.chooseDirectory(directory);
-  assert.equal(ui.fileFilter.options[1].text, '<b>call.wav');
 });
 
 test('search matches filename fragments, Chinese paths and case-insensitive text', () => {

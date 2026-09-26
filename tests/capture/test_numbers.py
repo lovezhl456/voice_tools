@@ -166,15 +166,6 @@ class NumberCaptureTests(unittest.TestCase):
         self.assertFalse((self.root / 'invalid').exists())
         with self.assertRaises(ValueError): numbers.fetch(self.root / 'plan', self.root / 'download')
 
-    def test_multiple_hosts_keep_success_when_one_fails(self):
-        data={'selection':selectors(['1001'],[]),'hosts':[{'name':'good'},{'name':'bad'}]}
-        def finish(row,*args):
-            if row['name']=='bad':raise OSError('host failed')
-            return {'name':'good','status':'complete','exported_sessions':2}
-        with patch.object(numbers,'collect_host',side_effect=finish):
-            result=numbers.collect(data,self.root,False,None)
-        self.assertEqual(result['status'],'partial')
-        self.assertEqual({h['name']:h['status'] for h in result['hosts']},{'good':'complete','bad':'failed'})
 
     def test_wait_can_recover_a_running_job_after_lost_launch_reply(self):
         root,config=seed_capture(self.root);process(root,config)

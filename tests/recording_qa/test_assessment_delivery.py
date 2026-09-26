@@ -5,8 +5,8 @@ import tempfile
 import unittest
 
 from voice_tools.audio.io import write_wav
-from voice_tools.core.files import write_json,read_json
-from voice_tools.tools.task import bundle,runner,review,catalog
+from voice_tools.core.files import write_json
+from voice_tools.tools.task import bundle, runner, review
 from tests.recording_qa.fixtures import recording
 
 
@@ -23,15 +23,6 @@ class DeliveryTests(unittest.TestCase):
         path=self.source/'task.json';write_json(path,self.task)
         bundle.pack(path,self.source,self.root/'task.zip')
         return runner.run(self.root/'task.zip',self.root/'run',profile)
-
-    def test_catalog_classifies_model_path_as_runtime_and_download_as_setup(self):
-        entries=catalog.catalog()
-        self.assertNotIn('qa.model-download',entries)
-        arg=next(a for a in entries['qa.assess']['arguments'] if a['name']=='qa_model_dir')
-        self.assertEqual(arg['role'],'runtime')
-        self.assertEqual(catalog.capabilities({'tool':'qa','action':'assess'})['dependencies'],['qa_model'])
-        self.assertEqual(catalog.capabilities(self.task['steps'][0])['dependencies'],[])
-        self.assertEqual(entries['qa.assess-evaluate']['output_kind'],'file')
 
     def test_rules_only_task_rebuilds_whole_call_report_from_verified_data(self):
         receipt=self.pack_run();self.assertEqual(receipt['steps'][0]['status'],'findings')

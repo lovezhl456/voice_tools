@@ -17,12 +17,6 @@ class AssessmentTests(unittest.TestCase):
         audio=recording(user,agent,duration)
         return assess(audio,HASH,metadata or {},policy or self.policy,model or evidence(audio,user,agent))
 
-    def test_normal_is_automatic_with_complete_independent_evidence(self):
-        result=self.run_case()
-        self.assertEqual(result['decision'],'AUTO_PASS')
-        self.assertFalse(result['review_required'])
-        self.assertEqual(result['turns'][0]['decision'],'PASS')
-
     def test_missing_and_late_response_are_machine_anomalies(self):
         for agent,kind in [((), 'no_response'), (((7,7.6),),'late_response')]:
             with self.subTest(kind=kind):
@@ -37,13 +31,6 @@ class AssessmentTests(unittest.TestCase):
         self.assertEqual(result['decision'],'NEEDS_REVIEW')
         self.assertEqual(result['findings'][0]['kind'],'non_speech_output')
 
-    def test_model_false_positive_on_silent_agent_cannot_auto_pass(self):
-        audio = recording(agent=())
-        result = assess(audio, HASH, {}, self.policy, evidence(audio))
-        self.assertEqual(result['decision'], 'NEEDS_REVIEW')
-        self.assertEqual(result['turns'][0]['reason'], 'speech_energy_conflict')
-        self.assertTrue(result['review_required'])
-
     def test_engineering_support_must_overlap_the_model_response(self):
         for energy in ([], [(4, 5)], [(2, 2.2)]):
             with self.subTest(energy=energy):
@@ -57,12 +44,6 @@ class AssessmentTests(unittest.TestCase):
         self.assertEqual(result['decision'], 'AUTO_ANOMALY')
         self.assertEqual(result['turns'][0]['reason'], 'late_response')
         self.assertAlmostEqual(result['turns'][0]['latency_s'], 5.5, places=2)
-
-    def test_preexisting_agent_output_is_not_an_immediate_response(self):
-        result = self.run_case(agent=((.2, 3),))
-        self.assertEqual(result['decision'], 'NEEDS_REVIEW')
-        self.assertEqual(result['turns'][0]['reason'], 'overlapping_output')
-        self.assertIsNone(result['turns'][0]['latency_s'])
 
     def test_new_response_after_overlapping_output_is_evaluated_separately(self):
         result = self.run_case(agent=((.2, 2), (2.4, 3.4)))
@@ -101,12 +82,6 @@ class AssessmentTests(unittest.TestCase):
         result=self.run_case(user=((.5,1),(1.4,2)),agent=((1.02,1.35),(2.2,3)))
         self.assertEqual(len(result['turns']),2)
         self.assertEqual(result['decision'],'AUTO_PASS')
-
-    def test_normal_wait_for_the_next_user_turn_is_not_an_output_dropout(self):
-        result=self.run_case(user=((.5,1.5),(6,7)),agent=((2,3),(7.5,8.5)),duration=10)
-        self.assertEqual(result['decision'],'AUTO_PASS')
-        self.assertEqual(len(result['turns']),2)
-        self.assertEqual(len(result['engineering']['excluded_conversation_gaps']),1)
 
     def test_excluding_conversation_gap_does_not_hide_late_reply(self):
         result=self.run_case(user=((.5,1.5),(6,7)),agent=((2,3),(13,14)),duration=15)

@@ -101,26 +101,6 @@ class IndexInputTests(unittest.TestCase):
             '主机事件清单存在，但映射文件缺失。',
         ])
 
-    def test_merged_group_appends_after_unmerged_sources_and_keeps_group_number(self):
-        solo, first, second = [self.capture(name) for name in ('solo.pcap', 'a.pcap', 'b.pcap')]
-        event = self.snapshot('events.jsonl')
-
-        def merge(paths, target):
-            self.assertEqual(paths, [str(first), str(second)])
-            target.write_bytes(b'merged capture')
-            return [{'path': p, 'sha256': sha256(p)} for p in paths]
-
-        self.enter_patch('voice_tools.core.packets.merge_packets', side_effect=merge)
-        result = build(self.root / 'index', events=[event], sip_ports=[5070, 5060, 5070],
-                       pcap_groups=[('single', [solo]), ('sensor', [first, second])])
-
-        merged = self.root / 'index/pcaps/0002.pcapng'
-        self.assertEqual([s['path'] for s in result['sources']], list(map(str, [solo, event, merged])))
-        self.assertEqual(self.scans, [(solo, [5070, 5060, 5070]), (merged, [5060, 5070])])
-        details = result['sources'][-1]['details']
-        self.assertEqual(details['sensor_group'], 'sensor')
-        self.assertEqual([p['path'] for p in details['originals']], [str(first), str(second)])
-        self.assertFalse(result['partial'])
 
     def test_merge_failure_falls_back_to_each_original_in_order(self):
         first, second = [self.capture(name) for name in ('a.pcap', 'b.pcap')]

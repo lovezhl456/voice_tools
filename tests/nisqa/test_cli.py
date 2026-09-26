@@ -1,5 +1,4 @@
 import contextlib
-import importlib.metadata
 import io
 import json
 from pathlib import Path
@@ -7,10 +6,8 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
 
 from voice_tools.cli import main
-from voice_tools.tools.nisqa.backend import doctor
 
 
 class CliTests(unittest.TestCase):
@@ -26,12 +23,6 @@ assert not {"torch", "torchmetrics", "librosa", "soundfile"}.intersection(sys.mo
         value = json.loads(process.stdout)
         self.assertEqual(set(value["cli"]["commands"]), {"download", "doctor", "analyze"})
 
-    def test_missing_dependencies_doctor_is_offline(self):
-        with tempfile.TemporaryDirectory() as directory, patch("importlib.metadata.version", side_effect=importlib.metadata.PackageNotFoundError):
-            result = doctor(directory)
-        self.assertFalse(result["ready"])
-        self.assertFalse(any(result["versions"].values()))
-        self.assertFalse(result["model"]["valid"])
 
     def test_doctor_json_reports_not_ready_without_traceback(self):
         with tempfile.TemporaryDirectory() as directory, contextlib.redirect_stdout(io.StringIO()) as output:

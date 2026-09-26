@@ -1,0 +1,1681 @@
+{
+  "baseline": "653288f",
+  "scope": [
+    "tests/recording_qa",
+    "tests/detect",
+    "tests/gaps"
+  ],
+  "criterion": "保留能指出现有安装包浏览器/CLI E2E 未覆盖的具体真实失败模式；保留实际文件、SQLite、HTTP、跨工具流程和显式真实模型专项。删除重复 E2E 正常路径、实现自比较和静态标记断言。",
+  "tests": [
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_normal_is_automatic_with_complete_independent_evidence",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "R01 的安装包夹具已断言两通 AUTO_PASS，R01 验证正常队列；单独重复正常判定没有新增失败模式。",
+      "coverage_reference": "tests/browser/generate_fixtures.py::generate expected AUTO_PASS count; tests/browser/review.spec.cjs R01"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_missing_and_late_response_are_machine_anomalies",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "迟答与完全无答被错误合并为同一种 finding；浏览器只检查总体异常数，未分别断言两类 finding。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_noise_without_model_speech_needs_review",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "模型无语音而有噪声时被错误自动放行；R05 只有模型声称有语音但实际静音的反向冲突。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_model_false_positive_on_silent_agent_cannot_auto_pass",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "R05 用同样的静音音频与假阳性模型证据，断言待复核和工程证据不足原因。",
+      "coverage_reference": "tests/browser/generate_fixtures.py::generate model_conflict; tests/browser/review.spec.cjs R05"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_engineering_support_must_overlap_the_model_response",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "工程能量与模型区间不重合或仅重合 0.2 秒仍获 PASS；R05 只覆盖完全无能量。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_model_onset_cannot_hide_late_engineering_evidence",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "模型将起点提前掩盖实际能量迟答；R05 未伪造跨越 2–8 秒的模型区间。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_preexisting_agent_output_is_not_an_immediate_response",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "R05 old_output 完整覆盖跨越用户结束的既有输出不得作为即时回复及原因展示。",
+      "coverage_reference": "tests/browser/generate_fixtures.py::generate old_output; tests/browser/review.spec.cjs R05"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_new_response_after_overlapping_output_is_evaluated_separately",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "已有输出结束后的第二段新回复被吞掉，或沿用第一段导致迟答漏报；浏览器没有这个双段冲突。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_response_at_exact_turn_boundary_remains_valid",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "回复恰好在用户结束时开始被错误视为既有输出；浏览器样例均有正间隔。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_response_findings_stop_at_deadline_or_response_not_recording_end",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "异常试听范围被错误延长到整通末尾；浏览器夹具不含 60 秒长尾并分别校验 deadline 与实际回复结束。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_short_window_and_short_response_do_not_pass",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "不足观察窗或 0.16 秒短输出被当成成功回复；R06 空 UI 范围没有这些声学边界。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_user_fragments_merge_into_one_turn_without_artificial_reviews",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "短用户片段被拆成多次应答义务，产生假漏答；现有浏览器只有完整用户轮次。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_turn_merge_does_not_cross_an_agent_response",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "片段合并跨越真实 AI 回复，吞掉第二个轮次；浏览器双轮次间隔较大。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_normal_wait_for_the_next_user_turn_is_not_an_output_dropout",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "安装包夹具 multiturn 已执行同一两轮正常等待并断言 AUTO_PASS；R01 校验两通正常结果。",
+      "coverage_reference": "tests/browser/generate_fixtures.py::generate multiturn; tests/browser/review.spec.cjs R01"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_excluding_conversation_gap_does_not_hide_late_reply",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "排除正常对话空隙时把第二轮迟答一起隐藏；浏览器 multiturn 只有正常回复。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_unknown_roles_or_scope_require_review",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "未核实角色或未指定接管起点却获 PASS；R05 只覆盖角色，未覆盖 ai_start_s=None。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_user_speaking_to_end_is_not_a_pass",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "用户一直说到录音结束时因无完整机会而误获 PASS；浏览器没有持续到尾部的用户语音。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_explicit_wait_and_no_response_required_are_excluded",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "显式空机会、无需回复及允许等待被错误产生缺答；浏览器没有这些事件语义。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_explicit_greeting_can_require_response_without_user_speech",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "无用户语音的业务问候事件未产生应答义务；浏览器均由用户语音产生轮次。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_declared_user_speech_is_used_and_conflicts_require_review",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "声明的用户语音与实际证据冲突仍获 PASS；浏览器只注入模型侧冲突。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_engineering_partial_result_cannot_pass",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "工程检测部分失败仍获 PASS；浏览器夹具不注入 analyze_gaps 的 processing_error。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_model_failure_incomplete_or_invalid_times_cannot_pass",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "模型未完成、覆盖不足、重叠或非有限时间被接受为完成；浏览器模型始终提供完整合法载荷。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_silence_mono_and_duplicate_channels_need_review",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "静音、单声道及左右重复音频误获 PASS；R06 只验单声道页面，不验相同双声道判定。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_model_finds_no_turns_but_energy_does_is_not_pass",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "模型漏掉全部用户轮次导致空集合自动通过；浏览器模型用户语音均正确。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_deterministic_audit_routes_normal_recording_without_changing_decision",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "抽检改变机器判定或同一输入抽检不稳定；浏览器固定 audit_percent=0。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_output_gap_needs_speech_or_aligned_event_support",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "长输出间隙缺少模型/事件支持仍自动判故障；浏览器 output_gap 仅有支持充分的样例。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_invalid_global_thresholds_are_rejected",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "NaN 超时、超过 100% 抽检率及负接管起点进入判定；浏览器仅使用合法 Policy。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_catalog_classifies_model_path_as_runtime_and_download_as_setup",
+      "action": "delete",
+      "category": "integration",
+      "reason": "静态 catalog 字段分类自查不运行任务；模型路径和离线下载边界由保留的任务依赖与安装流程检查。",
+      "coverage_reference": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests.test_rules_only_task_rebuilds_whole_call_report_from_verified_data; tests/recording_qa/test_assessment_delivery.py::DeliveryTests.test_missing_model_dependency_is_reported_before_task_run; tests/recording_qa/test_setup.py::SetupTests.test_json_setup_is_single_envelope_and_excluded_from_tasks"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_rules_only_task_rebuilds_whole_call_report_from_verified_data",
+      "action": "keep",
+      "category": "integration",
+      "reason": "实际任务 pack/run/collect/review 迁移后规则模式证据和音频丢失；保留跨工具集成与产物核验。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_untrusted_html_and_foreign_playback_are_not_reused",
+      "action": "keep",
+      "category": "integration",
+      "reason": "结果包携带恶意 HTML 或外站音频被复用；R07 只使用可信生成的结果包。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_missing_model_dependency_is_reported_before_task_run",
+      "action": "keep",
+      "category": "integration",
+      "reason": "缺失模型的任务预检错误称 ready；R07 使用 rules_only，不走模型依赖检查。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_failed_model_doctor_blocks_dependants_but_not_independent_steps",
+      "action": "keep",
+      "category": "integration",
+      "reason": "失败 doctor 的依赖步骤仍执行或独立步骤被误跳过；R07 没有这种任务依赖失败。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_model_doctor_requires_successful_ready_receipt",
+      "action": "keep",
+      "category": "integration",
+      "reason": "退出码与 ready 回执冲突时 doctor 被分类为成功；R07 不注入矛盾回执。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_malformed_assessment_is_reported_instead_of_rendering_a_broken_page",
+      "action": "keep",
+      "category": "integration",
+      "reason": "结果包 findings 被篡改为 null 后仍生成破损报告；R07 不篡改包内结构。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_malformed_waveform_in_result_package_is_not_rendered",
+      "action": "keep",
+      "category": "integration",
+      "reason": "结果包波形包含脚本文字却被渲染；R07 不包含恶意波形载荷。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_real_model.py::RealModelTests::test_silence_and_state_isolation_at_supported_rates",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CPU 模型跨 8/16/22.05/48 kHz 的静音和状态隔离失效；全部浏览器使用固定模型证据。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_real_model.py::RealModelTests::test_explicit_local_speech_has_bounded_model_evidence",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实本地语音未被模型识别或输出超出音频时长；浏览器没有真实模型推理。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_waveform.py::AssessmentWaveformTests::test_offline_report_has_both_waveforms_without_copying_audio",
+      "action": "keep",
+      "category": "integration",
+      "reason": "未要求复制音频却产生音频副本，或声道波形写入失真；R06 检查无音频页面，不核对输出目录副本与峰值。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_waveform.py::AssessmentWaveformTests::test_waveform_is_display_only_and_does_not_change_label_identity",
+      "action": "keep",
+      "category": "integration",
+      "reason": "改变纯展示波形导致 assessment_id 变化、已复核标签失联；浏览器不会重新生成不同波形对照。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_waveform.py::AssessmentWaveformTests::test_old_record_without_waveform_remains_renderable",
+      "action": "delete",
+      "category": "integration",
+      "reason": "R06 直接打开去掉 waveform 的旧结果并断言旧格式提示和播放器可用。",
+      "coverage_reference": "tests/browser/review.spec.cjs R06 /main/legacy.html"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_waveform.py::AssessmentWaveformTests::test_malformed_imported_waveform_is_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "NaN、越界、错长或超量峰值数组被导入并破坏渲染；R06 只测试合法旧格式。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_waveform.py::AssessmentWaveformTests::test_imported_channel_metadata_cannot_falsely_verify_roles",
+      "action": "keep",
+      "category": "integration",
+      "reason": "字符串 false 或布尔声道被当成已核实角色；R05 只输入合法布尔角色字段。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_waveform.py::AssessmentWaveformTests::test_legacy_missing_roles_remain_renderable_without_verification",
+      "action": "delete",
+      "category": "integration",
+      "reason": "R06 legacy-roles 删除同样两个字段，验证双轨可用且两个角色均未核实。",
+      "coverage_reference": "tests/browser/review.spec.cjs R06 /main/legacy-roles.html"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_waveform.py::AssessmentWaveformTests::test_imported_ranges_allow_only_the_documented_rounding_tolerance",
+      "action": "keep",
+      "category": "integration",
+      "reason": "大于舍入容差的窗口仍被接受；R06 只覆盖容差内 0.000005 秒，未验拒绝 0.00002 秒。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_waveform.py::AssessmentWaveformTests::test_single_channel_and_failed_recording_do_not_break_report",
+      "action": "keep",
+      "category": "integration",
+      "reason": "批量输出混合单声道与损坏录音时好记录波形被一起丢弃；保留实际音频读写与报告集成。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_one_recording_one_blank_human_row_and_self_contained_report",
+      "action": "keep",
+      "category": "integration",
+      "reason": "批量分析、空白人工 CSV、可搬运音频与报告产物对应关系失配；保留实际文件流程集成。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_rules_only_never_passes_and_keeps_engineering_evidence",
+      "action": "keep",
+      "category": "integration",
+      "reason": "规则模式错误生成 AUTO_PASS 或丢失工程证据；保留批量入口与输出 JSONL 集成。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_corrupt_input_and_model_failure_keep_partial_batch",
+      "action": "keep",
+      "category": "integration",
+      "reason": "批次中损坏音频导致好记录/待复核 CSV 行丢失；保留磁盘音频混合批处理。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_model_failure_does_not_turn_into_normal",
+      "action": "keep",
+      "category": "integration",
+      "reason": "推理抛错后批处理写成正常录音；浏览器模型不抛异常。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_invalid_model_payload_becomes_reportable_error",
+      "action": "keep",
+      "category": "integration",
+      "reason": "模型返回非有限覆盖长度后批次错误数与 NEEDS_REVIEW 不一致；浏览器不注入非法模型载荷。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_duplicate_content_in_different_directories_has_separate_review_identity",
+      "action": "keep",
+      "category": "integration",
+      "reason": "不同目录同内容录音复用人工复核身份；浏览器 fixture 的同名录音内容不同。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_hidden_paths_and_hostile_filename_are_not_active_html",
+      "action": "keep",
+      "category": "integration",
+      "reason": "隐藏路径模式泄露源目录或恶意文件名成为脚本；浏览器输入路径名称均可信。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_missing_model_fails_before_creating_output_and_existing_output_refused",
+      "action": "keep",
+      "category": "integration",
+      "reason": "缺失模型预检创建了输出或重复批处理覆盖已存证据；浏览器提前准备好输出。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_event_role_override_and_unverified_preparation_are_preserved",
+      "action": "keep",
+      "category": "integration",
+      "reason": "事件指定相反声道或未核实角色被批处理忽略；浏览器事件声道都为 1。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_labels_validate_identity_timestamp_and_decision",
+      "action": "keep",
+      "category": "integration",
+      "reason": "复核 CSV 的摘要、自动判定、无时区时间或自动状态伪装成人工判断被接受；R04 只篡改身份摘要。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_automatic_pass_misses_are_visible_only_when_human_labels_exist",
+      "action": "keep",
+      "category": "integration",
+      "reason": "无人复核时错误报告准确率，或人工确认自动放行漏检未计入指标；R04 不调用 assess-evaluate。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_assessment_workflow.py::WorkflowTests::test_duplicate_labels_incomplete_rows_and_legacy_csv_are_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "重复标签、仅备注半成品、旧 CSV 混入整通复核；R04 只覆盖一个有效 CSV 与摘要篡改。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_scenario_regression_at_two_sample_rates",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "8 kHz 与 16 kHz 下同一场景判定不一致；CLI 完整批量只生成默认 8 kHz 场景，R08 只看播放器。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_missing_metadata_downgrades_evidence",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "缺事件时声学候选被误标为事件对齐证据；R08 不核对 evidence_level。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_noise_is_never_called_a_successful_response",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "完整 CLI 场景批量已包含 noise 并逐录音校验 OUTPUT_NEEDS_REVIEW；重复直接调用判定不增加失败覆盖。",
+      "coverage_reference": "tests/recording_qa/test_workflow.py::WorkflowTests.test_cli_full_batch_with_portable_audio"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_deadline_exact_boundary",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "应答恰好达到 5 秒 SLA 被算及时；浏览器迟答夹具超过边界而非刚好相等。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_new_turn_does_not_borrow_later_answer",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "第一轮借用第二轮之后的回答而被错误通过；R08 只有单轮机会。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_exclusion_beginning_censors_window",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "允许排除的起点没有截断观察窗口，导致错误漏答；R08 没有排除事件。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_invalid_events_fail_loudly",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非法事件版本、类型、重复机会 ID 或 NaN 时间进入分析；R08 使用合法 sidecar。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_invalid_config_and_samples",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非法阈值、布尔声道或非有限音频进入检测；浏览器仅有合法合成音频和配置。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_no_event_means_inference_but_explicit_empty_means_no_opportunity",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "显式空机会被当成缺事件并自动推断新机会；R08 没有空机会声明。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_detector.py::DetectorTests::test_swapped_channel_requires_matching_configuration",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "事件声道与显式配置冲突未被拒绝；R08 不使用交换声道。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_file_filter.py::FileFilterTests::test_directory_and_recording_selection",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "运行保留下来的 Node 跨平台路径、重名身份、特殊搜索字符与中文组合输入反例；R01 不含这些输入。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_file_filter.py::FileFilterTests::test_shared_page_embeds_filter_before_business_script",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "只检查 HTML 标记顺序、函数源码和资源存在，R01–R03/R08 已在真实浏览器操作同一共享页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01, R02, R03, R08"
+    },
+    {
+      "id": "tests/recording_qa/test_p0.py::P0WorkflowTests::test_workbench_assets_and_clips_preserve_mapping",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实生成的试听片段偏移、声道数、帧数及原音频摘要对应错误；R08 仅播放整通，没有核验 clips 映射。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_p0.py::P0WorkflowTests::test_freeze_keeps_windows_fixed_when_threshold_changes",
+      "action": "keep",
+      "category": "integration",
+      "reason": "改变阈值后固定数据集的机会窗口漂移，导致规则对比无效；浏览器 W02 测的是 detect 固定样本而非 QA freeze。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_p0.py::P0WorkflowTests::test_compare_detects_actual_improvement_on_fixed_events",
+      "action": "keep",
+      "category": "integration",
+      "reason": "固定事件上的真实改进被错误计为无变化；保留生成音频、人工标签晋升、前后分析及 compare 报告完整流程。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_p0.py::P0WorkflowTests::test_compare_refuses_unfixed_timeline_and_changed_sla",
+      "action": "keep",
+      "category": "integration",
+      "reason": "没有冻结机会或改变 SLA 仍进行不可比的规则评估；浏览器 W02 不使用 QA compare。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_p0.py::P0WorkflowTests::test_compare_refuses_missing_predictions_and_window_drift",
+      "action": "keep",
+      "category": "integration",
+      "reason": "缺预测或观察窗漂移未被拒绝；浏览器 W02 不篡改 QA 结果。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_p0.py::P0WorkflowTests::test_abstentions_not_counted_as_success",
+      "action": "keep",
+      "category": "integration",
+      "reason": "删失机会被算作正确负例并夸大精度；浏览器不调用 QA evaluate。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_p0.py::P0WorkflowTests::test_splits_and_timing_metadata_are_validated",
+      "action": "keep",
+      "category": "integration",
+      "reason": "错误迟答时间、缺 policy_id 或相同音频跨训练/验证集未被拒绝；浏览器不涉及数据集划分。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_p0.py::P0WorkflowTests::test_freeze_rejects_changed_original",
+      "action": "keep",
+      "category": "integration",
+      "reason": "原音频变更后冻结仍使用旧摘要证据；浏览器输入在运行期间不变。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_p0.py::P0WorkflowTests::test_wilson_zero_and_perfect_do_not_claim_certainty",
+      "action": "keep",
+      "category": "integration",
+      "reason": "零样本或一个完美样本被报告成确定准确率；浏览器不验证置信区间计算。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_menu_retries_invalid_input_and_selects_without_default_install",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "空菜单输入触发默认安装或无效输入无法重试；浏览器验收不执行交互安装。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_eof_or_interrupt_cancels_menu",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "EOF/中断被错误转换为安装授权；浏览器验收不进入安装菜单。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_noninteractive_and_json_require_explicit_component",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非交互或 JSON 模式未指定组件却启动安装；浏览器验收不执行安装入口。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_runtime_constraints_match_base_and_optional_package_metadata",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "安装器与发布包的两份依赖声明漂移会造成漏装或不兼容；现有安装测试模拟pip成功，浏览器使用预装环境，不能发现声明差异。",
+      "coverage_reference": "tests/recording_qa/test_setup.py::SetupTests::test_pip_uses_same_interpreter_binary_wheels_and_stderr_then_fresh_check"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_pip_uses_same_interpreter_binary_wheels_and_stderr_then_fresh_check",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "安装跑错 Python、编译源码轮子或把日志污染 JSON stdout；浏览器不执行安装子进程。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_pip_failure_does_not_claim_runtime_ready",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "pip 失败后继续称运行库就绪；浏览器环境已经安装依赖。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_new_runtime_import_failure_is_reported",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "pip 成功但新进程无法导入原生库时仍称就绪；浏览器不会注入该安装状态。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_all_installs_both_and_requires_real_doctor_success",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "只完成下载却在真实 doctor 失败时标 all 成功；浏览器不运行安装流程。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_partial_component_install_success_is_distinct_from_whole_readiness",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "仅安装一个组件后误称整套可用，或 model 模式误装运行库；浏览器不覆盖组件选择。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_component_failure_preserves_other_success_and_checks_readiness",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "一项组件安装异常吞掉其他组件成功状态，且不复查可用性；浏览器不注入安装异常。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_corrupt_model_is_not_treated_as_success_and_doctor_timeout_is_recorded",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "损坏模型和 doctor 超时被当成安装成功；浏览器不执行模型下载/doctor。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_process_failure_and_non_json_output_are_actionable",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "子进程非零退出或非 JSON 被误解析为就绪且丢诊断；浏览器无安装子进程失败载荷。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_json_setup_is_single_envelope_and_excluded_from_tasks",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "JSON setup 未指定组件仍安装或输出多个封套；保留实际 CLI 分发和禁止任务安装边界。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_setup.py::SetupTests::test_setup_json_records_partial_failure_and_cancel_performs_no_install",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "CLI 未正确报告部分安装失败或取消后仍安装；浏览器没有交互安装。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_speech_model.py::ModelContractTests::test_download_checks_hash_then_cache_needs_no_network",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "下载未校验摘要或有效缓存仍联网；浏览器不下载模型，真实模型专项也只读已有权重。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_speech_model.py::ModelContractTests::test_bad_download_and_bad_existing_model_are_not_loaded_or_replaced",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "损坏下载被写入或覆盖已有损坏文件；浏览器不走模型下载。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_speech_model.py::ModelContractTests::test_state_resets_between_channels_and_recordings_and_tail_is_bounded",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "声道/录音间 ONNX 隐状态串扰或尾窗超长；浏览器固定模型证据没有推理状态。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_speech_model.py::ModelContractTests::test_resampling_uses_rational_ratio_and_preserves_original_duration",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "22.05 kHz 重采样比例错误或推理区间超过原始时长；浏览器固定使用 8 kHz 输入。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_speech_model.py::ModelContractTests::test_invalid_probability_and_nonfinite_audio_are_rejected",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "模型返回 NaN/越界概率或音频 NaN 被当成合法语音；浏览器固定证据无概率输出。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_speech_model.py::ModelContractTests::test_missing_model_doctor_is_actionable_and_offline",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "离线 doctor 偷偷联网或缺模型却称 ready；浏览器绕过真实模型加载。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_cli_full_batch_with_portable_audio",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "真实 CLI 批量处理 20 种场景、写出可移动音频与逐录音判定；保留 CLI E2E，R08 只有单个机会页。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_bad_recording_does_not_drop_good_results",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "真实 CLI 遇损坏录音后丢弃好结果或返回错误退出码；保留混合批次 E2E。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_invalid_event_sidecar_and_safe_html",
+      "action": "keep",
+      "category": "integration",
+      "reason": "NaN 事件 sidecar 未单独报错或恶意文件名进入报告；保留读 sidecar 到 HTML 的集成。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_refuse_overwrite_and_empty_input",
+      "action": "keep",
+      "category": "integration",
+      "reason": "既有输出/场景目录被覆盖或空目录被当成成功；浏览器脚本输出均新建。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_help_and_invalid_cli",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "实际 CLI 接受 NaN 超时并创建输出；保留命令入口失败路径。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_unreviewed_rows_cannot_be_gold",
+      "action": "keep",
+      "category": "integration",
+      "reason": "未人工复核的空白标签被晋升为 gold；R04 使用整通 CSV，不走机会级 promote。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_manual_review_promotion_and_metrics",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "实际 CLI analyze/promote/evaluate 全流程统计错误；保留可读 metrics.json 产物的 E2E。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_tampered_hash_and_missing_reviewer_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "机会级标签摘要被篡改或缺复核人仍晋升；R04 只涉及整通复核格式。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_time_mismatch_and_naive_timestamp_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "无时区复核时间或错机会时间进入 gold；R04 不覆盖机会级标签。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_evaluation_refuses_missing_predictions",
+      "action": "keep",
+      "category": "integration",
+      "reason": "gold 的预测缺失却被当作评估成功；浏览器不执行机会级 evaluate。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_seed_and_hash_reproducibility",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "相同种子生成不同音频会破坏可重复验收产物；CLI流程只生成一次并校验分类，不检查两次产物摘要相等。",
+      "coverage_reference": "tests/recording_qa/test_workflow.py::WorkflowTests::test_cli_full_batch_with_portable_audio"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_duplicate_inputs_are_processed_once",
+      "action": "keep",
+      "category": "integration",
+      "reason": "重复传入同一录音被算两通并重复进入复核；浏览器输入去重由夹具提前决定。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_event_channels_used_unless_explicit_override",
+      "action": "keep",
+      "category": "integration",
+      "reason": "显式关闭事件声道映射仍忽略冲突配置；浏览器始终使用默认声道。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_noise_labeled_missing_counts_as_false_negative",
+      "action": "keep",
+      "category": "integration",
+      "reason": "噪声被人工认定缺答却不算漏检、召回率虚高；浏览器没有机会级指标流程。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_partial_review_and_duplicate_labels_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "半成品或重复机会标签被晋升；浏览器整通 CSV 不走该实现。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_uncertain_only_labels_have_no_accuracy",
+      "action": "keep",
+      "category": "integration",
+      "reason": "全是不确定标签时仍返回虚假准确率；浏览器不执行 evaluate。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/test_workflow.py::WorkflowTests::test_malformed_results_return_clear_error",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "畸形 JSONL 导致 CLI traceback 而非结构化错误；保留实际 CLI 失败产物检查。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/detect/test_delivery.py::Delivery::test_config_and_batch_query_cli_roundtrip",
+      "action": "keep",
+      "category": "integration",
+      "reason": "实际 CLI 配置添加/导出、检测、筛选、复核及历史链贯通失败；保留 CLI 到 SQLite 全流程集成。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_delivery.py::Delivery::test_invalid_input_and_partial_exit_envelope",
+      "action": "keep",
+      "category": "integration",
+      "reason": "混合损坏音频退出封套错误，或缺库查询被当成功；D01–D05 不走这些 CLI 失败参数。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_delivery.py::Delivery::test_csv_formula_injection_is_escaped_and_json_preserves_label",
+      "action": "keep",
+      "category": "integration",
+      "reason": "CSV 公式注入被执行或 JSON 标签被误转义；D01 只导出 JSON，D04 只检查 HTML 标签。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_delivery.py::Delivery::test_report_audio_integrity_embedded_data_and_missing_source",
+      "action": "keep",
+      "category": "integration",
+      "reason": "已修改源音频仍被复制为已验证试听证据；D02 只播放未改变音频。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_delivery.py::Delivery::test_schema_and_catalog_are_discoverable",
+      "action": "delete",
+      "category": "integration",
+      "reason": "schema 命令只与同一 schema() 自比较，catalog 只判退出 0；E01–E04 实际加载目录、创建导出并执行配置。",
+      "coverage_reference": "tests/detect_browser/editor.spec.cjs E01, E02, E04"
+    },
+    {
+      "id": "tests/detect/test_delivery.py::Delivery::test_import_packet_cli_and_export_reopening",
+      "action": "keep",
+      "category": "integration",
+      "reason": "实际 CLI 导入修正包后重新生成报告丢失修正标签/revision；保留 CLI 与数据库/报告集成。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor.py::EditorContract::test_full_roundtrip_matches_python_including_nested_exclusions_and_parameters",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "E01 导出配置经安装 CLI 验证并执行，E04 精确校验嵌套 all/not/any 与 scope.exclude 的导入导出相等；重复 JS/Python normalize 正常值比较。",
+      "coverage_reference": "tests/detect_browser/editor.spec.cjs E01 and E04"
+    },
+    {
+      "id": "tests/detect/test_editor.py::EditorContract::test_rejects_unknown_fields_refs_params_and_duplicate_json_keys",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "未知字段、原型污染键、错误参数引用或空标签被 JS 接受；E04 只覆盖重复 JSON 键和删被引用指标。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor.py::EditorContract::test_nested_limit_empty_all_and_invalid_thresholds_are_rejected",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "深层条件、空 all 或 129 个叶子绕过浏览器配置限额；E04 只输入少量合法嵌套。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor.py::EditorContract::test_offline_document_is_self_contained_and_escapes_user_text",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "editor.document 有独立于 report 的 JSON 转义实现；恶意配置标签突破 script 可执行注入，E01–E04 均只导入良性标签。保留该反例，移除模板标记断言。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Definitions::test_examples_and_normalized_identity",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "用 validate() 自身重复归一化再比较 fingerprint，没有独立判定基准；E01–E04 已执行实例配置。",
+      "coverage_reference": "tests/detect_browser/editor.spec.cjs E01, E02, E04"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Definitions::test_rejects_typo_unknown_metric_invalid_values_and_refs",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "NaN/布尔阈值、危险未知 metric、非法 scope/window 或重复规则被 Python 接受；E04 未覆盖服务端非法定义矩阵。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Definitions::test_limits_recursive_conditions",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "深度 10 或 129 子项绕过服务端递归预算；浏览器只用小规模合法条件。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Definitions::test_boolean_logic_and_exclusion",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "嵌套 all/any/not 或 unless 求值错误产生假标签；E04 只导出嵌套配置不执行其布尔真值组合。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Measurements::test_amplitude_and_silence_are_finite",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "RMS 标度或静音数值错误造成阈值误判，静音返回非有限值；D01 只检查固定阈值标签数。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Measurements::test_duration_count_cumulative_and_tail",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "尾部不足整帧的时长被漏算，活动合并错误，累计比例失真；浏览器 8 秒整窗没有这些边界。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Measurements::test_dc_option_and_clipping",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "DC 偏置被当声音或 remove_dc=false 被忽略、削波比例错误；浏览器无 DC/削波音频。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Windows::test_scope_exclusions_split_windows_and_preserve_timestamps",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "scope 排除段未切窗或返回局部偏移代替原始时间；E04 仅导出 scope 配置。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Windows::test_partial_windows_are_explicit",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "include_partial 开关丢失最后 2 秒窗口或默认错误保留；浏览器没有 3 秒步长切 8 秒的反例。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Windows::test_after_activity_and_user_continuation_exclusion",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "用户继续说话期间生成 AI 静音误报或错用活动前时间；浏览器不执行该排除时序。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Windows::test_no_windows_missing_channel_and_excessive_windows",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "空窗口被当正常、声道缺失不报错或超 10000 窗造成无界计算；浏览器没有这些输入组合。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_engine.py::Windows::test_low_volume_does_not_tag_silence",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "低音量规则把完全静音也标低音量；D01 用自定义 RMS 规则而非低音量示例中的排除规则。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_immutable_config_and_batch",
+      "action": "keep",
+      "category": "integration",
+      "reason": "重复版本/批次意外覆盖已有证据；保留真实 SQLite 不可变存储集成。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_rerun_keeps_human_history_separate",
+      "action": "keep",
+      "category": "integration",
+      "reason": "重跑自动继承旧人工结论或覆盖旧历史；W01 只在同一批次复核。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_query_corrected_labels_multitag_sources_and_export_scope",
+      "action": "keep",
+      "category": "integration",
+      "reason": "服务端组合 tag/status/recording/batch/version 查询忽略已修正标签；D01 测页面过滤而非该数据库组合查询。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_duplicate_content_and_relocated_sources",
+      "action": "keep",
+      "category": "integration",
+      "reason": "相同内容不同路径重复计算或丢失所有来源路径；浏览器夹具没有重复内容输入。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_partial_errors_and_zero_hits_are_retained",
+      "action": "keep",
+      "category": "integration",
+      "reason": "无命中与录音/评估失败被丢弃，批次误标正常；D01 只有无命中筛选没有混合文件失败。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_atomic_import_conflict_and_wrong_library",
+      "action": "keep",
+      "category": "integration",
+      "reason": "同一导入包含重复修改时部分提交，或外库身份被接受；D05 不核对数据库事务回滚。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_review_bounds_unknown_status_and_correction_state",
+      "action": "keep",
+      "category": "integration",
+      "reason": "非法状态、NaN/越界区间或 confirmed 顺便改标签被服务端接受；D05 主要检查浏览器范围。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_history_append_and_stale_review",
+      "action": "keep",
+      "category": "integration",
+      "reason": "过期 revision 修改成功或历史链被覆盖；保留 SQLite 历史与冲突集成。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_manual_miss_separate_from_automatic_results",
+      "action": "keep",
+      "category": "integration",
+      "reason": "人工漏检覆盖自动记录或引用不存在配置仍创建；D04 只添加有效手工片段。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_compare_resolved_false_positive_and_introduced_miss",
+      "action": "keep",
+      "category": "integration",
+      "reason": "规则对比将消除误报算成漏检或反之；W02 固定集对比使用另一接口，不覆盖 batch compare。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_compare_recovered_manual_miss_and_conflicts",
+      "action": "keep",
+      "category": "integration",
+      "reason": "人工漏检恢复与人工证据冲突被混淆；W02 不调用批次对比。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_library.py::Library::test_compare_never_treats_missing_windows_as_clean",
+      "action": "keep",
+      "category": "integration",
+      "reason": "没有任何有效窗口被对比成干净录音；W02 不创建零窗口批次。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_online_review_accumulates_standard_and_keeps_history",
+      "action": "keep",
+      "category": "integration",
+      "reason": "在线复核二次修订未形成连续标准/history 或未持久化；保留真实 SQLite 复核与重开集成。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_missing_reason_and_stale_review_are_rejected_atomically",
+      "action": "keep",
+      "category": "integration",
+      "reason": "缺误报理由或过期复核部分写入标准/history；W01 未同时核对两个表的原子性。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_normal_requires_explicit_inspection_and_conflicts_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "未试听、缺理由/人、越界正常样本被接受，或正负结论冲突未拒绝；W03 只创建合法漏检标准。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_frozen_samples_do_not_change_when_standard_is_revised",
+      "action": "keep",
+      "category": "integration",
+      "reason": "冻结集被后续标准修订修改，或允许空集；W03 未覆盖空集拒绝，保留真实版本存储。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_compare_records_regression_and_missing_source_not_success",
+      "action": "keep",
+      "category": "integration",
+      "reason": "缺源文件仍计为完整对比，或同版本伪对比被允许；W02 只比两个可用不同版本。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_no_windows_and_changed_content_are_not_passes",
+      "action": "keep",
+      "category": "integration",
+      "reason": "无窗口或音频内容变化仍计为通过；W02 所有输入均有效且内容不变。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_interval_comparison_detects_bad_locations_and_leaves_unknown",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "只有 10% 区间命中被算 hit、正常段误报/未知标签未分别计数；W02 用完全命中或完全漏检。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_sliding_duplicate_findings_merge_before_comparison",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "重叠滑动窗口未合并导致边界误报；W02 没有重叠窗口。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_maximum_manual_ids_import_and_keep_one_standard_revision_chain",
+      "action": "keep",
+      "category": "integration",
+      "reason": "73/80 字符手工 ID 再次修订生成新标准链，或 72 字符兼容边界变化；W04 只导入 73/80 字符并重开，未修订。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_saved_summaries_backfill_once_and_selected_details_are_independent",
+      "action": "keep",
+      "category": "integration",
+      "reason": "旧库摘要迁移重复解码全历史，或打开一条明细被无关损坏 JSON 阻塞；W01–W04 均创建新库。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::StandardsTests::test_summary_failure_rolls_back_complete_history",
+      "action": "keep",
+      "category": "integration",
+      "reason": "写摘要失败后留下半个冻结集，历史不原子；浏览器没有存储故障注入。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::WorkbenchTests::test_settings_restart_scan_incremental_and_new_rule",
+      "action": "keep",
+      "category": "integration",
+      "reason": "重启丢日常设置，增量跳过失效或新规则不重跑已有音频；W01 不含增加新录音后再换版本的缓存组合。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::WorkbenchTests::test_trial_selection_and_scope_restrictions",
+      "action": "keep",
+      "category": "integration",
+      "reason": "试跑接受越权路径、零 limit 或输入目录中的外部符号链接；W03 只选择有效文件。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::WorkbenchTests::test_settings_conflict_and_duplicate_versions_are_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "过期设置覆盖新设置或同时运行同 ID 两版本；W02 只选合法版本且单用户修改。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::WorkbenchTests::test_review_standards_conflict_rolls_back_the_review",
+      "action": "keep",
+      "category": "integration",
+      "reason": "标准冲突后人工复核已提交，出现两套结论；W01–W04 不预置冲突标准。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_workspace.py::WorkbenchTests::test_refresh_and_completed_jobs_return_summaries_while_details_stay_available",
+      "action": "keep",
+      "category": "integration",
+      "reason": "刷新/异步完成载荷重新加载全量历史导致体积膨胀，或摘要化后明细丢失；浏览器小样本无法暴露这个读取边界。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_root_and_library_are_local_and_never_expose_database",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 HTTP 遍历/编码路径暴露 SQLite 或标记文件；E01–E06 只访问合法页面。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_host_origin_token_and_content_type_guards",
+      "action": "keep",
+      "category": "integration",
+      "reason": "恶意 Host/Origin、错误 token、非 JSON 内容或 OPTIONS 绕过本机服务写保护；浏览器始终同源有效会话。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_validate_save_immutable_versions_and_restart_persistence",
+      "action": "keep",
+      "category": "integration",
+      "reason": "1 与 1.0 身份不一致、重启丢定义或输出目录误绑定另一检测库；E03 只改标签版本。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_run_uses_saved_versions_and_scoped_inputs_and_serves_range_audio",
+      "action": "keep",
+      "category": "integration",
+      "reason": "Range 越界未返 416 或 HTTP run 接受任意 inputs；D02 只发播放器正常范围请求。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_invalid_json_missing_reference_and_report_failure_do_not_create_batch",
+      "action": "keep",
+      "category": "integration",
+      "reason": "重复 JSON、缺定义或报告写失败仍遗留批次/目录；浏览器不注入磁盘失败。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_partial_result_is_visible_and_concurrent_run_is_refused",
+      "action": "keep",
+      "category": "integration",
+      "reason": "占用运行锁时并发 run 被执行或 mono 错误不进入 partial；浏览器顺序正常执行。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_workspace_routes_require_session_and_reject_malformed_reviews",
+      "action": "keep",
+      "category": "integration",
+      "reason": "工作区/复核读取绕过 session 或畸形复核/越权 input 被接受；W01–W04 使用合法会话。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_live_report_session_is_injected_only_when_served",
+      "action": "keep",
+      "category": "integration",
+      "reason": "会话 token 被持久化到磁盘报告，离线分享泄露在线写凭据；浏览器只观察服务端页面不检查磁盘字节。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_online_review_api_updates_state_and_preserves_offline_export",
+      "action": "keep",
+      "category": "integration",
+      "reason": "在线 API 更新后 state/standard 不一致或过期包重复导入；保留真实 HTTP、SQLite 与重读链路。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorServer::test_real_batch_write_lock_rejects_all_online_writes_without_waiting",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 SQLite 写锁下在线写等待/超时而非立刻 409，或读与验证被一并阻塞；浏览器没有并发持锁场景。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorWorkspace::test_output_within_inputs_is_rejected_before_writes_even_after_restart",
+      "action": "keep",
+      "category": "integration",
+      "reason": "输出置于输入中或重启重扫历史报告形成自我摄入；浏览器输出与输入预先分离。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorWorkspace::test_resolved_symlinks_and_equal_or_containing_paths_are_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "符号链接或父子路径绕过输入/输出重叠检查并写库；浏览器无链接路径。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorWorkspace::test_sibling_output_restart_keeps_only_original_recording",
+      "action": "keep",
+      "category": "integration",
+      "reason": "合法相邻输出重启后混入生成录音；保留真实服务重启、文件扫描与执行流程。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorWorkspace::test_database_inside_empty_workspace_can_initialize_and_restart",
+      "action": "keep",
+      "category": "integration",
+      "reason": "数据库位于全新或已有工作目录时初始化/重启失败；浏览器只用一种目录布局。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorWorkspace::test_nonempty_or_file_output_rejects_without_creating_database",
+      "action": "keep",
+      "category": "integration",
+      "reason": "非空目录/普通文件被服务初始化覆盖，或拒绝前已创建库；浏览器只用空新目录。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/detect/test_editor_server.py::EditorWorkspace::test_database_cannot_use_workspace_marker_or_public_report_paths",
+      "action": "keep",
+      "category": "integration",
+      "reason": "数据库路径与 marker/reports 冲突而泄漏或损坏库；浏览器不试这些配置路径。",
+      "coverage_reference": "tests/detect_browser/detect.spec.cjs D01–D05; tests/detect_browser/editor.spec.cjs E01–E06; tests/detect_browser/workspace.spec.cjs W01–W04; scripts/check_detection.py"
+    },
+    {
+      "id": "tests/gaps/test_delivery.py::DeliveryTests::test_task_execution_and_trusted_review",
+      "action": "keep",
+      "category": "integration",
+      "reason": "实际 gaps 任务打包、执行、回收、复核及音频搬迁贯通失败；R08 只打开直接生成的 gap 页。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_delivery.py::DeliveryTests::test_event_source_paths_do_not_rewrite_evidence",
+      "action": "keep",
+      "category": "integration",
+      "reason": "事件源绝对路径被迁移逻辑重写导致证据摘要失效；浏览器不迁移这种旁证路径。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_delivery.py::DeliveryTests::test_mixed_gap_and_benchmark_task_keeps_both_review_adapters",
+      "action": "keep",
+      "category": "integration",
+      "reason": "gaps 与 benchmark 混合任务丢失任一 review adapter 或下游步骤；浏览器只运行单 QA task。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_delivery.py::DeliveryTests::test_evidence_protected_from_path_rewriting",
+      "action": "keep",
+      "category": "integration",
+      "reason": "搬迁 NISQA 证据时修改原始评分行/摘要绑定；浏览器不携带 NISQA。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_delivery.py::DeliveryTests::test_large_timeline_shards_fit_bundle",
+      "action": "keep",
+      "category": "integration",
+      "reason": "超过 16 MiB RTP 时间线未分片或无法打包；浏览器仅数秒合成音频没有大旁证。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_delivery.py::DeliveryTests::test_freeze_and_verified_prepare_preserve_extension",
+      "action": "keep",
+      "category": "integration",
+      "reason": "freeze/prepare 丢失 output_events 或重绑定摘要时污染原证据；浏览器不走准备链路。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_gap_and_response_delay_are_distinct",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "把回复开始前迟答静音误当输出中断；R08 只有输出已经开始后的 gap。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_high_speech_occupancy_does_not_move_threshold",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "高语音占比让阈值漂移漏掉空洞，或 8/16/48 kHz 判定不同；R08 仅一个低占比 8 kHz 示例。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_micro_and_cluster_do_not_double_count",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "短孔洞聚类后成员与聚类重复计数；R08 不含 micro dropout。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_noise_and_normal_pauses_are_not_digital_holes",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "噪声底或正常短停顿被错误标成数字空洞；R08 用零填充长间隙。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_exact_deadline_and_dc_offset",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "0.78/0.8 秒阈值边界或 DC 偏置造成误报；R08 用远离边界的长间隙。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_user_reaction_preserves_preceding_silence",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "用户在间隙中接话后把之前应保留的静音一起排除；R08 没有期间用户语音。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_unverified_role_cannot_exclude",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "角色未核实时根据用户声道错误排除问题；R08 不构造未经核实的重叠发言。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_legacy_boundaries_without_output_extension",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "只有旧版边界/接管/用户语音事件时过滤失效，或未核实仍过滤；R08 没有这些 sidecar。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_legacy_filter_survives_unaligned_optional_extension",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "未对齐的新扩展覆盖有效旧版排除，或错误授权 tool_wait；R08 不混合新旧事件。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_earlier_interrupt_does_not_exclude_later_output",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "较早的打断事件错误影响后面输出；R08 没有打断事件。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_gap_crossing_turn_boundary_keeps_each_turn_identity",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "跨两个业务轮次的 gap 没拆分或丢 utterance_id；R08 只有纯声学证据。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_expected_window_clips_instead_of_discarding",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "预期窗口部分覆盖 gap 时整段被丢而非裁剪；R08 不限制预期输出窗。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_playback_after_end_invalidates_event_filter",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "tts_end 之后仍 playback 的矛盾事件被当可信过滤；R08 没有 TTS 时序事件。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_nonfinite_audio_is_rejected_and_correlation_is_only_hint",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "NaN 样本进入分析或高相关声道被直接拒判；R08 音频有限且声道不同。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_only_authorized_waits_filter",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "未授权或未对齐的 tool_wait 静音被排除；R08 不含等待授权。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_terminal_requires_complete_expected_window",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "录音截断仍当尾部中断故障，或完整预期窗缺输出漏报；R08 不含预期尾部事件。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_cancel_and_tts_chunks",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "合法 tts_cancel 仍被报终端缺答，或跨 TTS chunk 的空洞被忽略；R08 无事件分块。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_conflicts_degrade_instead_of_hiding_candidate",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "重叠预期输出冲突时仍依工具等待隐藏 gap；R08 没有冲突事件。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_identity_changes_with_rules_not_path",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "规则变更未改变身份，或搬迁源路径导致同一证据身份变化；浏览器不对照 fingerprints。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_invalid_events_and_config",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "错误音频摘要、角色类型或 NaN 配置仍用于过滤；R08 只有合法输入。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_unreliable_inputs_and_swapped_channels",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "静音/单声道可靠性误判或交换声道配置被忽略；R08 只有常规双声道。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_batch_error_and_evidence_error_keep_other_results",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "坏录音/坏旁证导致好录音候选丢失；保留实际批处理与证据文件集成。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_detection.py::DetectionTests::test_interrupt_keeps_completed_records_and_review",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "中断后丢失已完成结果或复核页；浏览器脚本不注入 KeyboardInterrupt。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_chunked_rtp_mapping_and_missing_mapping",
+      "action": "keep",
+      "category": "integration",
+      "reason": "分片 RTP 无对齐授权仍被映射，或已对齐窗口包数错误；R08 没有 RTP 旁证。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_tampered_and_missing_shard_are_errors",
+      "action": "keep",
+      "category": "integration",
+      "reason": "篡改/丢失分片仍被当成可信完整时间线；浏览器不加载分片旁证。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_incomplete_and_different_sensor",
+      "action": "keep",
+      "category": "integration",
+      "reason": "不完整抓包被当完整，或串用别的 sensor；浏览器不加载抓包证据。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_complete_manifest_cannot_hide_partial_stream_coverage",
+      "action": "keep",
+      "category": "integration",
+      "reason": "manifest complete=true 掩盖单流窗口覆盖不全；浏览器没有时间线覆盖判定。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_sequence_wrap_duplicates_reorder_and_restart",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "序号回绕、重复、乱序、重启混为丢包，污染原因解释；浏览器没有 RTP 包序列。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_timestamp_wrap_and_clock_jump_are_distinct",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "时间戳回绕被误判为时钟倒跳或反之；浏览器没有 RTP 时钟计算。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_interrupted_timeline_retains_manifest_and_rows",
+      "action": "keep",
+      "category": "integration",
+      "reason": "中断写时间线后丢 manifest 或已写包；浏览器不写 RTP 时间线。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_malformed_provenance_remains_partial_error",
+      "action": "keep",
+      "category": "integration",
+      "reason": "格式错误 NISQA provenance 被当可信；浏览器无评分来源证据。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_nisqa_segment_overlap_and_legacy",
+      "action": "keep",
+      "category": "integration",
+      "reason": "评分片段关联范围错误、旧结果冒充已验证或摘要冲突未报错；浏览器无 NISQA 关联。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_legacy_rtp_is_only_summary",
+      "action": "keep",
+      "category": "integration",
+      "reason": "旧 RTP 汇总被当成精确区间证据；浏览器没有 legacy RTP 结果。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_review_identity_and_manual_interval_validation",
+      "action": "keep",
+      "category": "integration",
+      "reason": "gap 人工区间/身份被篡改、手工补充被拒或无时区时间被接受；R08 不走 gap CSV 校验。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/gaps/test_evidence.py::EvidenceTests::test_nisqa_provenance_keeps_scoring_rows_unchanged",
+      "action": "keep",
+      "category": "integration",
+      "reason": "加 provenance 改变既有评分结果字节或源摘要不匹配；保留真实音频/假评分后端的输出文件兼容集成。",
+      "coverage_reference": "tests/browser/review.spec.cjs R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::all directories preserves the original recording order and identities",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "R01 初始全部录音与切换全部范围已覆盖可见队列；此例额外只锁定原始数组顺序，不对应业务失败。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::a directory restricts all recordings and excludes nested and sibling directories",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "目录 a 错匹配 a/nested 或 ab，泄漏其他目录录音；R01 不包含共同前缀嵌套目录。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::changing directory resets an unavailable selection and retains an available one",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "切换目录后保留不可见文件选择导致空结果，或清掉仍有效选择；R01 不设置单文件选择器。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::identical filenames and detection identities cannot leak across directories",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "同文件名/同身份跨目录串入其他录音；R01 同名但身份不同。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::paths support bare files, POSIX roots, Windows drive roots and UNC directories",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "Windows drive/UNC、根目录和裸文件规范化错误；浏览器夹具只使用 POSIX 临时子目录。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::failed records do not create options and an empty batch stays selectable",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "只有失败录音/空批次时选择器产生幽灵条目；R06 混合好坏录音但不是全失败。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::directory and filename text is passed literally to options",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "假 Option 只把 text 存为属性，无法验证真实 DOM 注入；R01 实际操作控件，R05/D04 已检查真实页面数据呈现。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01; tests/detect_browser/detect.spec.cjs D04; mock Option stores text without DOM interpretation"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::search matches filename fragments, Chinese paths and case-insensitive text",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "中文路径、片段及大小写搜索错漏；R01 只有英文 MISSING CALL。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::space-separated keywords all match and Windows search separators are normalized",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "Windows 分隔符加空白关键字交集错误；R01 不用 Windows 路径与 tab。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::search intersects directories without narrowing the directory choices",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "带搜索条件切目录时目录列表被误缩减或清除空白搜索失效；R01 先清搜索再选目录，未覆盖交集状态。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::search clears unavailable recording selection, preserves a valid one and handles no matches",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "搜索改变后保留不可见单文件选择或丢仍可见选择；R01 不操作单文件下拉框。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::matching identity cannot bypass a different path search",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "同身份不同路径绕过搜索范围；浏览器同名录音身份各异。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::search treats regex and HTML characters literally",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "用户搜索被当正则或 HTML，导致 [1]+、<img> 或 .* 错配；R01 仅普通英文搜索。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    },
+    {
+      "id": "tests/recording_qa/file_filter.cjs::Chinese composition waits until committed and clearing input refreshes results",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "中文 IME 未提交即过滤或提交后不刷新；R01 fill() 不触发组合输入过程。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01–R08; tests/browser/generate_fixtures.py; scripts/check_review.py"
+    }
+  ],
+  "counts": {
+    "delete": 14,
+    "keep": 222
+  },
+  "validation": {
+    "command": "PYTHONPATH=\"$PWD/src\" .venv/bin/python -m unittest tests.recording_qa.test_assessment tests.recording_qa.test_assessment_delivery tests.recording_qa.test_assessment_waveform tests.recording_qa.test_detector tests.recording_qa.test_file_filter tests.recording_qa.test_setup tests.recording_qa.test_workflow tests.detect.test_delivery tests.detect.test_editor tests.detect.test_engine -v",
+    "python_tests": 94,
+    "result": "passed",
+    "elapsed_seconds": 3.139,
+    "nested_node_tests": 12,
+    "inventory": "236 original test IDs accounted for; 220 retained and 16 deleted; source and manifest match exactly",
+    "limitations": "真实模型专项保持原有显式启用要求，本次选测未运行；安装包浏览器与全量结果由主代理统一记录。"
+  },
+  "category_counts": {
+    "isolated": 107,
+    "integration": 110,
+    "e2e": 5
+  }
+}

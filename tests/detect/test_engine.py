@@ -4,18 +4,13 @@ import unittest
 
 import numpy as np
 
-from voice_tools.tools.detect.definition import validate, fingerprint
-from voice_tools.tools.detect.engine import analyze, evaluate
+from voice_tools.tools.detect.definition import validate
+from voice_tools.tools.detect.engine import analyze
 from voice_tools.tools.detect.metrics import measure, parameters
 from .fixtures import config, audio, example
 
 
 class Definitions(unittest.TestCase):
-    def test_examples_and_normalized_identity(self):
-        for kind in ('ai-silence', 'low-volume'):
-            definition = example(kind)
-            self.assertEqual(definition, validate(definition))
-            self.assertEqual(fingerprint(definition), fingerprint(validate(definition)))
 
     def test_rejects_typo_unknown_metric_invalid_values_and_refs(self):
         changes = [lambda c: c.update(typo=1), lambda c: c.update(version=1),

@@ -14,8 +14,7 @@ from uuid import uuid4
 
 from voice_tools.tools.capture import esl, ring
 from voice_tools.tools.capture.batch import scope_bpf
-from voice_tools.tools.capture.remote import Agent, bounds, capture_command, capture_statistics
-from voice_tools.tools.capture.service import dumpcap_argv
+from voice_tools.tools.capture.remote import Agent, bounds, capture_statistics
 from tests.sessions.fixtures import pcap, packet, T0
 
 
@@ -28,15 +27,6 @@ class CaptureV2Tests(unittest.TestCase):
         return dict(name='fs-a', host='fs-a', sensor_id='fs-a:any', seconds=10, segment_seconds=10,
                     max_mib=8, snaplen=65535, mode='ring', ring_files=4, bpf='udp', snapshot_seconds=0, **extra)
 
-    def test_byte_quota_is_independent_of_packet_count(self):
-        config = self.config(); args = capture_command(config, '/tmp/spool')
-        self.assertNotIn('-c', args)
-        kilobytes = int(next(a.split(':')[1] for a in args if a.startswith('filesize:')))
-        self.assertLessEqual((kilobytes*1000 + config['snaplen']+512)*4, 8*1048576)
-        self.assertGreater(kilobytes*1000*4, 7*1048576)
-        single = dumpcap_argv('/tmp/voice-tools-abcdefghijkl', 'udp', 'any', 60, 64, 65535)
-        self.assertNotIn('-c', single)
-        self.assertIn('duration:60', single)
 
     def test_fragment_bpf_keeps_noninitial_fragments(self):
         original = packet(b'x'*80,16000,24000)

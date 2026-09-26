@@ -9,7 +9,6 @@ from voice_tools.cli import main
 from voice_tools.core.files import write_json
 from voice_tools.tools.detect import report, service, store
 from voice_tools.tools.detect.cli import export_rows
-from voice_tools.tools.detect.schema import schema
 from .fixtures import config, wav
 
 
@@ -84,14 +83,6 @@ class Delivery(unittest.TestCase):
             payload=json.loads((self.root/'changed/results.json').read_text())
             self.assertNotIn('playback_sources',payload['records'][0])
             self.assertTrue(payload['records'][0]['waveform']['channels'])
-
-    def test_schema_and_catalog_are_discoverable(self):
-        code,result=self.cli('schema')
-        self.assertEqual(result['summary'],schema())
-        self.assertEqual(self.cli('catalog')[0],0)
-        with self.assertRaises(ValueError):
-            from voice_tools.tools.detect.definition import validate
-            value=config(); value['metrics']['level']['params']={'window_s':3}; validate(value)
 
     def test_import_packet_cli_and_export_reopening(self):
         self.cli('run',self.source,'--config',self.config,'--db',self.db,'--batch','one')

@@ -1,15 +1,13 @@
 import json
-from pathlib import Path
 import re
+from pathlib import Path
 import subprocess
-import tempfile
 import unittest
 
 from voice_tools.tools.detect import editor
-from voice_tools.tools.detect.definition import validate
 from voice_tools.tools.detect.metrics import catalog
 from voice_tools.tools.detect.schema import schema
-from .fixtures import config, example
+from .fixtures import config
 
 
 class EditorContract(unittest.TestCase):
@@ -19,16 +17,6 @@ class EditorContract(unittest.TestCase):
           const data=JSON.parse(s);console.log(JSON.stringify(data.values.map(raw=>{try{return {ok:true,value:c.normalize(typeof raw==='string'?c.parse(raw):raw,data.catalog,data.schema)}}catch(e){return {ok:false,error:e.message}}})));});'''
         run=subprocess.run(['node','-e',program,str(script)],input=json.dumps({'catalog':catalog(),'schema':schema(),'values':values}),text=True,capture_output=True,check=True)
         return json.loads(run.stdout)
-
-    def test_full_roundtrip_matches_python_including_nested_exclusions_and_parameters(self):
-        value=example()
-        value['scope']['exclude']=[{'start_s':1,'end_s':2}]
-        value['rules'][0]['when']={'all':[value['rules'][0]['when'],{'any':[{'not':{'metric':'ai_quiet','op':'lt','value':.2}},{'metric':'user_speaking','op':'le','value':.1}]}]}
-        inputs=[value,example('low-volume'),config(),{'schema_version':'1.0','id':'test','version':'1','name':'simple','metrics':{'level':{'kind':'rms_dbfs','channel':0}},'rules':[{'id':'r','label':'test','when':{'metric':'level','op':'lt','value':-30}}]}]
-        results=self.node(inputs)
-        for original,result in zip(inputs,results):
-            self.assertTrue(result['ok'],result)
-            self.assertEqual(validate(original),result['value'])
 
     def test_rejects_unknown_fields_refs_params_and_duplicate_json_keys(self):
         variants=[]
@@ -54,7 +42,6 @@ class EditorContract(unittest.TestCase):
         value=config(label='</script><img src=x onerror=alert(1)>')
         page=editor.document([value],back_link='review.html')
         self.assertNotIn(value['rules'][0]['label'],page)
-        self.assertNotIn('__SCRIPT__',page)
         match=re.search(r'<script id="editorData"[^>]*>(.*?)</script>',page,re.S)
         payload=json.loads(match[1]);self.assertIsNone(payload['session'])
         self.assertEqual(payload['definitions'][0],value)

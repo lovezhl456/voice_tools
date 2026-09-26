@@ -18,16 +18,6 @@ class MachineCliTests(unittest.TestCase):
         value = json.loads(process.stdout)
         return process, value
 
-    def test_schema_is_offline_and_covers_actual_p0_commands(self):
-        process, value = self.command("schema", "--tool", "qa")
-        self.assertEqual(process.returncode, 0)
-        self.assertEqual(set(value["cli"]["commands"]), {
-            "analyze", "generate", "freeze", "promote", "evaluate", "compare",
-            "assess", "setup", "model-download", "model-doctor", "assess-check", "assess-evaluate"})
-        self.assertEqual(value["data_contracts"]["golden_write"], "1.1")
-        self.assertEqual(value["data_contracts"]["qa_assessment"], "1.0")
-        process, value = self.command("schema", "--tool", "homer")
-        self.assertIn("trace", value["cli"]["commands"])
 
     def test_json_errors_are_one_parseable_object(self):
         for args in (("qa", "analyze"), ("audio", "inspect", self.root / "missing", "--out", self.root / "out"), ("unknown",)):
@@ -38,11 +28,6 @@ class MachineCliTests(unittest.TestCase):
                 self.assertEqual(value["error"]["code"], "INVALID_INPUT")
                 self.assertNotIn("Traceback", process.stderr)
 
-    def test_json_generator_preserves_all_scenarios(self):
-        process, value = self.command("--json", "qa", "generate", "--out", self.root / "data")
-        self.assertEqual(process.returncode, 0)
-        self.assertEqual(value["summary"]["cases"], 20)
-        self.assertEqual(len(list((self.root / "data").glob("*.wav"))), 20)
 
     def test_analysis_exit_codes_in_text_and_json(self):
         source = write_case(self.root / "data", "missing")
@@ -83,11 +68,6 @@ class MachineCliTests(unittest.TestCase):
                             self.assertEqual(value["error"]["code"], "PARTIAL_FAILURE")
                             self.assertEqual((value["summary"]["files"], value["summary"]["errors"]), (2, 1))
 
-    def test_homer_native_json_remains_usable(self):
-        process, value = self.command("--json", "homer", "schema")
-        self.assertEqual(process.returncode, 0)
-        self.assertEqual(value["command"], "schema")
-        self.assertIn("trace", value["commands"])
 
     def test_whole_recording_cli_has_fail_closed_and_partial_exit_codes(self):
         source = write_case(self.root / 'calls', 'missing')
