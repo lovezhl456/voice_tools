@@ -1,0 +1,1109 @@
+{
+  "baseline": "653288f",
+  "scope": [
+    "tests/audio",
+    "tests/nisqa",
+    "tests/visqol",
+    "tests/latency",
+    "tests/task",
+    "tests/studio",
+    "tests/test_machine_cli.py",
+    "tests/test_review_runner.py"
+  ],
+  "tests": [
+    {
+      "id": "tests/audio/test_audio.py::AudioTests::test_stereo_roundtrip_and_roles",
+      "action": "keep",
+      "category": "integration",
+      "reason": "使用已知可精确表示的 PCM16 样本经真实 WAV 文件读写，保护幅值及双轨内容不变。多编码准备流程重采样后仅比较幅值阈值、声道与时间映射；32768 误用为 32767 等编码缩放回归仍可通过，无法替代逐样本精确断言。",
+      "coverage_reference": "tests/audio/test_formats.py::PreparationTests::test_formats_and_resampling_preserve_tracks_and_origin"
+    },
+    {
+      "id": "tests/audio/test_audio.py::AudioTests::test_mono_is_not_duplicated",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "原用例经 write_wav/read_wav 验证单轨 shape；保留 prepare 流程用原生 PCM16 单声道输入，经 decode 的同一 read_wav 路径并重新读取保存结果，断言输出仅一轨，能捕获读写器复制单声道的同一故障。",
+      "coverage_reference": "tests/audio/test_formats.py::PreparationTests::test_native_mono_not_duplicated"
+    },
+    {
+      "id": "tests/audio/test_audio.py::AudioTests::test_truncated_payload_rejected",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "两者均用原生 PCM16 WAV 声明帧数与实际负载不一致的截断输入；prepare 在 decode 中先调用同一个 read_wav 校验，截断被接受会令保留用例的 errors=1 断言失败，不需要低层重复异常文案断言。",
+      "coverage_reference": "tests/audio/test_formats.py::PreparationTests::test_truncated_wave_rejected"
+    },
+    {
+      "id": "tests/audio/test_audio.py::AudioTests::test_invalid_format_and_empty",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非 PCM16 误解码会生成错误样本；现有 prepare 能转换多编码，不能验证严格 WAV 读取器拒绝这一故障。",
+      "coverage_reference": "tests/audio/test_formats.py::PreparationTests::test_bad_file_isolated_and_output_protected"
+    },
+    {
+      "id": "tests/audio/test_audio.py::AudioTests::test_duration_limit_before_read",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "在读大文件前不执行调用者时长上限会耗尽内存；E2E 小音频未覆盖自定义上限。",
+      "coverage_reference": "tests/audio/test_formats.py::PreparationTests::test_formats_and_resampling_preserve_tracks_and_origin"
+    },
+    {
+      "id": "tests/audio/test_audio.py::AudioTests::test_dc_is_not_activity",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "同时保护纯直流不被当作活动及 max_dc_offset 正确计量；指标错误为零会使 QA 漏掉直流偏移警告。gaps 的截止时间/DC 场景仅检查候选数量，未检查 health 指标或 QA 告警，不能覆盖后者。",
+      "coverage_reference": "tests/gaps/test_detection.py::DetectionTests::test_exact_deadline_and_dc_offset"
+    },
+    {
+      "id": "tests/audio/test_audio.py::AudioTests::test_memory_limit_before_decoding",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "忽略解码字节上限会在真实长录音上 OOM；现有 E2E 使用短文件，不触发资源拒绝。",
+      "coverage_reference": "tests/audio/test_formats.py::PreparationTests::test_formats_and_resampling_preserve_tracks_and_origin"
+    },
+    {
+      "id": "tests/audio/test_audio.py::AudioTests::test_partial_frame_not_zero_padded",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "尾部不足一帧被补零会降低活动能量并错过短语音；E2E 使用整秒夹具，未覆盖 200 样本边界。",
+      "coverage_reference": "tests/test_machine_cli.py::MachineCliTests::test_analysis_exit_codes_in_text_and_json"
+    },
+    {
+      "id": "tests/audio/test_audio.py::AudioTests::test_webrtc_cpu_backend",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实可选 WebRTC 扩展在支持速率上崩溃或接受非法速率；普通 E2E 使用能量检测器，不加载原生 VAD。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/audio/test_formats.py::PreparationTests::test_health_is_per_channel_and_activity_level_ignores_silence",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "两声道健康指标混算、静音拉低活动电平会误判录音；现有浏览器只展示结果，未检验声道 clipping/DC 数值。",
+      "coverage_reference": "tests/browser/review.spec.cjs::R02"
+    },
+    {
+      "id": "tests/audio/test_formats.py::PreparationTests::test_native_inspection_needs_no_ffmpeg",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "原生 WAV 错误依赖 FFmpeg 会让无可选工具环境无法使用；开发机 E2E 装有工具，不暴露缺依赖路径。",
+      "coverage_reference": "tests/test_machine_cli.py::MachineCliTests::test_analysis_exit_codes_in_text_and_json"
+    },
+    {
+      "id": "tests/audio/test_formats.py::PreparationTests::test_bad_file_isolated_and_output_protected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "批次坏文件不能终止好文件，已有产物不能被覆盖；实际文件和服务输出边界。",
+      "coverage_reference": "tests/test_machine_cli.py::MachineCliTests::test_analysis_exit_codes_in_text_and_json"
+    },
+    {
+      "id": "tests/audio/test_formats.py::PreparationTests::test_native_mono_not_duplicated",
+      "action": "keep",
+      "category": "integration",
+      "reason": "音频准备后单声道被复制会造成虚假双轨证据；检查实际输出 WAV 声道。",
+      "coverage_reference": "tests/browser/review.spec.cjs::R06"
+    },
+    {
+      "id": "tests/audio/test_formats.py::PreparationTests::test_invalid_event_cleans_generated_audio",
+      "action": "keep",
+      "category": "integration",
+      "reason": "事件侧车无效却残留生成音频会让后续流程消费失败产物；检查输出目录清理。",
+      "coverage_reference": "tests/test_machine_cli.py::MachineCliTests::test_analysis_exit_codes_in_text_and_json"
+    },
+    {
+      "id": "tests/audio/test_formats.py::PreparationTests::test_truncated_wave_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "截断音频若补零继续处理会产生虚假静音；从 prepare 服务读取真实截断文件。",
+      "coverage_reference": "tests/visqol/test_cli.py::VisqolCliTests::test_invalid_audio_has_null_score_and_no_backend_run"
+    },
+    {
+      "id": "tests/audio/test_formats.py::PreparationTests::test_formats_and_resampling_preserve_tracks_and_origin",
+      "action": "keep",
+      "category": "integration",
+      "reason": "跨 WAV/FLAC/MP3/AAC/G711 真实 FFmpeg 转换丢轨、时轴漂移或覆写源文件；检查生成音频样本与哈希。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/audio/test_formats.py::PreparationTests::test_raw_requires_contract_and_preserves_mono",
+      "action": "keep",
+      "category": "integration",
+      "reason": "裸 PCM 缺格式契约却猜测输入，或转换后复制声道；真实 FFmpeg 和产物检查。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/audio/test_formats.py::PreparationTests::test_compressed_events_require_explicit_manual_alignment",
+      "action": "keep",
+      "category": "integration",
+      "reason": "有损转换沿用已验证时间轴会导致错位质检；从 prepare 到 QA 拒绝/人工对齐后接受的跨模块流程。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/nisqa/test_cli.py::CliTests::test_discovery_imports_no_optional_runtime",
+      "action": "keep",
+      "category": "integration",
+      "reason": "schema 启动误加载 torch 等可选包会破坏无模型机器的发现命令；独立进程检查导入边界。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_cli.py::CliTests::test_missing_dependencies_doctor_is_offline",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "强制所有依赖元数据缺失，验证 doctor 将缺失版本保留为空而非误标为已安装；替代 CLI 使用缺失权重目录，仅检查 ready=false，模型缺失会掩盖错误的版本状态，且依赖安装状态随环境变化，不能覆盖该确定性失败输入。",
+      "coverage_reference": "tests/nisqa/test_cli.py::CliTests::test_doctor_json_reports_not_ready_without_traceback"
+    },
+    {
+      "id": "tests/nisqa/test_cli.py::CliTests::test_doctor_json_reports_not_ready_without_traceback",
+      "action": "keep",
+      "category": "integration",
+      "reason": "缺模型时 doctor 应返回可解析 JSON 和未就绪状态，避免错误 traceback 污染自动调用。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_cli.py::CliTests::test_invalid_options_and_missing_input_json",
+      "action": "keep",
+      "category": "integration",
+      "reason": "缺参数和 NaN 配置应在加载模型前被 CLI 拒绝，真实模型成功流程未覆盖。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_weights.py::WeightTests::test_download_verified_and_reuse_does_not_connect",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "已验证离线权重被强制联网会导致离线不可用；真实模型 E2E 不运行下载器，需受控网络边界。",
+      "coverage_reference": "tests/nisqa/test_real_model.py::RealModelTests::test_offline_real_model_matches_torchmetrics_function"
+    },
+    {
+      "id": "tests/nisqa/test_weights.py::WeightTests::test_bad_download_preserves_old_file_and_removes_partial",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "坏下载覆盖旧权重或残留半成品造成永久失效；真实模型 E2E 只读取合法权重。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_weights.py::WeightTests::test_invalid_existing_requires_force",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "损坏缓存被静默覆盖或不允许明确修复；真实模型 E2E 不修改用户缓存。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_weights.py::WeightTests::test_network_failure_does_not_leave_weight",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "断网写入伪完整权重导致下次错误复用；离线真实模型路径不触发下载失败。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_weights.py::WeightTests::test_missing_and_symlink_are_rejected",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "权重符号链接可能读取或覆写目录外文件；真实模型 E2E 使用普通合法文件。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_weights.py::WeightTests::test_xdg_cache_path",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "忽略 XDG_CACHE_HOME 会让默认下载、doctor 和推理读取错误缓存目录。保留的权重测试及真实模型专项均显式指定 model_dir，绕过默认目录选择；没有覆盖设置 XDG_CACHE_HOME 且省略目录参数的配置。",
+      "coverage_reference": "tests/nisqa/test_real_model.py::RealModelTests::test_offline_real_model_matches_torchmetrics_function"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_stereo_separate_samples_timestamps_and_short_tail",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "分段声道顺序、截尾和 CSV 列错配会污染评分证据；真实模型专项只验证整体得分，未覆盖双轨分段。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_stereo_requires_explicit_channel_but_mono_still_completes",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "无声道选择的双轨被默认混音会生成错误评分，且不应阻断单声道；真实模型专项不测试混合坏/好输入。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_mono_is_not_duplicated_for_both",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "单声道被当作双声道输出会伪造证据；真实模型专项只用默认单轨。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_silent_quiet_short_empty_no_inference",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "无证据音频调用模型并产生看似正常评分；真实模型专项要求真实语音，不能覆盖静音和空输入。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_corrupt_file_preserves_other_results",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "坏文件使整个批次退出而丢失合法评分；真实模型专项仅单文件。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_nonfinite_audio_or_predictions_are_errors",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "NaN 音频/模型输出传播为合法分数；真实模型正常样本无法稳定制造该异常。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_runtime_error_is_recorded_and_next_segment_continues",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "保留双声道故障流程由同一个 _evaluate_channel_segment 捕获第一次评分 RuntimeError，继续成功评分后续通道并处理下一数据块；核对 errors/scored、错误原因截断、记录顺序和每段状态，覆盖评分失败不能终止其余处理的相同分支。",
+      "coverage_reference": "tests/nisqa/test_service.py::ServiceTests::test_stereo_failure_preserves_channel_order_samples_and_error_priority"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_duration_and_rms_gates_include_exact_boundary",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "等于门限时错误排除有效语音，尾段时间戳越界；真实模型 E2E 没有精确数值门限输入。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_stereo_failure_preserves_channel_order_samples_and_error_priority",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "模型改写输入数组或某声道失败污染后续声道与错误状态；受控 scorer 才能确定性注入。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_nonfinite_short_audio_precedes_duration_gate",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "极短 NaN 被误报证据不足而掩盖损坏输入；真实模型专项不含损坏的单样本音频。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_invalid_score_shapes_fail_per_segment_and_later_segment_completes",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "缺评分维度/无限分数被误当成功，或终止后续分段；真实模型正常调用不稳定产生此类后端协议失败。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_unsupported_sample_rate_is_rejected_before_scoring",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "低采样率输入到模型得到不可信评分；真实模型专项只使用有效语音采样率。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_recursive_inputs_deduplicate_and_support_flac",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "递归输入重复统计同一录音或不能读取 FLAC；真实模型专项只使用单一 WAV。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_options_and_existing_output_fail_before_model_load",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "无效选项加载昂贵模型或覆盖已有分析；真实模型 E2E 成功路径不覆盖拒绝和保留用户数据。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_setup_failure_does_not_create_output",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "模型初始化失败留下看似可用结果目录；需注入初始化异常，真实成功 E2E 无此条件。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_service.py::ServiceTests::test_missing_numpy_fails_before_output_even_for_empty_audio",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "缺 numpy 时空音频路径绕过依赖检查并留下结果；真实模型环境装有 numpy，无法覆盖。",
+      "coverage_reference": "tests/nisqa/test_real_model.py"
+    },
+    {
+      "id": "tests/nisqa/test_real_model.py::RealModelTests::test_offline_real_model_matches_torchmetrics_function",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 checkpoint 对照上游评分并经过 analyze，捕获模型适配/维度顺序/离线加载问题；需要用户提供模型和语音。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_schema_task_runtime_and_old_profile",
+      "action": "keep",
+      "category": "integration",
+      "reason": "latency_dir 若从 runtime 错分为 input，任务会接受本应只由执行端配置的引擎目录引用，author 页面也会暴露该输入。迁移流程仅在 executor.json 配置引擎，从未把 latency_dir 写入任务参数，不能验证该拒绝边界；此用例整合实际 schema 子进程与任务 catalog。",
+      "coverage_reference": "tests/latency/test_engine.py::RealEngineTests::test_mixed_gaps_benchmark_latency_review_after_migration"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_effective_values_and_rejections",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "NaN/Inf/布尔参数被传入引擎会得到无意义时延；真实引擎专项使用合法默认值，未覆盖非法配置。",
+      "coverage_reference": "tests/latency/test_engine.py"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_empty_measurements_and_pooled_percentile",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "P95 错误按批均值或空值当零会改变时延结论；真实引擎样本主要是相同时延，无法区分分位数算法。",
+      "coverage_reference": "tests/latency/test_engine.py::RealEngineTests::test_rates_and_no_drift"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_normalized_inputs_and_precedence",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "显式 latency 路径被 VOICE_TOOLS_LATENCY_DIR 覆盖会调用错误引擎；重复目录/文件输入会重复处理。真实引擎重复输入流程不同时设置环境变量与显式路径，无法检出配置优先级反转，因此保留该隔离缺口。",
+      "coverage_reference": "tests/latency/test_engine.py::RealEngineTests::test_partial_failure_duplicate_and_identity"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_missing_dependency_does_not_create_output",
+      "action": "keep",
+      "category": "integration",
+      "reason": "缺引擎留下输出目录使重试失败或被误认完成；真实引擎 E2E 仅在就绪环境启用。",
+      "coverage_reference": "tests/latency/test_engine.py"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_install_lock_refuses_concurrent_attempt",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "并发安装破坏共享 runtime；真实引擎 E2E 使用预安装目录，不执行并发安装。",
+      "coverage_reference": "tests/latency/test_engine.py"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_hash_lock_rejects_same_version_repacked_wheel",
+      "action": "keep",
+      "category": "integration",
+      "reason": "同版本被重打包的 wheel 绕过锁定摘要；真实 pip 离线下载拒绝被篡改制品，E2E 不重装依赖。",
+      "coverage_reference": "docs/latency-install.md"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_corrupt_ready_is_a_dependency_error",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "损坏 ready.json 触发异常或误报已就绪；真实引擎 E2E 只用有效标记。",
+      "coverage_reference": "tests/latency/test_engine.py"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_engine_crash_is_not_silent_success",
+      "action": "keep",
+      "category": "integration",
+      "reason": "引擎非零退出却产生成功状态、丢失 stderr；真实子进程退出注入，正常引擎专项不保证触发崩溃。",
+      "coverage_reference": "tests/latency/test_engine.py"
+    },
+    {
+      "id": "tests/latency/test_contract.py::ContractTests::test_timeout_kills_engine_and_descendant",
+      "action": "keep",
+      "category": "integration",
+      "reason": "超时后遗留推理子孙进程消耗 CPU；真实进程树和状态检查，正常引擎专项不会稳定超时。",
+      "coverage_reference": "tests/latency/test_engine.py"
+    },
+    {
+      "id": "tests/latency/test_web.py::WebTests::test_renderer_numeric_validation_and_escaping",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "恶意数字字段写进 HTML 或强制转换显示虚假结论；Node sink 故障注入，现有 review 浏览器测试没有 latency DOM 场景。",
+      "coverage_reference": "tests/latency/web_renderer.cjs"
+    },
+    {
+      "id": "tests/latency/test_web.py::WebTests::test_checksum_valid_bundle_and_standalone_use_current_renderer",
+      "action": "keep",
+      "category": "integration",
+      "reason": "合法校验和包携带 HTML 注入或旧 renderer 绕过验证；实际打包/验证/导出覆盖两个交付路径。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/test_engine.py::RealEngineTests::test_rates_and_no_drift",
+      "action": "keep",
+      "category": "integration",
+      "reason": "多种真实采样率与长音频时轴漂移、资源上限；真实隔离引擎专项，保留产物断言。",
+      "coverage_reference": "docs/latency-validation.md"
+    },
+    {
+      "id": "tests/latency/test_engine.py::RealEngineTests::test_short_long_silent_overlap_and_no_response",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实引擎对短响应、静音、重叠和无响应的证据状态；真实隔离引擎专项，保留产物断言。",
+      "coverage_reference": "docs/latency-validation.md"
+    },
+    {
+      "id": "tests/latency/test_engine.py::RealEngineTests::test_partial_failure_duplicate_and_identity",
+      "action": "keep",
+      "category": "integration",
+      "reason": "坏文件隔离、去重身份、声道角色切换和已有输出保护；真实隔离引擎专项，保留产物断言。",
+      "coverage_reference": "docs/latency-validation.md"
+    },
+    {
+      "id": "tests/latency/test_engine.py::RealEngineTests::test_forward_superseded_and_reverse_long_delay",
+      "action": "keep",
+      "category": "integration",
+      "reason": "被取代轮次和长反向时延；真实隔离引擎专项，保留产物断言。",
+      "coverage_reference": "docs/latency-validation.md"
+    },
+    {
+      "id": "tests/latency/test_engine.py::RealEngineTests::test_resumed_human_keeps_its_next_response_independent",
+      "action": "keep",
+      "category": "integration",
+      "reason": "重叠后恢复说话的下一次响应被错误归属；真实隔离引擎专项，保留产物断言。",
+      "coverage_reference": "docs/latency-validation.md"
+    },
+    {
+      "id": "tests/latency/test_engine.py::RealEngineTests::test_mixed_gaps_benchmark_latency_review_after_migration",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "gaps/benchmark/latency 混合任务迁移并复查产物；真实隔离引擎专项，保留产物断言。",
+      "coverage_reference": "docs/latency-validation.md"
+    },
+    {
+      "id": "tests/latency/test_engine.py::RealEngineTests::test_pack_remove_inputs_run_collect_review",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "删除源目录后任务执行、收集、复查及音频定位；真实隔离引擎专项，保留产物断言。",
+      "coverage_reference": "docs/latency-validation.md"
+    },
+    {
+      "id": "tests/test_review_runner.py::ReviewAudioServerTests::test_full_and_partial_audio_reads",
+      "action": "keep",
+      "category": "integration",
+      "reason": "HTTP 范围/后缀范围错误导致音频 seek 获取错误字节；真实 HTTP 请求覆盖浏览器未穷举的 Range 形式。",
+      "coverage_reference": "tests/browser/review.spec.cjs::R01"
+    },
+    {
+      "id": "tests/test_review_runner.py::ReviewAudioServerTests::test_range_head_has_length_without_body",
+      "action": "keep",
+      "category": "integration",
+      "reason": "Range HEAD 返回实体或错误长度使播放器缓冲判断错误；播放 E2E 不保证发送 HEAD。",
+      "coverage_reference": "tests/browser/review.spec.cjs::R01"
+    },
+    {
+      "id": "tests/test_review_runner.py::ReviewAudioServerTests::test_unsatisfiable_range_is_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "越界 Range 未返回 416 会让音频下载异常循环；浏览器正常播放不生成越界请求。",
+      "coverage_reference": "tests/browser/review.spec.cjs::R01"
+    },
+    {
+      "id": "tests/test_machine_cli.py::MachineCliTests::test_schema_is_offline_and_covers_actual_p0_commands",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CLI 子进程查询 QA schema，可检出命令分发遗漏、QA 命令发现不完整及 golden_write/qa_assessment 契约版本丢失；Studio CLI 兼容检查不查询这些 QA 数据契约，不能替代该入口。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/test_machine_cli.py::MachineCliTests::test_json_errors_are_one_parseable_object",
+      "action": "keep",
+      "category": "integration",
+      "reason": "不同 CLI 拒绝路径输出混杂文本/traceback 使机器调用不可解析；以真实进程检查。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/test_machine_cli.py::MachineCliTests::test_json_generator_preserves_all_scenarios",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CLI 子进程执行 --json qa generate，可检出命令分发损坏、JSON 汇总遗漏及 WAV 场景未写全；现有分析 CLI 和浏览器流程直接调用 write_case 生成夹具，没有执行 qa generate，不能替代该入口。",
+      "coverage_reference": "tests/test_machine_cli.py::MachineCliTests::test_analysis_exit_codes_in_text_and_json"
+    },
+    {
+      "id": "tests/test_machine_cli.py::MachineCliTests::test_analysis_exit_codes_in_text_and_json",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "CLI 从真实输入到 review/results 产物，验证 findings/partial/invalid 状态与退出码对应。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/test_machine_cli.py::MachineCliTests::test_homer_native_json_remains_usable",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CLI 子进程验证顶层 --json 与 HOMER 原生分发组合；误将 --json 传给 HOMER 或不剥离它会使机器调用退出 2。其余 HOMER 流程不带该顶层选项，schema/离线分析入口相同也无法覆盖这一分支。",
+      "coverage_reference": "tests/homer/test_entrypoints.py; tests/homer/test_client.py"
+    },
+    {
+      "id": "tests/test_machine_cli.py::MachineCliTests::test_whole_recording_cli_has_fail_closed_and_partial_exit_codes",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "实际整段质检 CLI 拒绝无依据自动通过并输出复核 CSV；覆盖失败、部分结果和缺模型。",
+      "coverage_reference": "tests/recording_qa/test_assessment_workflow.py"
+    },
+    {
+      "id": "tests/test_machine_cli.py::MachineCliTests::test_whole_recording_review_cli_does_not_invent_human_labels",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "assess 到 assess-check/evaluate 不能把机器 CSV 当人工标签；真实产物链保护指标可信性。",
+      "coverage_reference": "tests/recording_qa/test_assessment_workflow.py"
+    },
+    {
+      "id": "tests/visqol/test_cli.py::VisqolCliTests::test_real_cli_protocol_artifacts_paths_and_native_output_isolation",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CLI 到受控外部程序及 JSON/CSV/日志/音频副本产物，防止原生 stdout 污染机器协议；不是质量模型验收。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_cli.py::VisqolCliTests::test_doctor_missing_dependency_and_environment_resolution",
+      "action": "keep",
+      "category": "integration",
+      "reason": "缺后端误报就绪、环境目录解析失效，检查真实 CLI doctor 状态。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_cli.py::VisqolCliTests::test_nonempty_output_is_never_overwritten",
+      "action": "keep",
+      "category": "integration",
+      "reason": "运行覆盖用户既有结果；从公开 CLI 检查文件保留。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_cli.py::VisqolCliTests::test_invalid_audio_has_null_score_and_no_backend_run",
+      "action": "keep",
+      "category": "integration",
+      "reason": "不合法/静音音频仍产生评分或启动后端；真实文件及 CLI 检查拒绝产物。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_cli.py::VisqolCliTests::test_backend_failures_do_not_become_success_scores",
+      "action": "keep",
+      "category": "integration",
+      "reason": "崩溃、超时、错路径、缺输出和非有限分数被包装为成功；受控外部后端确定性制造异常。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_cli.py::VisqolCliTests::test_batch_relative_paths_mixed_failures_continue",
+      "action": "keep",
+      "category": "integration",
+      "reason": "含逗号/相对路径 CSV 解析出错或坏配对中断好配对，检查实际批次 JSONL。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_cli.py::VisqolCliTests::test_empty_and_malformed_csv_fail_before_output",
+      "action": "keep",
+      "category": "integration",
+      "reason": "坏 CSV 被执行并留下貌似结果目录；从 CLI 拒绝无效输入。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_cli.py::VisqolCliTests::test_audio_mode_and_timeout_validation",
+      "action": "keep",
+      "category": "integration",
+      "reason": "audio 模式误加 speech 标志或不合法超时启动任务；检查真实进程调用记录。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_cli.py::VisqolCliTests::test_schema_discovers_visqol_without_backend",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CLI 子进程查询 schema --tool visqol；命令发现遗漏会使机器客户端无法发现已有评分/批处理能力。现存 doctor、score、batch 子进程直接指定业务命令，不查询该发现入口，无法检出其命令集缺失。",
+      "coverage_reference": "tests/visqol/test_cli.py::VisqolCliTests::test_doctor_missing_dependency_and_environment_resolution"
+    },
+    {
+      "id": "tests/visqol/test_export_runtime.py::RuntimeExportTests::test_bundle_uses_regular_files_and_survives_build_cache_removal",
+      "action": "keep",
+      "category": "integration",
+      "reason": "导出仍引用 Bazel 缓存符号链接导致迁移失败；删除缓存后验证两个模型和二进制独立存在。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_export_runtime.py::RuntimeExportTests::test_existing_results_are_preserved",
+      "action": "keep",
+      "category": "integration",
+      "reason": "导出覆盖既有 runtime 用户文件；真实导出路径验证保留。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_export_runtime.py::RuntimeExportTests::test_missing_audio_model_fails_before_export",
+      "action": "keep",
+      "category": "integration",
+      "reason": "只带 speech 模型却宣称完整导出，造成 audio 模式运行失败；拒绝不完整实际文件集。",
+      "coverage_reference": "docs/testing.md"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_qemu_workaround_rejects_unknown_binary_before_compiling",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "QEMU workaround 执行未验证 Bazel；真实评分 E2E 不重装后端，不能触发供应链拒绝。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_bazel_startup_error_keeps_diagnostic_without_implicit_workaround",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "Bazel 特定启动失败自动启用未经选择的 workaround；现有评分流程用已安装后端，不覆盖安装决策。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_qemu_option_does_not_mask_unrelated_startup_error",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "开启 workaround 后吞掉无关安装错误，造成误报/错误操作；需确定性注入启动诊断。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_verified_archive_resume_and_local_edit_protection",
+      "action": "keep",
+      "category": "integration",
+      "reason": "重跑安装覆盖源码中的用户修改；实际 archive/目录操作校验恢复边界。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_checksum_failure_never_extracts",
+      "action": "keep",
+      "category": "integration",
+      "reason": "未验证 archive 被解压到安装目录；真实合法后端 E2E 不含摘要不匹配。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_traversal_and_symlink_members_are_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "恶意压缩包越界写文件或安装符号链接；构造真实 tar 成员并验证拒绝。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_unknown_source_files_are_not_compiled_or_removed",
+      "action": "keep",
+      "category": "integration",
+      "reason": "安装目录未知用户文件被删除或编译；真实文件保护检查，评分 E2E 不执行安装。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_valid_cached_download_needs_no_network",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "合法离线缓存被联网替换或不匹配缓存被覆盖；已安装后端评分不经过下载器。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_tflite_patch_is_exact_and_idempotent",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "macOS TFLite 补丁可能在已知源码上不替换目标或重复安装时拒绝已打补丁文件；未知修改保护只覆盖拒绝路径，无法检出成功修改和幂等性回归。保留合成文件隔离测试，不能据此宣称真实上游源码编译通过。",
+      "coverage_reference": "tests/visqol/test_installer.py::InstallerTests::test_tflite_unknown_edits_are_preserved"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_tflite_unknown_edits_are_preserved",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "macOS TFLite 补丁覆盖未匹配版本的用户源码；模型 E2E 已预安装，不触发补丁操作。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/visqol/test_installer.py::InstallerTests::test_build_timeout_and_nonzero_are_preserved",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实构建子进程超时/非零被吞掉，安装误报成功；使用短进程验证，不依赖耗时原生构建。",
+      "coverage_reference": "tests/visqol/test_cli.py"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "删除源目录及执行目录后任务包仍可检查、执行、收集和复核音频哈希，验证完整可迁移交付。",
+      "coverage_reference": "tests/browser/review.spec.cjs::R07"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_transitive_sip_absolute_media_relocation",
+      "action": "keep",
+      "category": "e2e",
+      "reason": "SIP 场景传递的绝对媒体路径迁移后失效或污染原始证据；真实包与 SIP CLI validate。",
+      "coverage_reference": "tests/browser/review.spec.cjs::R07"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_missing_dependency_blocks_pack",
+      "action": "keep",
+      "category": "integration",
+      "reason": "打包漏收传递音频依赖，异机不可运行；构造真实缺依赖文件并拒绝产物。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_unsafe_inputs_and_secret_rejected",
+      "action": "keep",
+      "category": "integration",
+      "reason": "任务包收集符号链接目标或明文秘密；普通迁移成功 E2E 不包含恶意文件。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_task_reference_and_types",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "向未来步骤引用和执行端 output 注入使任务执行错序/越界；现有 E2E 任务定义合法，无法覆盖。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_manifest_tamper_and_traversal",
+      "action": "keep",
+      "category": "integration",
+      "reason": "结果或任务包被篡改/路径穿越仍解包，破坏证据与目录边界；真实 zip 验证。",
+      "coverage_reference": "tests/browser/review.spec.cjs::R07"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_mapping_cannot_escape_even_with_valid_checksums",
+      "action": "keep",
+      "category": "integration",
+      "reason": "合法校验和映射仍能引用目录外秘密；真实包重签后检查语义安全。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_network_preflight_does_not_execute",
+      "action": "keep",
+      "category": "integration",
+      "reason": "preflight 意外执行网络任务，或在未授权网络时报告 ready；正常本地音频任务 E2E 无网络步骤。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_failure_skips_dependent_but_runs_independent",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "某步骤失败时仍执行依赖步骤或跳过独立步骤；受控分类失败可确定性验证调度与收集，正常 E2E 不含失败 DAG。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_status_semantics_and_redaction",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "秘密环境变量残留于交付日志或证据不足被当失败；现有 E2E 不注入秘密值/各工具非零分类。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_refusing_collect_active_run",
+      "action": "keep",
+      "category": "integration",
+      "reason": "执行中的不完整证据被收集为终态结果；正常 E2E 只收集已结束任务。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_grouped_pcap_references",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "嵌套 pcap_group 引用未展开导致多探针报告读错文件；现有 E2E 使用普通音频，未走分组引用。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_timeout_and_cancel_preserve_receipt",
+      "action": "keep",
+      "category": "integration",
+      "reason": "超时/取消丢失回执或留下子进程，妨碍失败结果收集；真实 SIGTERM/子进程，普通成功 E2E 不触发。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_invalid_zip_returns_input_error",
+      "action": "keep",
+      "category": "integration",
+      "reason": "畸形 zip 使 preflight 崩溃而非可识别输入错误；从 runner.check 读实际坏包。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_visqol_csv_collects_both_pair_files",
+      "action": "keep",
+      "category": "integration",
+      "reason": "配对 CSV 的相对/绝对引用漏收，使异机评分失败；真实打包、删除源、重定位后检查两端文件。",
+      "coverage_reference": "tests/visqol/test_cli.py::VisqolCliTests::test_batch_relative_paths_mixed_failures_continue"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_renamed_session_database_preserves_hash_and_relocates_source",
+      "action": "keep",
+      "category": "integration",
+      "reason": "改名 sqlite 被当普通输入漏收音频或迁移篡改哈希；删除源后检查数据库引用与实际内容。",
+      "coverage_reference": "tests/browser/review.spec.cjs::R07"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_models_and_existing_output_are_not_overwritten",
+      "action": "keep",
+      "category": "integration",
+      "reason": "任务包误携模型权重或覆写现存包；实际文件拒绝与哈希保留。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/task/test_delivery.py::DeliveryTests::test_executor_override_is_checked_before_execution",
+      "action": "keep",
+      "category": "integration",
+      "reason": "执行端覆盖注入错误阈值直到运行才失败，preflight 却宣称可运行；正常 E2E 使用有效配置。",
+      "coverage_reference": "tests/task/test_delivery.py::DeliveryTests::test_roundtrip_without_source_directory"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::default scenario compiles exact CLI fields and accounts for trailing DTMF gap",
+      "action": "delete",
+      "category": "isolated",
+      "reason": "保留默认场景真实 CLI validate/dry-run 拒绝编译残留 id/label 等未知字段；Node 的 missing media duration 和 minimal Studio import 分别核对默认 DTMF 尾部间隔计入 3.52 秒及单键 0.26 秒。原测试其余内容为默认对象固定值，无独立失败输入。",
+      "coverage_reference": "tests/studio/check_cli_compat.py::default; tests/studio/core.test.cjs::missing media duration is unknown, never presented as zero-duration verified media; tests/studio/core.test.cjs::minimal Studio import fills CLI defaults for editor forms and preview"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::Studio roundtrip preserves labels, tags, settings; renews identifiers",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "往返丢标签或复用 step ID 会导致编辑错误对象；CLI 兼容仅检查运行字段，不检查编辑标签/ID。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::CLI import fills runtime defaults without adding a hangup to imported behavior",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "导入等待流程被自动添加 hangup 会改变通话行为；CLI 兼容仅检查场景合法，额外挂断仍合法，无法发现。",
+      "coverage_reference": "tests/studio/check_cli_compat.py::minimal-import"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::unknown action and plaintext credential are rejected, not silently erased",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "恶意 action 或明文凭据被静默删除并导出，造成行为/秘密丢失；CLI 兼容只给合法输入。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::unknown nested and top-level fields fail closed",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "未知语义字段静默丢失，让导入与导出行为不同；CLI 兼容只执行已知字段。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::invalid digits, methods, float timings and boundaries are rejected",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "JS 接受无法拨出的按键、非整数时长；CLI 兼容只用合法正常场景。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::wait rejects nonfinite, boolean, and out of bounds",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "等待时长被 JS 强制转换，预览与 CLI 不一致；兼容样例没有 NaN/Infinity/布尔值。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::UDP URI validation rejects injection, TLS, invalid port and display name",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "URI 注入和不支持传输被 Studio 当可运行；CLI 兼容只有有效 UDP 地址。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::network parity, IPv4 and auth environment variable name are checked",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非法 RTP 端口/IP/凭据变量被 Studio 接受；CLI 兼容没有这些拒绝条件。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::hangup only last, action counts and total duration enforced",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "导出挂断后的死步骤或超时流程，执行偏离可视计划；兼容样例未超边界。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::moving a step cannot cross the final hangup; input remains immutable",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "拖动跨终止步骤或原地改输入导致编辑历史错乱；CLI 兼容不测试交互重排。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::missing media duration is unknown, never presented as zero-duration verified media",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "缺音频被显示为时长已验证，误导预算判断；CLI 兼容对缺文件只验证最终拒绝，没检查前端证据状态。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::asset duration participates in budget but always retains CLI verification warning",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "前端可见媒体时长漏算预算或误称已完成哈希核对；兼容流程不验证前端警告。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::Studio document rejects hidden secret fields and unsupported document version",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "导入隐藏秘密/未知版本被接受并降级，丢失安全与语义约束；兼容只导入正常文档。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::WAV checks real RIFF PCM format and derives amplitude from actual samples",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "前端波形使用占位数据而非音频振幅；CLI dry-run 不渲染波形，无法发现。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::WAV rejects stereo, wrong sample rate, wrong bit depth, truncation and zero duration",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "浏览器解析损坏 WAV 仍标为可播放；CLI 兼容使用合法 WAV，不调用 JS WAV 解析器。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::media manifests validate event boundaries, never claim to have checked audio hash bytes",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "重叠 DTMF 被前端接受，执行和预览次序不一致；CLI 兼容无重叠事件。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::media rejects unsupported versions, malformed hash and oversized events",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "无效媒体声明被预览为可用；CLI 兼容仅包含合法 manifest。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::explicit null never inherits defaults; non-string action cannot coerce into a known name",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "显式 null 或数组 action 经 JS 强制转换改变场景行为；JSON 兼容样例未包含畸形类型。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::latest main media contract checks boolean end_observed and floating point boundary tolerance",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非布尔终止标记或浮点相邻事件被错误接受/拒绝；兼容样例只有一个事件。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::Studio environment cannot hide a second steps array or runtime version",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "环境内嵌第二份步骤改变实际执行语义；正常文档往返不包含隐藏结构。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::minimal Studio import fills CLI defaults for editor forms and preview",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "最小文档导入不填编辑表单字段会导致空字段或编辑异常；CLI 编译有自己的规范化，成功 dry-run 不能证明编辑对象完整。",
+      "coverage_reference": "tests/studio/check_cli_compat.py::minimal-studio"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::five assertion types roundtrip through scenario and Studio documents",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "导入/导出丢失业务断言会让 SIP 执行缺失验收标准；CLI 兼容样例未带 assertions。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/studio/core.test.cjs::assertion validation rejects ambiguous or unsupported fields",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "非法断言、重复 ID 或隐藏秘密被接受使结果失真；兼容样例不测试这些错误。",
+      "coverage_reference": "tests/studio/check_cli_compat.py"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::summary: reject malformed coverage.paired before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "summary 的 coverage.paired 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::summary: reject malformed coverage.eligible_human_segments before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "summary 的 coverage.eligible_human_segments 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::summary: reject malformed statistics.human_to_ai.count before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "summary 的 statistics.human_to_ai.count 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::summary: reject malformed statistics.ai_to_human.count before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "summary 的 statistics.ai_to_human.count 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::summary: reject malformed coverage.dispositions.paired before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "summary 的 coverage.dispositions.paired 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::summary: ratio rejects coercion and nonfinite/out-of-range values",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "覆盖率被字符串/布尔强制转换或越界数据污染；现有浏览器 E2E 没有 latency 页面，Node sink 只能验证赋值边界，不能替代 DOM 验收。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::summary: valid counts and zero/null evidence remain readable",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "无证据被呈现成零时延，误导业务判断；现有浏览器 E2E 没有 latency 页面，Node sink 只能验证赋值边界，不能替代 DOM 验收。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::summary: free text stays escaped and never creates a tag",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "自由文本在 summary/detail 写入 HTML 时造成注入；现有浏览器 E2E 没有 latency 页面，Node sink 只能验证赋值边界，不能替代 DOM 验收。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::detail: reject malformed coverage.paired before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "detail 的 coverage.paired 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::detail: reject malformed coverage.eligible_human_segments before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "detail 的 coverage.eligible_human_segments 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::detail: reject malformed statistics.human_to_ai.count before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "detail 的 statistics.human_to_ai.count 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::detail: reject malformed statistics.ai_to_human.count before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "detail 的 statistics.ai_to_human.count 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::detail: reject malformed coverage.dispositions.paired before writing HTML",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "detail 的 coverage.dispositions.paired 若允许标签/非整数计数会造成 HTML 注入或虚假统计；现有浏览器 E2E 没有 latency 页面。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::detail: ratio rejects coercion and nonfinite/out-of-range values",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "覆盖率被字符串/布尔强制转换或越界数据污染；现有浏览器 E2E 没有 latency 页面，Node sink 只能验证赋值边界，不能替代 DOM 验收。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::detail: valid counts and zero/null evidence remain readable",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "无证据被呈现成零时延，误导业务判断；现有浏览器 E2E 没有 latency 页面，Node sink 只能验证赋值边界，不能替代 DOM 验收。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    },
+    {
+      "id": "tests/latency/web_renderer.cjs::detail: free text stays escaped and never creates a tag",
+      "action": "keep",
+      "category": "isolated",
+      "reason": "自由文本在 summary/detail 写入 HTML 时造成注入；现有浏览器 E2E 没有 latency 页面，Node sink 只能验证赋值边界，不能替代 DOM 验收。",
+      "coverage_reference": "tests/browser/review.spec.cjs"
+    }
+  ],
+  "counts": {
+    "keep": 151,
+    "delete": 4
+  },
+  "category_counts": {
+    "integration": 60,
+    "isolated": 84,
+    "e2e": 7
+  }
+}

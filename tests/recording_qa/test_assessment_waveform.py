@@ -9,7 +9,6 @@ from unittest.mock import patch
 from voice_tools.audio.io import write_wav
 from voice_tools.tools.recording_qa import assessment_batch
 from voice_tools.tools.recording_qa.assessment import Policy
-from voice_tools.tools.recording_qa.assessment_report import render
 from voice_tools.tools.recording_qa.assessment_review import validate_record
 from tests.recording_qa.fixtures import FixtureModel, recording
 
@@ -57,13 +56,6 @@ class AssessmentWaveformTests(unittest.TestCase):
         self.assertEqual(first['assessment_id'], second['assessment_id'])
         self.assertEqual(first['result'], second['result'])
 
-    def test_old_record_without_waveform_remains_renderable(self):
-        _, summary, record = self.generate()
-        record.pop('waveform')
-        validate_record(record)
-        render(self.root / 'legacy.html', [record], summary)
-        self.assertIn('此录音未附带波形数据', (self.root / 'legacy.html').read_text())
-
     def test_malformed_imported_waveform_is_rejected(self):
         _, _, record = self.generate()
         wave = record['waveform']
@@ -89,13 +81,6 @@ class AssessmentWaveformTests(unittest.TestCase):
         del record['result']['system_channel']
         with self.assertRaisesRegex(ValueError, '缺少系统声道'):
             validate_record(record)
-
-    def test_legacy_missing_roles_remain_renderable_without_verification(self):
-        _, summary, record = self.generate()
-        for field in ('channel_verified', 'system_channel'):
-            record['result'].pop(field)
-        validate_record(record)
-        render(self.root / 'unknown-roles.html', [record], summary)
 
     def test_imported_ranges_allow_only_the_documented_rounding_tolerance(self):
         _, _, record = self.generate()

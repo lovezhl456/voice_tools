@@ -38,20 +38,12 @@ class AssertionTests(unittest.TestCase):
         self.assertEqual(self.check('response_code', codes=[200])['status'], 'passed')
         self.assertEqual(self.check('response_code', codes=[486])['status'], 'failed')
 
-    def test_missing_response_not_local_timeout(self):
-        self.result['call'] = {'last_sip_code': 408}
-        self.assertEqual(self.check('response_code', codes=[408])['status'], 'insufficient_evidence')
-
     def test_rtp_missing_zero_positive_and_incomplete(self):
         evidence = self.result['call']['assertion_evidence']
         for packets, final, expected in [(None, True, 'insufficient_evidence'), (0, True, 'failed'),
                                          (20, True, 'passed'), (0, False, 'insufficient_evidence')]:
             evidence.update(rx_rtp_packets_lower_bound=packets, rtp_final_sample=final)
             self.assertEqual(self.check('received_rtp')['status'], expected)
-
-    def test_rtp_not_proven_by_wav(self):
-        self.wav(); self.result['call'] = {}
-        self.assertEqual(self.check('received_rtp')['status'], 'insufficient_evidence')
 
     def test_effective_audio_rejects_silence_and_dc(self):
         for dc in (False, True):

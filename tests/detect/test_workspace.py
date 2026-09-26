@@ -1,4 +1,3 @@
-import copy
 import json
 from pathlib import Path
 import tempfile
@@ -7,7 +6,6 @@ import unittest
 from unittest.mock import patch
 
 from voice_tools.tools.detect import store, workspace
-from voice_tools.tools.detect.definition import fingerprint
 from voice_tools.tools.detect.server import EditorApplication
 from voice_tools.tools.detect.service import run
 from .fixtures import config, wav

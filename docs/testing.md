@@ -1,6 +1,8 @@
 # 测试选择与运行
 
-小改动先运行受影响模块及其调用方；公共契约、跨工具流程变化和含代码／测试变更的 PR 交付前执行默认全量。规则见 [仓库约定](../AGENTS.md)，本次整理证据见 [测试维护验证](test-maintenance-validation.md)。
+先选择覆盖实际用户流程的 E2E；公共契约、跨工具流程变化和含代码／测试变更的 PR 交付前执行默认全量。禁止编写代码后再补单元测试；必须隔离验证时，在编码前写下系统可能失败的所有方式，并说明现有 E2E 的缺口。规则见 [仓库约定](../AGENTS.md)，本次去留依据见 [测试精简记录](test-pruning.md)，较早的整理证据见 [测试维护验证](test-maintenance-validation.md)。
+
+E2E 结束后保留确定性输入、命令、安装包／代码标识、结果及校验信息。当前浏览器运行器会输出 wheel、合成录音、导出结果、截图、逐项结果和 `verification.json`，命令见下文。Python discovery 和 Node 中保留的隔离测试用于已记录的失败路径缺口；它们不是新功能默认的测试方式，也不能因为使用临时目录就称为完整 E2E。
 
 ## 环境与源码来源
 
@@ -30,7 +32,7 @@ PYTHONPATH="$PWD/src" python -c 'import sys, voice_tools; from pathlib import Pa
 
 ## 按影响选择测试
 
-使用 `python -m unittest` 的模块或方法选择，不维护固定的“快速测试白名单”。先读调用关系，范围不清时检查直接调用方；存在公共影响时进入默认全量。
+先选复核 `check_review.py` 或检测／编辑／工作区 `check_detection.py` 等现有流程入口。以下是保留的补充测试选测映射，可用 `python -m unittest` 的模块或方法选择；它不授权新增单元测试。先读调用关系，范围不清时检查直接调用方；存在公共影响时进入默认全量。
 
 | 改动位置或行为 | 局部验证至少覆盖 |
 |---|---|
@@ -60,7 +62,16 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 只在选择依据需要时扩大范围。合成测试检查工程规则，不证明真实业务通话或人工听感准确率。
 同一代码、测试、依赖和执行条件未变时，复用本轮已完成的全量结果；不能用减少测试方法数代替功能覆盖或耗时比较。`soundfile` 缺失导致的 NISQA 服务与 gaps 评分来源跳过属于普通测试的依赖缺口，相关功能受影响时补齐依赖再验证。
 
-## 默认全量：三项均需记录
+## 默认全量：E2E 与补充检查均需记录
+
+先按“安装包浏览器验收”一节准备锁定的 Playwright 与 Chromium，再执行桌面／手机 E2E。两次运行复用同一个安装包，每次使用新的产物目录：
+
+```bash
+python scripts/check_review.py --out .artifacts/review-check
+python scripts/check_detection.py --package-root .artifacts/review-check/package --out .artifacts/detect-check
+```
+
+复核需 16 项通过，检测／编辑／工作区需 30 项通过；均不得有失败、跳过、重试通过或缺失能力。`verification.json`、`browser-results.json`、截图、导出文件与合成录音是可验证产物。随后运行精简后保留的补充检查：
 
 ```bash
 env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR -u VOICE_TOOLS_TEST_QA_MODEL_DIR \

@@ -17,12 +17,6 @@ class AssessmentTests(unittest.TestCase):
         audio=recording(user,agent,duration)
         return assess(audio,HASH,metadata or {},policy or self.policy,model or evidence(audio,user,agent))
 
-    def test_normal_is_automatic_with_complete_independent_evidence(self):
-        result=self.run_case()
-        self.assertEqual(result['decision'],'AUTO_PASS')
-        self.assertFalse(result['review_required'])
-        self.assertEqual(result['turns'][0]['decision'],'PASS')
-
     def test_missing_and_late_response_are_machine_anomalies(self):
         for agent,kind in [((), 'no_response'), (((7,7.6),),'late_response')]:
             with self.subTest(kind=kind):
@@ -36,13 +30,6 @@ class AssessmentTests(unittest.TestCase):
         result=assess(audio,HASH,{},self.policy,evidence(audio,agent=()))
         self.assertEqual(result['decision'],'NEEDS_REVIEW')
         self.assertEqual(result['findings'][0]['kind'],'non_speech_output')
-
-    def test_model_false_positive_on_silent_agent_cannot_auto_pass(self):
-        audio = recording(agent=())
-        result = assess(audio, HASH, {}, self.policy, evidence(audio))
-        self.assertEqual(result['decision'], 'NEEDS_REVIEW')
-        self.assertEqual(result['turns'][0]['reason'], 'speech_energy_conflict')
-        self.assertTrue(result['review_required'])
 
     def test_engineering_support_must_overlap_the_model_response(self):
         for energy in ([], [(4, 5)], [(2, 2.2)]):

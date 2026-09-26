@@ -1,4 +1,3 @@
-import json
 import os
 from pathlib import Path
 import subprocess
@@ -17,6 +16,7 @@ from voice_tools.tools.task.runner import profile
 
 
 class ContractTests(unittest.TestCase):
+
     def test_schema_task_runtime_and_old_profile(self):
         spec = catalog()['latency.batch']
         self.assertEqual(next(a['role'] for a in spec['arguments'] if a['name']=='latency_dir'),'runtime')

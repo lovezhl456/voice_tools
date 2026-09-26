@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from voice_tools.audio.io import write_wav
-from voice_tools.core.files import write_json,read_json
+from voice_tools.core.files import write_json
 from voice_tools.tools.task import bundle,runner,review,catalog
 from tests.recording_qa.fixtures import recording
 

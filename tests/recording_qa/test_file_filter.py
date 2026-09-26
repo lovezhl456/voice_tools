@@ -1,10 +1,9 @@
 """Directory selection contract shared by QA and output-gap review pages."""
 from pathlib import Path
 import subprocess
-import tempfile
 import unittest
 
-from voice_tools.core.review.page import ASSETS, render_page
+from voice_tools.core.review.page import ASSETS
 
 
 class FileFilterTests(unittest.TestCase):
@@ -15,18 +14,3 @@ class FileFilterTests(unittest.TestCase):
             capture_output=True, text=True, timeout=30,
         )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-
-    def test_shared_page_embeds_filter_before_business_script(self):
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / 'review.html'
-            render_page(path, {'records': []}, '/* business script */')
-            html = path.read_text()
-        self.assertIn((ASSETS / 'file-filter.js').read_text(), html)
-        self.assertLess(html.index('id="directoryFilter"'), html.index('id="fileFilter"'))
-        self.assertIn('id="fileSearch" type="search"', html)
-        self.assertLess(html.index('function createReviewFileFilter'), html.index('/* business script */'))
-        self.assertNotIn('__FILE_FILTER_SCRIPT__', html)
-        for identifier in ('waveform', 'start', 'end', 'player', 'channel', 'loop', 'play', 'volume', 'mute'):
-            self.assertEqual(html.count(f'id="{identifier}"'), 1)
-        for asset in ('waveform-panel.html', 'waveform-panel.css', 'playback-controls.html'):
-            self.assertTrue((ASSETS / asset).is_file())

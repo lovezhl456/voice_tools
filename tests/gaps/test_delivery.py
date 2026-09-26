@@ -9,7 +9,6 @@ from voice_tools.core.files import read_json, write_json, sha256
 from voice_tools.core.rtp_timeline import TimelineWriter
 from voice_tools.core.output_events import rebind_prepared
 from voice_tools.tools.task import bundle, runner, review
-from voice_tools.tools.gaps.service import analyze_batch
 from voice_tools.tools.recording_qa.batch import analyze_batch as qa_batch
 from voice_tools.tools.recording_qa.dataset import freeze
 from tests.benchmark.fixtures import write_evidence

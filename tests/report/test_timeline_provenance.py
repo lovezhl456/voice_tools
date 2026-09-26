@@ -55,10 +55,3 @@ class TimelineProvenanceTests(unittest.TestCase):
         result = self.run_report(self.sources[0].unlink)
         self.assertEqual(result['errors'], 1)
         self.assertEqual(list((self.root / 'report').rglob('timeline.json')), [])
-
-    def test_default_report_does_not_add_timeline_hash_passes(self):
-        with patch('voice_tools.tools.report.service.sha256', wraps=sha256) as digest:
-            result = self.run_report(enabled=False)
-        self.assertEqual(digest.call_count, 1)
-        self.assertFalse(result['partial'])
-        self.assertNotIn('rtp_timeline', result['pcaps'][0])

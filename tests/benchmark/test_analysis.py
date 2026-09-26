@@ -56,24 +56,12 @@ class TimingTests(unittest.TestCase):
         self.assertEqual(report["issues"], [])
         self.assertAlmostEqual(report["activity"]["rx"][0]["end_s"], .4)
 
-    def test_new_answer_is_not_counted_as_old_audio(self):
-        rows = metrics([span(0, 1.1), span(2, 2.2)], [span(1, 1.4)], 0, 0, 3, self.config)
-        stop = next(m for m in rows if m["kind"] == "barge_stop")
-        self.assertAlmostEqual(stop["value_ms"], 100)
-        self.assertEqual(stop["end_s"], 1.1)
-
     def test_already_quiet_is_invalid_not_zero_ms(self):
         self.config["expectations"]["expect_interrupt"] = True
         rows = metrics([span(0, .2)], [span(1, 1.4)], 0, 0, 3, self.config)
         stop = next(m for m in rows if m["kind"] == "barge_stop")
         self.assertEqual(stop["status"], "invalid")
         self.assertIsNone(stop["value_ms"])
-
-    def test_unfinished_audio_reports_lower_bound(self):
-        rows = metrics([span(0, 3)], [span(1, 1.4)], 0, 0, 3, self.config)
-        stop = next(m for m in rows if m["kind"] == "barge_stop")
-        self.assertEqual(stop["status"], "insufficient_evidence")
-        self.assertEqual(stop["lower_bound_ms"], 2000)
 
     def test_short_pause_does_not_end_old_segment(self):
         rows = metrics([span(0, 1.1), span(1.2, 1.5)], [span(1, 1.4)], 0, 0, 3, self.config)

@@ -51,23 +51,6 @@ class Entrypoints(unittest.TestCase):
         self.assertEqual(before, after)
         self.assertEqual(before[0], 0)
 
-    def test_help_uses_unified_command_path(self):
-        for args in (["homer", "--help"], ["homer", "search", "--help"]):
-            with self.subTest(args=args):
-                stdout = io.StringIO()
-                with contextlib.redirect_stdout(stdout), self.assertRaises(SystemExit) as raised:
-                    main(args)
-                self.assertEqual(raised.exception.code, 0)
-                self.assertIn("voice-tools " + " ".join(args[:-1]), stdout.getvalue())
-
-    def test_top_level_navigation(self):
-        stdout = io.StringIO()
-        with contextlib.redirect_stdout(stdout), self.assertRaises(SystemExit) as raised:
-            main(["--help"])
-        self.assertEqual(raised.exception.code, 0)
-        self.assertIn("qa", stdout.getvalue())
-        self.assertIn("homer", stdout.getvalue())
-
     def test_homer_runs_without_site_packages(self):
         env = {**os.environ, "PYTHONPATH": str(ROOT / "src")}
         cp = subprocess.run([sys.executable, "-S", "-m", "voice_tools", "homer", "schema"],

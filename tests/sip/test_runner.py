@@ -79,12 +79,6 @@ class RunnerTests(unittest.TestCase):
         self.assertTrue(self.backend.closed)
         self.assertTrue((self.root / "tx_source.wav").exists())
 
-    def test_connect_timeout_always_closes(self):
-        self.spec["connect_timeout_s"] = 1
-        result = self.execute(lambda b: setattr(b, "reject", True))
-        self.assertEqual(result["error"]["code"], "WAIT_TIMEOUT")
-        self.assertTrue(self.backend.closed)
-
     def test_native_media_failure_is_not_success(self):
         result = self.execute(lambda b: setattr(b, "failure", "no compatible codec"))
         self.assertEqual(result["error"]["code"], "MEDIA_ERROR")

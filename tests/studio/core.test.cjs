@@ -12,18 +12,6 @@ function rejectScenario(change, pattern) {
   assert.match(C.validateScenario(scenario).errors.join(';'), pattern);
   assert.throws(() => C.importScenario(scenario));
 }
-test('default scenario compiles exact CLI fields and accounts for trailing DTMF gap', () => {
-  const { scenario } = fixture();
-  assert.deepEqual(C.validateScenario(scenario), {
-    errors: [],
-    warnings: [],
-    knownDuration: 5.52,
-    unknownDuration: 0
-  });
-  assert.equal(scenario.steps[1].action, 'dtmf');
-  assert.equal('id' in scenario.steps[1], false);
-  assert.equal('label' in scenario.steps[1], false);
-});
 test('Studio roundtrip preserves labels, tags, settings; renews identifiers', () => {
   const { env, item } = fixture();
   item.steps[0].label = '问候';
@@ -42,6 +30,7 @@ test('CLI import fills runtime defaults without adding a hangup to imported beha
   assert.equal(env.config.account.id_uri, 'sip:voice-tools@127.0.0.1');
   assert.deepEqual(C.validateScenario(C.compile(item, env)).errors, []);
 });
+
 test('unknown action and plaintext credential are rejected, not silently erased', () => {
   rejectScenario((s) => (s.steps[0] = { action: 'exec', command: 'x' }), /action/);
   rejectScenario(
@@ -208,6 +197,7 @@ test('Studio environment cannot hide a second steps array or runtime version', (
   doc.environment.config.steps = [];
   assert.throws(() => C.importDocument(doc), /未知字段/);
 });
+
 
 test('minimal Studio import fills CLI defaults for editor forms and preview', () => {
   const doc = {

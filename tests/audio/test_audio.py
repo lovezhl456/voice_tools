@@ -21,20 +21,6 @@ class AudioTests(unittest.TestCase):
             self.assertEqual(audio.sample_rate, 8000)
             np.testing.assert_array_equal(audio.samples, source)
 
-    def test_mono_is_not_duplicated(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "mono.wav"
-            write_wav(path, np.zeros(8000), 8000)
-            self.assertEqual(read_wav(path).samples.shape, (8000, 1))
-
-    def test_truncated_payload_rejected(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "broken.wav"
-            write_wav(path, np.zeros((8000, 2)), 8000)
-            path.write_bytes(path.read_bytes()[:-200])
-            with self.assertRaisesRegex(ValueError, "截断"):
-                read_wav(path)
-
     def test_invalid_format_and_empty(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "bad.wav"
