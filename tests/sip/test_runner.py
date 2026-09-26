@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -61,6 +62,22 @@ class RunnerTests(unittest.TestCase):
             return self.backend
         return execute(plan, self.root, factory, self.clock)
 
+    def test_ordered_actions_and_evidence_semantics(self):
+        result = self.execute()
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(self.backend.actions[:6], ["dial", "play", "stop_play", "dtmf:1", "dtmf:#", "hangup"])
+        self.assertTrue(self.backend.closed)
+        self.assertEqual(result["recording"]["tx_role"], "local_scheduled_source")
+        events = [json.loads(line) for line in (self.root / "events.jsonl").read_text().splitlines()]
+        self.assertEqual([e["index"] for e in events if e["event"] == "step_complete"], [0, 1, 2])
+
+    def test_early_hangup_saves_partial_evidence_and_closes(self):
+        result = self.execute(lambda b: setattr(b, "hangup_at", self.clock() + .15))
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["error"]["code"], "REMOTE_HANGUP")
+        self.assertEqual(result["steps_completed"], 0)
+        self.assertTrue(self.backend.closed)
+        self.assertTrue((self.root / "tx_source.wav").exists())
 
     def test_native_media_failure_is_not_success(self):
         result = self.execute(lambda b: setattr(b, "failure", "no compatible codec"))

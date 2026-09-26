@@ -13,23 +13,23 @@
   "tests": [
     {
       "id": "tests/audio/test_audio.py::AudioTests::test_stereo_roundtrip_and_roles",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "仅验证读写器互逆及固定采样率；实文件多编码转换流程同时校验轨道样本和来源。",
+      "action": "keep",
+      "category": "integration",
+      "reason": "使用已知可精确表示的 PCM16 样本经真实 WAV 文件读写，保护幅值及双轨内容不变。多编码准备流程重采样后仅比较幅值阈值、声道与时间映射；32768 误用为 32767 等编码缩放回归仍可通过，无法替代逐样本精确断言。",
       "coverage_reference": "tests/audio/test_formats.py::PreparationTests::test_formats_and_resampling_preserve_tracks_and_origin"
     },
     {
       "id": "tests/audio/test_audio.py::AudioTests::test_mono_is_not_duplicated",
       "action": "delete",
       "category": "isolated",
-      "reason": "与准备流程单声道输出断言重复，无独有失效路径。",
+      "reason": "原用例经 write_wav/read_wav 验证单轨 shape；保留 prepare 流程用原生 PCM16 单声道输入，经 decode 的同一 read_wav 路径并重新读取保存结果，断言输出仅一轨，能捕获读写器复制单声道的同一故障。",
       "coverage_reference": "tests/audio/test_formats.py::PreparationTests::test_native_mono_not_duplicated"
     },
     {
       "id": "tests/audio/test_audio.py::AudioTests::test_truncated_payload_rejected",
       "action": "delete",
       "category": "isolated",
-      "reason": "截断输入已从音频 prepare 入口验证错误结果，低层重复异常断言不增加故障覆盖。",
+      "reason": "两者均用原生 PCM16 WAV 声明帧数与实际负载不一致的截断输入；prepare 在 decode 中先调用同一个 read_wav 校验，截断被接受会令保留用例的 errors=1 断言失败，不需要低层重复异常文案断言。",
       "coverage_reference": "tests/audio/test_formats.py::PreparationTests::test_truncated_wave_rejected"
     },
     {
@@ -48,10 +48,10 @@
     },
     {
       "id": "tests/audio/test_audio.py::AudioTests::test_dc_is_not_activity",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "DC 不作为活动由 gaps 检测的截止时间与 DC 场景覆盖；此处只重复空区间判断。",
-      "coverage_reference": "tests/gaps/test_detection.py::test_exact_deadline_and_dc_offset"
+      "reason": "同时保护纯直流不被当作活动及 max_dc_offset 正确计量；指标错误为零会使 QA 漏掉直流偏移警告。gaps 的截止时间/DC 场景仅检查候选数量，未检查 health 指标或 QA 告警，不能覆盖后者。",
+      "coverage_reference": "tests/gaps/test_detection.py::DetectionTests::test_exact_deadline_and_dc_offset"
     },
     {
       "id": "tests/audio/test_audio.py::AudioTests::test_memory_limit_before_decoding",
@@ -146,9 +146,9 @@
     },
     {
       "id": "tests/nisqa/test_cli.py::CliTests::test_missing_dependencies_doctor_is_offline",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "doctor 未就绪已经通过公开 CLI JSON 检查；仅 mock 所有 metadata 缺失并重复 ready 字段。",
+      "reason": "强制所有依赖元数据缺失，验证 doctor 将缺失版本保留为空而非误标为已安装；替代 CLI 使用缺失权重目录，仅检查 ready=false，模型缺失会掩盖错误的版本状态，且依赖安装状态随环境变化，不能覆盖该确定性失败输入。",
       "coverage_reference": "tests/nisqa/test_cli.py::CliTests::test_doctor_json_reports_not_ready_without_traceback"
     },
     {
@@ -202,10 +202,10 @@
     },
     {
       "id": "tests/nisqa/test_weights.py::WeightTests::test_xdg_cache_path",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "只重述固定目录拼接，不校验可用模型或真实缓存迁移结果。",
-      "coverage_reference": "tests/nisqa/test_real_model.py"
+      "reason": "忽略 XDG_CACHE_HOME 会让默认下载、doctor 和推理读取错误缓存目录。保留的权重测试及真实模型专项均显式指定 model_dir，绕过默认目录选择；没有覆盖设置 XDG_CACHE_HOME 且省略目录参数的配置。",
+      "coverage_reference": "tests/nisqa/test_real_model.py::RealModelTests::test_offline_real_model_matches_torchmetrics_function"
     },
     {
       "id": "tests/nisqa/test_service.py::ServiceTests::test_stereo_separate_samples_timestamps_and_short_tail",
@@ -253,7 +253,7 @@
       "id": "tests/nisqa/test_service.py::ServiceTests::test_runtime_error_is_recorded_and_next_segment_continues",
       "action": "delete",
       "category": "isolated",
-      "reason": "分段异常后继续及错误优先级由更完整的双声道故障测试覆盖。",
+      "reason": "保留双声道故障流程由同一个 _evaluate_channel_segment 捕获第一次评分 RuntimeError，继续成功评分后续通道并处理下一数据块；核对 errors/scored、错误原因截断、记录顺序和每段状态，覆盖评分失败不能终止其余处理的相同分支。",
       "coverage_reference": "tests/nisqa/test_service.py::ServiceTests::test_stereo_failure_preserves_channel_order_samples_and_error_priority"
     },
     {
@@ -328,9 +328,9 @@
     },
     {
       "id": "tests/latency/test_contract.py::ContractTests::test_schema_task_runtime_and_old_profile",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "静态 catalog 字段和默认 profile 枚举，由任务迁移执行覆盖实际 runtime 解析。",
+      "action": "keep",
+      "category": "integration",
+      "reason": "latency_dir 若从 runtime 错分为 input，任务会接受本应只由执行端配置的引擎目录引用，author 页面也会暴露该输入。迁移流程仅在 executor.json 配置引擎，从未把 latency_dir 写入任务参数，不能验证该拒绝边界；此用例整合实际 schema 子进程与任务 catalog。",
       "coverage_reference": "tests/latency/test_engine.py::RealEngineTests::test_mixed_gaps_benchmark_latency_review_after_migration"
     },
     {
@@ -510,10 +510,10 @@
     },
     {
       "id": "tests/test_machine_cli.py::MachineCliTests::test_homer_native_json_remains_usable",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "只检查静态 schema 命令名和 trace 字段，未执行 HOMER 业务流程。",
-      "coverage_reference": "tests/homer"
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CLI 子进程验证顶层 --json 与 HOMER 原生分发组合；误将 --json 传给 HOMER 或不剥离它会使机器调用退出 2。其余 HOMER 流程不带该顶层选项，schema/离线分析入口相同也无法覆盖这一分支。",
+      "coverage_reference": "tests/homer/test_entrypoints.py; tests/homer/test_client.py"
     },
     {
       "id": "tests/test_machine_cli.py::MachineCliTests::test_whole_recording_cli_has_fail_closed_and_partial_exit_codes",
@@ -587,9 +587,9 @@
     },
     {
       "id": "tests/visqol/test_cli.py::VisqolCliTests::test_schema_discovers_visqol_without_backend",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "仅重复 schema 的固定 doctor/score/batch 字符串，实际 CLI 已逐项执行。",
+      "action": "keep",
+      "category": "integration",
+      "reason": "真实 CLI 子进程查询 schema --tool visqol；命令发现遗漏会使机器客户端无法发现已有评分/批处理能力。现存 doctor、score、batch 子进程直接指定业务命令，不查询该发现入口，无法检出其命令集缺失。",
       "coverage_reference": "tests/visqol/test_cli.py::VisqolCliTests::test_doctor_missing_dependency_and_environment_resolution"
     },
     {
@@ -820,8 +820,8 @@
       "id": "tests/studio/core.test.cjs::default scenario compiles exact CLI fields and accounts for trailing DTMF gap",
       "action": "delete",
       "category": "isolated",
-      "reason": "固定默认对象和内部 duration 数字镜像；默认场景生成到 Python CLI 校验及 dry-run 已覆盖可执行性。",
-      "coverage_reference": "tests/studio/check_cli_compat.py::default"
+      "reason": "保留默认场景真实 CLI validate/dry-run 拒绝编译残留 id/label 等未知字段；Node 的 missing media duration 和 minimal Studio import 分别核对默认 DTMF 尾部间隔计入 3.52 秒及单键 0.26 秒。原测试其余内容为默认对象固定值，无独立失败输入。",
+      "coverage_reference": "tests/studio/check_cli_compat.py::default; tests/studio/core.test.cjs::missing media duration is unknown, never presented as zero-duration verified media; tests/studio/core.test.cjs::minimal Studio import fills CLI defaults for editor forms and preview"
     },
     {
       "id": "tests/studio/core.test.cjs::Studio roundtrip preserves labels, tags, settings; renews identifiers",
@@ -1098,12 +1098,12 @@
     }
   ],
   "counts": {
-    "delete": 11,
-    "keep": 144
+    "keep": 151,
+    "delete": 4
   },
   "category_counts": {
-    "isolated": 81,
-    "integration": 56,
+    "integration": 60,
+    "isolated": 84,
     "e2e": 7
   }
 }

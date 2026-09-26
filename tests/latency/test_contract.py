@@ -11,9 +11,20 @@ from voice_tools.tools.latency.contract import validate_parameters
 from voice_tools.tools.latency.runtime import doctor, prefix, invoke, RESOURCES
 from voice_tools.tools.latency.service import distribution, inputs_in_order, process
 from voice_tools.tools.latency.install import installation_lock
+from voice_tools.tools.task.catalog import catalog, capabilities
+from voice_tools.tools.task.runner import profile
 
 
 class ContractTests(unittest.TestCase):
+
+    def test_schema_task_runtime_and_old_profile(self):
+        spec = catalog()['latency.batch']
+        self.assertEqual(next(a['role'] for a in spec['arguments'] if a['name']=='latency_dir'),'runtime')
+        self.assertEqual(next(a['role'] for a in spec['arguments'] if a['name']=='inputs'),'input')
+        self.assertEqual(capabilities({'tool':'latency','action':'batch'})['dependencies'],['latency'])
+        self.assertNotIn('latency',capabilities({'tool':'qa','action':'analyze'})['dependencies'])
+        self.assertNotIn('latency_dir',profile())
+        self.assertFalse(any(k.startswith('latency.install') for k in catalog()))
 
     def test_effective_values_and_rejections(self):
         values,sources=validate_parameters({'energy_threshold':100})

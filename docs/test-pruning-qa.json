@@ -51,9 +51,9 @@
     },
     {
       "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_preexisting_agent_output_is_not_an_immediate_response",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "R05 old_output 完整覆盖跨越用户结束的既有输出不得作为即时回复及原因展示。",
+      "reason": "R05验证待复核与重叠输出原因，但没有核对latency_s为null；把旧输出误记为零延迟会污染机器读取的应答指标。保留原精确时序检查。",
       "coverage_reference": "tests/browser/generate_fixtures.py::generate old_output; tests/browser/review.spec.cjs R05"
     },
     {
@@ -100,9 +100,9 @@
     },
     {
       "id": "tests/recording_qa/test_assessment.py::AssessmentTests::test_normal_wait_for_the_next_user_turn_is_not_an_output_dropout",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "安装包夹具 multiturn 已执行同一两轮正常等待并断言 AUTO_PASS；R01 校验两通正常结果。",
+      "reason": "R01只验证最终AUTO_PASS数量，未校验两轮划分及excluded_conversation_gaps旁证；正常等待被错误合并或漏记排除证据仍可能保持通过结论。保留原轮次及排除记录检查。",
       "coverage_reference": "tests/browser/generate_fixtures.py::generate multiturn; tests/browser/review.spec.cjs R01"
     },
     {
@@ -198,10 +198,10 @@
     },
     {
       "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_catalog_classifies_model_path_as_runtime_and_download_as_setup",
-      "action": "delete",
+      "action": "keep",
       "category": "integration",
-      "reason": "静态 catalog 字段分类自查不运行任务；模型路径和离线下载边界由保留的任务依赖与安装流程检查。",
-      "coverage_reference": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests.test_rules_only_task_rebuilds_whole_call_report_from_verified_data; tests/recording_qa/test_assessment_delivery.py::DeliveryTests.test_missing_model_dependency_is_reported_before_task_run; tests/recording_qa/test_setup.py::SetupTests.test_json_setup_is_single_envelope_and_excluded_from_tasks"
+      "reason": "qa_model_dir 若被误分为input，会接受本应由执行端管理的模型路径；assess-evaluate 若丢失file输出分类，会破坏output.json及下游引用。保留任务/安装39项在两种故障注入下通过、原测试失败。",
+      "coverage_reference": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_rules_only_task_rebuilds_whole_call_report_from_verified_data; tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_missing_model_dependency_is_reported_before_task_run"
     },
     {
       "id": "tests/recording_qa/test_assessment_delivery.py::DeliveryTests::test_rules_only_task_rebuilds_whole_call_report_from_verified_data",
@@ -422,9 +422,9 @@
     },
     {
       "id": "tests/recording_qa/test_detector.py::DetectorTests::test_noise_is_never_called_a_successful_response",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "完整 CLI 场景批量已包含 noise 并逐录音校验 OUTPUT_NEEDS_REVIEW；重复直接调用判定不增加失败覆盖。",
+      "reason": "CLI批量检查noise的OUTPUT_NEEDS_REVIEW，但未断言随结果交付的噪声诊断警告；丢失诊断会让复核缺少原因。保留状态与警告的组合检查。",
       "coverage_reference": "tests/recording_qa/test_workflow.py::WorkflowTests.test_cli_full_batch_with_portable_audio"
     },
     {
@@ -842,10 +842,10 @@
     },
     {
       "id": "tests/detect/test_delivery.py::Delivery::test_schema_and_catalog_are_discoverable",
-      "action": "delete",
+      "action": "keep",
       "category": "integration",
-      "reason": "schema 命令只与同一 schema() 自比较，catalog 只判退出 0；E01–E04 实际加载目录、创建导出并执行配置。",
-      "coverage_reference": "tests/detect_browser/editor.spec.cjs E01, E02, E04"
+      "reason": "公开 detect schema/catalog 命令分发或响应损坏会让自动化无法发现定义和指标；浏览器编辑器直接调用内部函数，并未执行这两个 CLI。故障注入坏 schema 后，保留交付5项通过、原测试失败。",
+      "coverage_reference": "tests/detect_browser/editor.spec.cjs E01/E02/E04 do not invoke detect schema/catalog"
     },
     {
       "id": "tests/detect/test_delivery.py::Delivery::test_import_packet_cli_and_export_reopening",
@@ -856,9 +856,9 @@
     },
     {
       "id": "tests/detect/test_editor.py::EditorContract::test_full_roundtrip_matches_python_including_nested_exclusions_and_parameters",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "E01 导出配置经安装 CLI 验证并执行，E04 精确校验嵌套 all/not/any 与 scope.exclude 的导入导出相等；重复 JS/Python normalize 正常值比较。",
+      "reason": "E01/E04使用已填完整字段的编辑器模板，未覆盖合法最小外部配置补齐默认字段后与Python归一化一致；导入最小定义时漏scope/参数默认值会破坏导出配置。保留包含最小配置的跨语言合同。",
       "coverage_reference": "tests/detect_browser/editor.spec.cjs E01 and E04"
     },
     {
@@ -1605,10 +1605,10 @@
     },
     {
       "id": "tests/recording_qa/file_filter.cjs::directory and filename text is passed literally to options",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "假 Option 只把 text 存为属性，无法验证真实 DOM 注入；R01 实际操作控件，R05/D04 已检查真实页面数据呈现。",
-      "coverage_reference": "tests/browser/review.spec.cjs R01; tests/detect_browser/detect.spec.cjs D04; mock Option stores text without DOM interpretation"
+      "reason": "带尖括号/引号的真实目录和文件名若在交给Option前被HTML编码，会显示转义实体而非原始名称；R01/D04未使用这类文件路径，不能替代原始文本传递检查。",
+      "coverage_reference": "tests/browser/review.spec.cjs R01 and tests/detect_browser/detect.spec.cjs D04 do not use hostile directory/file names"
     },
     {
       "id": "tests/recording_qa/file_filter.cjs::search matches filename fragments, Chinese paths and case-insensitive text",
@@ -1661,8 +1661,8 @@
     }
   ],
   "counts": {
-    "delete": 14,
-    "keep": 222
+    "delete": 7,
+    "keep": 229
   },
   "validation": {
     "command": "PYTHONPATH=\"$PWD/src\" .venv/bin/python -m unittest tests.recording_qa.test_assessment tests.recording_qa.test_assessment_delivery tests.recording_qa.test_assessment_waveform tests.recording_qa.test_detector tests.recording_qa.test_file_filter tests.recording_qa.test_setup tests.recording_qa.test_workflow tests.detect.test_delivery tests.detect.test_editor tests.detect.test_engine -v",
@@ -1674,8 +1674,8 @@
     "limitations": "真实模型专项保持原有显式启用要求，本次选测未运行；安装包浏览器与全量结果由主代理统一记录。"
   },
   "category_counts": {
-    "isolated": 107,
-    "integration": 110,
+    "isolated": 112,
+    "integration": 112,
     "e2e": 5
   }
 }

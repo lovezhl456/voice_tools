@@ -112,3 +112,11 @@ class SessionV2Tests(unittest.TestCase):
         self.assertEqual([s['status'] for s in result['steps']],
                          ['complete', 'failed', 'complete', 'complete', 'failed', 'complete'], result)
         self.assertTrue((self.root/'investigation/report/report.html').is_file())
+
+    def test_media_tags_and_bye_keep_other_fork_open(self):
+        from voice_tools.tools.sessions.media import timeline
+        def row(when, port, tag, method=None):
+            return {'host': 'fs-a', 'epoch': when, 'data': {'src': '192.0.2.1', 'from_tag': 'a',
+                    'to_tag': tag, 'method': method, 'media': [{'ip': '192.0.2.1', 'port': port}]}}
+        stages = timeline([row(1, 16000, ''), row(2, 16002, 'b'), row(3, 16004, 'c'), row(4, 0, 'b', 'BYE')])
+        self.assertEqual([s['until_epoch'] for s in stages], [2, 4, None])

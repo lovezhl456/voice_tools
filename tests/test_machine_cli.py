@@ -83,6 +83,11 @@ class MachineCliTests(unittest.TestCase):
                             self.assertEqual(value["error"]["code"], "PARTIAL_FAILURE")
                             self.assertEqual((value["summary"]["files"], value["summary"]["errors"]), (2, 1))
 
+    def test_homer_native_json_remains_usable(self):
+        process, value = self.command("--json", "homer", "schema")
+        self.assertEqual(process.returncode, 0)
+        self.assertEqual(value["command"], "schema")
+        self.assertIn("trace", value["commands"])
 
     def test_whole_recording_cli_has_fail_closed_and_partial_exit_codes(self):
         source = write_case(self.root / 'calls', 'missing')

@@ -63,3 +63,7 @@ class WeightTests(unittest.TestCase):
             weights.read_verified(self.root)
         with self.assertRaises(ValueError):
             weights.download(self.root, force=True)
+
+    def test_xdg_cache_path(self):
+        with patch.dict("os.environ", {"XDG_CACHE_HOME": str(self.root)}):
+            self.assertEqual(weights.default_model_dir(), self.root / "voice-tools/nisqa")

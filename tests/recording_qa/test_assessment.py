@@ -45,6 +45,12 @@ class AssessmentTests(unittest.TestCase):
         self.assertEqual(result['turns'][0]['reason'], 'late_response')
         self.assertAlmostEqual(result['turns'][0]['latency_s'], 5.5, places=2)
 
+    def test_preexisting_agent_output_is_not_an_immediate_response(self):
+        result = self.run_case(agent=((.2, 3),))
+        self.assertEqual(result['decision'], 'NEEDS_REVIEW')
+        self.assertEqual(result['turns'][0]['reason'], 'overlapping_output')
+        self.assertIsNone(result['turns'][0]['latency_s'])
+
     def test_new_response_after_overlapping_output_is_evaluated_separately(self):
         result = self.run_case(agent=((.2, 2), (2.4, 3.4)))
         self.assertEqual(result['decision'], 'AUTO_PASS')
@@ -82,6 +88,12 @@ class AssessmentTests(unittest.TestCase):
         result=self.run_case(user=((.5,1),(1.4,2)),agent=((1.02,1.35),(2.2,3)))
         self.assertEqual(len(result['turns']),2)
         self.assertEqual(result['decision'],'AUTO_PASS')
+
+    def test_normal_wait_for_the_next_user_turn_is_not_an_output_dropout(self):
+        result=self.run_case(user=((.5,1.5),(6,7)),agent=((2,3),(7.5,8.5)),duration=10)
+        self.assertEqual(result['decision'],'AUTO_PASS')
+        self.assertEqual(len(result['turns']),2)
+        self.assertEqual(len(result['engineering']['excluded_conversation_gaps']),1)
 
     def test_excluding_conversation_gap_does_not_hide_late_reply(self):
         result=self.run_case(user=((.5,1.5),(6,7)),agent=((2,3),(13,14)),duration=15)

@@ -165,5 +165,11 @@ class VisqolCliTests(unittest.TestCase):
             self.assertEqual(r.returncode, 2)
             self.assertFalse((self.root / f'time{i}').exists())
 
+    def test_schema_discovers_visqol_without_backend(self):
+        r = subprocess.run([sys.executable, '-m', 'voice_tools', 'schema', '--tool', 'visqol'], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0)
+        v = json.loads(r.stdout)
+        self.assertEqual(set(v['cli']['commands']), {'doctor','score','batch'})
+
 
 if __name__ == '__main__':unittest.main()

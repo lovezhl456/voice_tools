@@ -11,7 +11,15 @@ from voice_tools.audio.activity import detect_activity
 
 
 class AudioTests(unittest.TestCase):
-
+    def test_stereo_roundtrip_and_roles(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            source = np.zeros((8000, 2), dtype=np.float32)
+            source[:, 0] = 0.25
+            path = Path(tmp) / "input.wav"
+            write_wav(path, source, 8000)
+            audio = read_wav(path)
+            self.assertEqual(audio.sample_rate, 8000)
+            np.testing.assert_array_equal(audio.samples, source)
 
     def test_invalid_format_and_empty(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -35,6 +43,10 @@ class AudioTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 read_wav(path, max_seconds=1)
 
+    def test_dc_is_not_activity(self):
+        activity, health = detect_activity(Audio(np.full((8000, 2), 0.1), 8000))
+        self.assertEqual(activity, [[], []])
+        self.assertGreater(health["max_dc_offset"], 0.09)
 
     def test_memory_limit_before_decoding(self):
         with tempfile.TemporaryDirectory() as tmp:

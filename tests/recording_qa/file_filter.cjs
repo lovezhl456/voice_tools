@@ -92,6 +92,14 @@ test('failed records do not create options and an empty batch stays selectable',
   assert.equal(ui.fileFilter.value, '');
 });
 
+test('directory and filename text is passed literally to options', () => {
+  const directory = '中文 <img onerror=alert(1)> & "录音"';
+  const ui = fixture([record(`${directory}/<b>call.wav`, '1')]);
+  assert.equal(ui.directoryFilter.options[1].text, directory);
+  ui.chooseDirectory(directory);
+  assert.equal(ui.fileFilter.options[1].text, '<b>call.wav');
+});
+
 test('search matches filename fragments, Chinese paths and case-insensitive text', () => {
   const records = [record('客服/Call_13800138000.WAV', '1'), record('销售/order.wav', '2')];
   const ui = fixture(records);

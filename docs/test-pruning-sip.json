@@ -2,12 +2,12 @@
   "baseline": "653288f",
   "scope": "SIP / capture / sessions / report / benchmark / HOMER",
   "counts": {
-    "delete": 20,
-    "keep": 294
+    "keep": 306,
+    "delete": 8
   },
   "category_counts": {
-    "integration": 163,
-    "isolated": 104,
+    "isolated": 115,
+    "integration": 164,
     "e2e": 27
   },
   "validation": [
@@ -47,14 +47,51 @@
       "seconds": 0.738,
       "result": "passed",
       "log_sha256": "49b87baca276df842798e200435f9de2d361c468fae85f8d66e4ede9d356b7ab"
+    },
+    {
+      "scope": "five restored module groups",
+      "command": "PYTHONPATH=\"$PWD/src\" .venv/bin/python -m unittest tests.capture.test_numbers tests.capture.test_v2 tests.sessions.test_index_inputs tests.sessions.test_v2 tests.report.test_report -v",
+      "tests": 51,
+      "seconds": 16.787,
+      "result": "passed",
+      "log_sha256": "96857a9f173558d13a815b17b6a1494d7501b6d6ea2f54afc376d6dc46c38b54"
+    },
+    {
+      "scope": "additional evidence and cleanup restorations",
+      "command": "PYTHONPATH=\"$PWD/src\" .venv/bin/python -m unittest tests.benchmark.test_analysis tests.sip.test_runner tests.sip.test_assertions tests.sip.test_regressions -v",
+      "tests": 54,
+      "seconds": 0.616,
+      "result": "passed",
+      "log_sha256": "5b0a6d4caa09d68d99518b92ba51b0a517c98b718c592eaf511017a5bb17300c"
+    },
+    {
+      "scope": "public machine-version negotiation contract",
+      "command": "PYTHONPATH=\"$PWD/src\" .venv/bin/python -m unittest tests.benchmark.test_review_regressions -v",
+      "tests": 9,
+      "seconds": 0.958,
+      "result": "passed",
+      "log_sha256": "3bb0013d1ac201fb7d6e800b2e081e725adad8d127b23e9249b5c7c2a8a5377a"
+    },
+    {
+      "scope": "five confirmed coverage gaps against restored current tests",
+      "result": "all five in-memory mutants rejected by restored tests; cited replacements still passed",
+      "mutations": [
+        "remove outer OSError/ValueError isolation",
+        "keep old untagged offer active after same-sender answered SDP",
+        "single dumpcap stops after one packet",
+        "include duplicate packets in loss-rate denominator",
+        "merged captures forget nondefault SIP ports"
+      ],
+      "log_sha256": "0fcb7babee25d6b60328a160314b4807637284e18709ccb3fadc1f477226534a",
+      "source_mutated_on_disk": false
     }
   ],
   "tests": [
     {
       "id": "tests/benchmark/test_analysis.py::TimingTests::test_continuous_silent_pcm_is_an_800ms_gap",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "人工提交静音帧的间隙计算重复真实 RTP 静音间隙测量。",
+      "reason": "必须正确报告总静音时长 total_silence_ms；原生 gap 流程仅断言最长静音 value_ms 的区间，不会捕获总静音统计错误。",
       "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_pcm_gap_is_detected_over_real_rtp"
     },
     {
@@ -68,8 +105,8 @@
       "id": "tests/benchmark/test_analysis.py::TimingTests::test_new_answer_is_not_counted_as_old_audio",
       "action": "delete",
       "category": "isolated",
-      "reason": "孤立区间计算重复原生对端停止旧音频后再回复的时序测量。",
-      "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_stopping_then_reply_is_measured_separately"
+      "reason": "原生 timing_reply 使用同一 barge_stop 计算路径，检查旧音频停止时间与新应答起点分离；保留短停顿反例对同一终止阈值的数值检查。未找到该单一区间样例额外覆盖的失败路径。",
+      "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_stopping_then_reply_is_measured_separately; tests/benchmark/test_analysis.py::TimingTests.test_short_pause_does_not_end_old_segment"
     },
     {
       "id": "tests/benchmark/test_analysis.py::TimingTests::test_already_quiet_is_invalid_not_zero_ms",
@@ -82,8 +119,8 @@
       "id": "tests/benchmark/test_analysis.py::TimingTests::test_unfinished_audio_reports_lower_bound",
       "action": "delete",
       "category": "isolated",
-      "reason": "人工区间中的持续讲话下界重复原生对端忽略打断的测量。",
-      "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_ignoring_interruption_is_not_a_success"
+      "reason": "原生持续讲话场景检查 insufficient_evidence 与正的观察下界；保留末尾静音和挂断反例精确断言同一 lower_bound_ms 公式，防止把未观察时间计入下界。",
+      "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_ignoring_interruption_is_not_a_success; tests/benchmark/test_analysis.py::TimingTests.test_partial_final_silence_does_not_extend_observed_stop_lower_bound; tests/benchmark/test_analysis.py::TimingTests.test_hangup_silence_cannot_count_as_interrupt_success"
     },
     {
       "id": "tests/benchmark/test_analysis.py::TimingTests::test_short_pause_does_not_end_old_segment",
@@ -94,9 +131,9 @@
     },
     {
       "id": "tests/benchmark/test_analysis.py::TimingTests::test_missing_first_audio_stays_unknown",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "无语音人工波形重复原生静音对端等待超时并保留未知首音指标。",
+      "reason": "完整静音录音必须将 benchmark 顶层状态保持 insufficient_evidence；原生静音流程只断言首音 value_ms 为 None，退出码由 wait_audio 超时决定，不能捕获结果顶层误标 completed。",
       "coverage_reference": "tests/benchmark/test_native.py::NativeObservationTests.test_audio_trigger_timeout_preserves_evidence"
     },
     {
@@ -367,9 +404,9 @@
     },
     {
       "id": "tests/benchmark/test_review_regressions.py::ReviewRegressionTests::test_runtime_and_snapshot_describe_supported_scenario_versions",
-      "action": "delete",
-      "category": "isolated",
-      "reason": "对比快照与常量版本字段，未验证跨版本任务可执行性；迁移流程验证带注释媒体的场景实际运行。",
+      "action": "keep",
+      "category": "integration",
+      "reason": "公开 schema 的 sip_scenario_read/sip_scenario_write/benchmark_scenario_write 是机器客户端协商格式版本的依据，必须与真实模板及文档快照一致；迁移流程直接消费既定 1.1 文件，不读取这些协商字段，不能捕获宣告能力漂移。",
       "coverage_reference": "tests/benchmark/test_delivery.py::TimingDeliveryTests.test_annotation_and_audio_survive_migration"
     },
     {
@@ -682,9 +719,9 @@
     },
     {
       "id": "tests/capture/test_numbers.py::NumberCaptureTests::test_multiple_hosts_keep_success_when_one_fails",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "mock collect_host 返回值重复真实归档收集流程的单主机损坏隔离。",
+      "reason": "collect_host 在目录创建、SSH 构造或回执落盘时直接抛错仍须由 collect 的 future 异常边界隔离；替代坏归档流程只返回 failed 字典，不触发该异常边界。",
       "coverage_reference": "tests/capture/test_number_review.py::NumberReviewTests.test_invalid_manifest_type_does_not_abort_other_hosts"
     },
     {
@@ -710,9 +747,9 @@
     },
     {
       "id": "tests/capture/test_v2.py::CaptureV2Tests::test_byte_quota_is_independent_of_packet_count",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "比对生成参数与同一配额公式，真实 FIFO dumpcap 已检查轮转、保留数和实际字节上限。",
+      "reason": "单次 service.dumpcap_argv 必须按时长/实际文件大小而非包数停止；FIFO 原生专项只运行 remote.capture_command，无法捕获单次入口误加 -c。",
       "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
     },
     {
@@ -1165,9 +1202,9 @@
     },
     {
       "id": "tests/report/test_report.py::ReportTests::test_wrap_reorder_duplicates_and_one_missing",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "数组构造的 RTP 序号统计重复真实 tshark PCAP 中环绕、乱序、重复和缺包统计。",
+      "reason": "重复包不得计入 unique_packets 和丢包率分母；真实 tshark 用例只断言缺包/重复/乱序数量，未断言独立包数，可能漏过报告丢包百分比偏低。",
       "coverage_reference": "tests/report/test_report.py::ReportTests.test_real_tshark_and_corrupt_pcap"
     },
     {
@@ -1389,9 +1426,9 @@
     },
     {
       "id": "tests/sessions/test_index_inputs.py::IndexInputTests::test_merged_group_appends_after_unmerged_sources_and_keeps_group_number",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "模拟 merge 的顺序、目录编号和参数排序主要锁定实现；跨片重组、来源记录及导出再索引已有真实流程。",
+      "reason": "合并 PCAP 组必须保留自定义 SIP 端口 5070，避免漏索引；真实 IP/TCP 跨片流程仅使用默认 5060，无法捕获合并时丢弃自定义端口。",
       "coverage_reference": "tests/sessions/test_v2.py::SessionV2Tests.test_ip_fragmented_sip_reassembles_across_files; tests/sessions/test_v2.py::SessionV2Tests.test_tcp_sip_reassembles_across_files"
     },
     {
@@ -1515,9 +1552,9 @@
     },
     {
       "id": "tests/sessions/test_v2.py::SessionV2Tests::test_media_tags_and_bye_keep_other_fork_open",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "孤立 timeline 分叉关闭断言重复真实 PCAP 索引、分叉挂断、媒体导出流程。",
+      "reason": "同发送者 SDP 从早期单 tag offer 升级为完整 dialog 时必须关闭旧媒体段；真实分叉导出直接从双 tag 200 响应开始，缺少早期 offer，无法捕获旧端点继续匹配。",
       "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_bye_for_one_fork_does_not_truncate_open_fork_export"
     },
     {
@@ -1531,8 +1568,8 @@
       "id": "tests/sip/test_assertions.py::AssertionTests::test_missing_response_not_local_timeout",
       "action": "delete",
       "category": "isolated",
-      "reason": "合成正常/拒绝/无媒体结果重复原生回环的对应接收证据断言。",
-      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_no_response_is_not_expected_408; tests/sip/test_loopback.py::LoopbackTests.test_no_rtp_is_failure_even_with_recording; tests/sip/test_loopback.py::LoopbackTests.test_expected_busy_is_successful_response_test"
+      "reason": "缺少可用 invite_final_code 时走同一 response_code 未知分支；原生 drop 场景将期望码设为 408，验证本地无响应不成为预期 SIP 拒绝。没有额外执行资源或产物断言。",
+      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_no_response_is_not_expected_408; tests/sip/test_assertions.py::NativeEvidenceTests.test_only_received_invite_then_freeze"
     },
     {
       "id": "tests/sip/test_assertions.py::AssertionTests::test_rtp_missing_zero_positive_and_incomplete",
@@ -1545,7 +1582,7 @@
       "id": "tests/sip/test_assertions.py::AssertionTests::test_rtp_not_proven_by_wav",
       "action": "delete",
       "category": "isolated",
-      "reason": "合成正常/拒绝/无媒体结果重复原生回环的对应接收证据断言。",
+      "reason": "保留 worker 正常退出、有真实 WAV 但缺少接收统计的 service 故障流程，断言 insufficient_evidence 并核对 assertions.json；该孤立 evaluate 样例没有额外输入/结果意义。",
       "coverage_reference": "tests/sip/test_assertions.py::ServiceAssertionTests.test_missing_worker_evidence_and_artifact_contract; tests/sip/test_loopback.py::LoopbackTests.test_no_rtp_is_failure_even_with_recording"
     },
     {
@@ -1606,9 +1643,9 @@
     },
     {
       "id": "tests/sip/test_assertions.py::AssertionTests::test_expected_rejection_skips_media_steps",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "合成正常/拒绝/无媒体结果重复原生回环的对应接收证据断言。",
+      "reason": "预期拒绝后媒体步骤必须标记未执行并记录完整 skipped 数量；原生 busy 流程仅断言 completed/expected_rejection/assertions passed，不验证步骤状态。",
       "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_no_response_is_not_expected_408; tests/sip/test_loopback.py::LoopbackTests.test_no_rtp_is_failure_even_with_recording; tests/sip/test_loopback.py::LoopbackTests.test_expected_busy_is_successful_response_test"
     },
     {
@@ -2054,9 +2091,9 @@
     },
     {
       "id": "tests/sip/test_regressions.py::NativeAdapterLifecycle::test_active_media_replacement_reconnects_existing_recorder",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "模拟 SDK 端口重接已由真实 re-INVITE 保持双向媒体并且只创建一次录音的流程覆盖。",
+      "reason": "SDK 替换媒体端口后必须从旧端口解绑 recorder，保留原录音起点；原生 re-INVITE 只检查新端口音频、录音文件和 recording_start 次数，无法发现仍保留的旧媒体边。",
       "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_reinvite_media_port_switch_keeps_both_directions"
     },
     {
@@ -2075,24 +2112,24 @@
     },
     {
       "id": "tests/sip/test_runner.py::RunnerTests::test_ordered_actions_and_evidence_semantics",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "假后端的动作顺序和正常回执重复真实 UDP 播放、DTMF、录音、挂断流程。",
+      "reason": "tx_source 的证据角色必须为本地计划发送源，不能冒充远端实收；每一步完成日志须有正确索引。原生正常通话仅断言收到音频/DTMF/BYE，未核对这些证据语义和步骤日志。",
       "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_real_udp_play_dtmf_info_record_and_bye"
     },
     {
       "id": "tests/sip/test_runner.py::RunnerTests::test_early_hangup_saves_partial_evidence_and_closes",
-      "action": "delete",
+      "action": "keep",
       "category": "isolated",
-      "reason": "假后端提前挂断重复真实对端播放中挂断、保留证据流程。",
+      "reason": "播放中远端挂断仍须保留 tx_source.wav 发送旁证及未完成步骤状态；原生挂断流程仅检查 rx.wav 和 REMOTE_HANGUP，无法捕获发送旁证丢失。",
       "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_remote_hangup_during_play_keeps_artifacts"
     },
     {
       "id": "tests/sip/test_runner.py::RunnerTests::test_connect_timeout_always_closes",
       "action": "delete",
       "category": "isolated",
-      "reason": "模拟连接超时重复真实对端丢弃呼叫后的失败流程。",
-      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_no_response_is_not_expected_408"
+      "reason": "真实 drop 场景覆盖连接等待到期，原生 wait_audio 超时断言同一 until 的 WAIT_TIMEOUT；保留 native 媒体故障、details/journal/后处理失败的 finally 资源清理反例。该模拟正常超时只重复错误码与共同清理分支。",
+      "coverage_reference": "tests/sip/test_loopback.py::LoopbackTests.test_no_response_is_not_expected_408; tests/benchmark/test_native.py::NativeObservationTests.test_audio_trigger_timeout_preserves_evidence; tests/sip/test_runner.py::RunnerTests.test_native_media_failure_is_not_success; tests/sip/test_regressions.py::FinalizationFailure.test_details_failure_does_not_skip_native_cleanup"
     },
     {
       "id": "tests/sip/test_runner.py::RunnerTests::test_native_media_failure_is_not_success",
@@ -2248,5 +2285,15 @@
       "reason": "保留现有文件/协议/进程集成流程，实际验证 native dumpcap agent rotation via fifo；所引正常/原生流程没有代替此输入组合或故障注入。",
       "coverage_reference": "tests/test_capture_v2_review.py::CaptureReviewTests.test_native_dumpcap_agent_rotation_via_fifo"
     }
-  ]
+  ],
+  "restoration_review": {
+    "source": "origin/main at 653288f",
+    "restored_methods": 12,
+    "restored_method_ast_matches_source": true,
+    "remaining_deletions_reviewed": 8,
+    "original_methods": 314,
+    "current_methods": 306,
+    "new_methods": 0,
+    "classification": "Preserve distinct metrics, rejection/state behavior, resource cleanup, evidence outputs and public machine contracts. Remove duplicated branches or static implementation/text checks only."
+  }
 }
