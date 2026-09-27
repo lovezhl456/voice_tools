@@ -1,5 +1,12 @@
 # 版本记录与迭代规则
 
+## 0.19.1 · 多 Tab HTML 工作台
+
+- 状态：实现、可读性核查和最终验证完成，待 PR 审阅与合并；独立分支 `feat/v0.19.1-tabbed-workbench`，基于 `e773ef7`。
+- 范围：新增统一 HTML 导出命令，汇集本地检测、整通质检、输出间隙和任务页面；保持既有单页及数据合同。
+- 验证：安装 wheel 原复核 16 项、检测/编辑/工作区/多 Tab 38 项通过；Python 634 项（597 通过、37 原有条件跳过）、Node 23 项、CLI 兼容 9 场景通过。
+- [工作台用法](docs/tabbed-workbench.md) · [计划与能力保留](docs/tabbed-workbench-plan.md) · [最终验证与边界](docs/tabbed-workbench-validation.md)。
+
 ## 0.18.3 · E2E 优先与低价值测试删除
 
 - 状态：整体审查修复与最终验证完成，待 [PR #40](https://github.com/lovezhl456/voice_tools/pull/40) 复审；分支 `chore/v0.18.3-e2e-test-pruning`，基于 `653288f`。版本、包元数据与生成的 CLI schema 快照统一为 0.18.3，业务逻辑不变。

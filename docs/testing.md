@@ -71,7 +71,7 @@ python scripts/check_review.py --out .artifacts/review-check
 python scripts/check_detection.py --package-root .artifacts/review-check/package --out .artifacts/detect-check
 ```
 
-复核需 16 项通过，检测／编辑／工作区需 30 项通过；均不得有失败、跳过、重试通过或缺失能力。`verification.json`、`browser-results.json`、截图、导出文件与合成录音是可验证产物。随后运行精简后保留的补充检查：
+复核需 16 项通过，检测／编辑／工作区／统一工作台需 38 项通过；均不得有失败、跳过、重试通过或缺失能力。`verification.json`、`browser-results.json`、截图、导出文件与合成录音是可验证产物。随后运行精简后保留的补充检查：
 
 ```bash
 env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR -u VOICE_TOOLS_TEST_QA_MODEL_DIR \
@@ -218,3 +218,7 @@ python scripts/check_detection.py --package-root .local/review-acceptance/packag
 - W04：合法 73／80 字符标识的离线草稿→在线入库→重开和人工标准。W01 同时检查保存遇到忙碌响应时保留当前内容并可重试；真实 SQLite 写锁的并发拒绝由服务测试覆盖。
 
 每个工作区用例使用独立的本机服务和合成录音，由同一安装 wheel 执行；测试不修改用户业务数据库，不代表真实业务准确率。运行命令仍使用本节前述 `check_review.py` 和 `check_detection.py`，后者必须复用与最终源码一致的安装目录。
+
+## 多 Tab 工作台
+
+`check_detection.py` 同时从安装包 CLI 生成整通规则检查、间隙报告和工作台，移动输出目录后运行 H01–H04（桌面/手机共 8 项）：各 Tab 与本地资源、表单/播放/历史保留、复核导出→CLI 入库→新工作台重开、file 协议任务导出/导入、缺失入口/非空输出/目录包含/符号链接拒绝，以及 HTTP 加载失败重试。证据包含 `site/workbench-evidence.json` 的命令与复制文件 SHA-256、导出文件、截图和逐项 JSON。无单元测试新增，不运行模型/真实线路。

@@ -38,3 +38,35 @@ with store.connect(db_path,create=True) as db:
 from voice_tools.tools.recording_qa.batch import analyze_batch
 analyze_batch([inputs], args.out/'qa', include_audio=True, hide_paths=True)
 print(json.dumps({'package':str(Path(voice_tools.__file__).resolve()),'report':str(args.out/'report/index.html')}))
+
+# Exercise the installed public CLI, then relocate the entire site before browser acceptance.
+import hashlib
+import shutil
+import subprocess
+import sys
+
+commands = []
+def command(*arguments, findings=False):
+    argv = [sys.executable, '-m', 'voice_tools', '--json', *map(str, arguments)]
+    result = subprocess.run(argv, capture_output=True, text=True)
+    value = json.loads(result.stdout)
+    commands.append({'argv': argv, 'exit_code': result.returncode, 'result': value})
+    assert result.returncode in ((0, 1) if findings else (0,)), result.stdout + result.stderr
+    return value
+
+command('qa', 'assess', inputs, '--rules-only', '--include-audio', '--hide-paths', '--out', args.out/'autoqa', findings=True)
+command('gaps', 'analyze', inputs, '--include-audio', '--hide-paths', '--out', args.out/'gaps', findings=True)
+command('workbench', 'build', '--detection', args.out/'report', '--autoqa', args.out/'autoqa',
+        '--gaps', args.out/'gaps', '--out', args.out/'original-workbench')
+shutil.move(args.out/'original-workbench', args.out/'moved-workbench')
+command('workbench', 'build', '--out', args.out/'empty-workbench')
+manifest = {}
+for source_dir, copied_dir in [('report','detection'),('autoqa','autoqa'),('gaps','gaps')]:
+    for source in (args.out/source_dir).rglob('*'):
+        if source.is_file():
+            relative = source.relative_to(args.out/source_dir)
+            copied = args.out/'moved-workbench'/copied_dir/relative
+            digest = hashlib.sha256(source.read_bytes()).hexdigest()
+            assert digest == hashlib.sha256(copied.read_bytes()).hexdigest(), relative
+            manifest[f'{copied_dir}/{relative.as_posix()}'] = digest
+(args.out/'workbench-evidence.json').write_text(json.dumps({'commands':commands,'copied_sha256':manifest}, ensure_ascii=False, indent=2))

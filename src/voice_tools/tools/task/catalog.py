@@ -18,7 +18,7 @@ def catalog():
     tree = json.loads(result.stdout)['cli']['commands']
     entries = {}
     for tool, group in tree.items():
-        if tool == 'task':
+        if tool in ('task', 'workbench'):
             continue
         for action, spec in group.get('commands', {}).items():
             if (tool, action) in SETUP:
