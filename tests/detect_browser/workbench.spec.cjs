@@ -30,7 +30,16 @@ test('H01 relocated CLI export loads five tabs and retains input, playback and n
   const errors = [], failed = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('response', response => {if (response.status() >= 400) failed.push(response.url());});
+  // Reopen without a fragment after remembering a non-first tab.
+  await page.goto('/moved-workbench/#guide');
+  await expect(page.getByRole('tab', {selected:true})).toHaveText('使用说明');
   await page.goto('/moved-workbench/');
+  await expect(page.getByRole('tab', {selected:true})).toHaveText('使用说明');
+  await select(page, '跨主机任务');
+  await page.goBack();
+  await expect(page.getByRole('tab', {selected:true})).toHaveText('使用说明');
+  await page.goForward();
+  await expect(page.getByRole('tab', {selected:true})).toHaveText('跨主机任务');
   await expect(page.getByRole('tab')).toHaveCount(5);
   for (const label of ['检测与复核','整通质检','输出间隙','跨主机任务','使用说明']) {
     const frame = await select(page, label);

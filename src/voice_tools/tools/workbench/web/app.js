@@ -117,3 +117,5 @@ tablist.addEventListener('keydown', event => {
 });
 window.addEventListener('hashchange', () => selectTab(location.hash.slice(1)));
 selectTab(location.hash.slice(1) || savedTab);
+// Record the restored tab in this entry so Back returns to what was displayed.
+if (!location.hash) history.replaceState(history.state, '', `#${activeId}`);

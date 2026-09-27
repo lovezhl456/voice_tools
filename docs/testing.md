@@ -71,7 +71,7 @@ python scripts/check_review.py --out .artifacts/review-check
 python scripts/check_detection.py --package-root .artifacts/review-check/package --out .artifacts/detect-check
 ```
 
-复核需 16 项通过，检测／编辑／工作区／统一工作台需 38 项通过；均不得有失败、跳过、重试通过或缺失能力。`verification.json`、`browser-results.json`、截图、导出文件与合成录音是可验证产物。随后运行精简后保留的补充检查：
+复核需 16 项通过，检测／编辑／工作区／统一工作台需 40 项通过；均不得有失败、跳过、重试通过或缺失能力。`verification.json`、`browser-results.json`、截图、导出文件与合成录音是可验证产物。随后运行精简后保留的补充检查：
 
 ```bash
 env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NISQA_AUDIO -u VOICE_TOOLS_TEST_LATENCY_DIR -u VOICE_TOOLS_TEST_QA_MODEL_DIR \
@@ -222,3 +222,5 @@ python scripts/check_detection.py --package-root .local/review-acceptance/packag
 ## 多 Tab 工作台
 
 `check_detection.py` 同时从安装包 CLI 生成整通规则检查、间隙报告和工作台，移动输出目录后运行 H01–H04（桌面/手机共 8 项）：各 Tab 与本地资源、表单/播放/历史保留、复核导出→CLI 入库→新工作台重开、file 协议任务导出/导入、缺失入口/非空输出/目录包含/符号链接拒绝，以及 HTTP 加载失败重试。证据包含 `site/workbench-evidence.json` 的命令与复制文件 SHA-256、导出文件、截图和逐项 JSON。无单元测试新增，不运行模型/真实线路。
+
+W05 额外覆盖公开 schema 到实际服务恢复：先启动并保存工作区，核对 schema/快照中 inputs 可省略，再停止并省略 inputs 重启，浏览器确认录音目录和规则恢复。H01 同时覆盖记住非首标签后无 hash 重开、切换再后退/前进。schema 导出逻辑变动时，还需在支持的 Python 版本间比较完整 CLI 导出。

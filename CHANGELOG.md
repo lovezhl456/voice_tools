@@ -4,7 +4,8 @@
 
 - 状态：实现、可读性核查和最终验证完成，待 PR 审阅与合并；独立分支 `feat/v0.19.1-tabbed-workbench`，基于 `e773ef7`。
 - 范围：新增统一 HTML 导出命令，汇集本地检测、整通质检、输出间隙和任务页面；保持既有单页及数据合同。
-- 验证：安装 wheel 原复核 16 项、检测/编辑/工作区/多 Tab 38 项通过；Python 634 项（597 通过、37 原有条件跳过）、Node 23 项、CLI 兼容 9 场景通过。
+- 验证：安装 wheel 原复核 16 项、检测/编辑/工作区/多 Tab 40 项通过；Python 634 项（597 通过、37 原有条件跳过）、Node 23 项、CLI 兼容 9 场景通过。
+- PR #41 审查修复：统一 Python 版本间可选位置参数的 schema 必填语义；无 hash 恢复标签后前进/后退保持正确标签。新增旧 wheel 失败、新 wheel 通过的回归及真实工作区省略输入重启验收。
 - [工作台用法](docs/tabbed-workbench.md) · [计划与能力保留](docs/tabbed-workbench-plan.md) · [最终验证与边界](docs/tabbed-workbench-validation.md)。
 
 ## 0.18.3 · E2E 优先与低价值测试删除
