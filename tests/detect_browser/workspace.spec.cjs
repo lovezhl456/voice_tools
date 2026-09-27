@@ -3,11 +3,13 @@ const path=require('node:path');
 const fs=require('node:fs');
 const {spawn,spawnSync}=require('node:child_process');
 let processHandle;
-async function start(page,info,standards=false){
+async function start(page,info,standards=false,restore=false){
   const root=info.outputPath('workspace');
-  const setup=spawnSync(process.env.VT_DETECT_PYTHON,[path.join(__dirname,'workspace_fixtures.py'),root,...(standards?['--standards']:[])],{env:process.env,encoding:'utf8'});
-  expect(setup.status,setup.stderr).toBe(0);
-  processHandle=spawn(process.env.VT_DETECT_PYTHON,['-m','voice_tools','--json','detect','serve',path.join(root,'inputs'),'--db',path.join(root,'library.sqlite3'),'--out',path.join(root,'service'),'--port','0'],{env:process.env});
+  if(!restore){
+    const setup=spawnSync(process.env.VT_DETECT_PYTHON,[path.join(__dirname,'workspace_fixtures.py'),root,...(standards?['--standards']:[])],{env:process.env,encoding:'utf8'});
+    expect(setup.status,setup.stderr).toBe(0);
+  }
+  processHandle=spawn(process.env.VT_DETECT_PYTHON,['-m','voice_tools','--json','detect','serve',...(restore?[]:[path.join(root,'inputs')]),'--db',path.join(root,'library.sqlite3'),'--out',path.join(root,'service'),'--port','0'],{env:process.env});
   const address=await new Promise((resolve,reject)=>{
     const timer=setTimeout(()=>reject(Error('workspace startup timed out')),15000);let buffer='';
     processHandle.stdout.on('data',data=>{buffer+=data; if(buffer.includes('\n')){clearTimeout(timer);try{resolve(JSON.parse(buffer.split('\n')[0]).url);}catch(e){reject(e);}}});
@@ -18,7 +20,18 @@ async function start(page,info,standards=false){
   await expect(page.locator('#inputCount')).toContainText('2 个');
   return {address,root,errors};
 }
-test.afterEach(async()=>{if(processHandle){processHandle.kill('SIGTERM');await new Promise(resolve=>processHandle.once('exit',resolve));processHandle=null;}});
+async function stop(){
+  if(!processHandle) return;
+  if(processHandle.exitCode!==null || processHandle.signalCode!==null){
+    processHandle=null;
+    return;
+  }
+  const exited=new Promise(resolve=>processHandle.once('exit',resolve));
+  processHandle.kill('SIGTERM');
+  await exited;
+  processHandle=null;
+}
+test.afterEach(stop);
 async function runAndReview(page){
   await page.locator('#definitions input[value="level@1"]').check();
   await page.getByRole('button',{name:'开始质检',exact:true}).click();
@@ -138,4 +151,35 @@ test('W04 valid long-ID offline drafts import online and survive reopening',asyn
   await page.getByRole('link',{name:'返回质检工作区'}).click();
   await expect(page.locator('#sampleList .row')).toHaveCount(2);
   expect(errors).toEqual([]);
+});
+
+
+test('W05 public schema permits restarting a saved workspace without inputs',async({page},info)=>{
+  const {root}=await start(page,info);
+  await page.getByLabel('工作区名称',{exact:true}).fill('省略输入恢复工作区');
+  await page.locator('#definitions input[value="level@1"]').check();
+  await page.getByRole('button',{name:'保存为日常规则组合',exact:true}).click();
+  await expect(page.locator('#notice')).toContainText('已保存');
+  const command=['-m','voice_tools','schema'];
+  const result=spawnSync(process.env.VT_DETECT_PYTHON,command,{env:process.env,encoding:'utf8'});
+  expect(result.status,result.stderr).toBe(0);
+  const schema=JSON.parse(result.stdout);
+  const snapshot=JSON.parse(fs.readFileSync(path.join(__dirname,'../../docs/cli-schema.json'),'utf8'));
+  fs.writeFileSync(info.outputPath('schema.json'),JSON.stringify(schema,null,2));
+  const arguments_=schema.cli.commands.detect.commands.serve.arguments;
+  expect(arguments_.find(argument=>argument.name==='inputs').required).toBe(false);
+  expect(arguments_.find(argument=>argument.name==='db').required).toBe(true);
+  expect(arguments_.find(argument=>argument.name==='port').required).toBe(false);
+  expect(schema.cli.commands.detect.commands.run.arguments.find(argument=>argument.name==='inputs').required).toBe(true);
+  expect(arguments_).toEqual(snapshot.cli.commands.detect.commands.serve.arguments);
+  await stop();
+  const reopened=await start(page,info,false,true);
+  await expect(page.getByLabel('工作区名称',{exact:true})).toHaveValue('省略输入恢复工作区');
+  await expect(page.locator('#definitions input[value="level@1"]')).toBeChecked();
+  await expect(page.locator('#inputCount')).toContainText('2 个');
+  fs.writeFileSync(info.outputPath('restore.json'),JSON.stringify({schema_command:command,
+    restore_command:['-m','voice_tools','--json','detect','serve','--db',path.join(root,'library.sqlite3'),
+      '--out',path.join(root,'service'),'--port','0'],address:reopened.address,restored:true},null,2));
+  await page.screenshot({path:info.outputPath('restored-workspace.png')});
+  expect(reopened.errors).toEqual([]);
 });

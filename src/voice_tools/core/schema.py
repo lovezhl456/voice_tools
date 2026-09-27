@@ -10,7 +10,11 @@ def describe(parser):
         if isinstance(action, argparse._SubParsersAction):
             commands = {name: describe(child) for name, child in action.choices.items()}
             continue
-        item = {"name": action.dest, "flags": action.option_strings, "required": action.required,
+        required = action.required
+        # argparse versions disagree on .required for optional positional arguments.
+        if not action.option_strings and action.nargs in (argparse.OPTIONAL, argparse.ZERO_OR_MORE):
+            required = False
+        item = {"name": action.dest, "flags": action.option_strings, "required": required,
                 "help": action.help, "nargs": action.nargs,
                 "repeatable": isinstance(action, (argparse._AppendAction, argparse._ExtendAction)),
                 "type": "boolean" if isinstance(action, (argparse._StoreTrueAction, argparse._StoreFalseAction)) else getattr(action.type, "__name__", "string")}

@@ -1,0 +1,27 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="icon" href="data:,"><link rel="stylesheet" href="style.css"><title>voice_tools · 工作台使用说明</title></head>
+<body class="document"><main>
+<p class="eyebrow">VOICE TOOLS · HTML 工作台</p><h1>一个入口，多个工具。</h1>
+<p>用顶部标签切换检测与复核、整通质检、输出间隙和跨主机任务。标签切换保留本次页面输入与滚动位置；刷新、关闭浏览器前，请先导出复核或配置文件。</p>
+<h2>生成新的工作台</h2>
+<pre>voice-tools workbench build \
+  --detection outputs/detection \
+  --autoqa outputs/autoqa \
+  --gaps outputs/gaps \
+  --tasks outputs/tasks \
+  --out outputs/workbench</pre>
+<p>各参数填写对应工具已导出的目录。省略的检测、质检和间隙页面会显示“尚未导入”；省略 <code>--tasks</code> 时会生成可编辑的任务编排页。命令只汇集页面，不执行模型分析、通话或远程任务。</p>
+<h2>先生成各工具的报告</h2>
+<pre>voice-tools detect report --help
+voice-tools qa assess --help
+voice-tools gaps analyze --help
+voice-tools task workbench --out outputs/tasks
+voice-tools task review --help</pre>
+<p>需要在工作台中试听，请在原分析/报告命令里使用 <code>--include-audio</code>。工作台会复制整个报告目录，包括已有音频与导出数据。</p>
+<h2>移动与打开</h2>
+<p>把整个工作台目录一起复制，打开根目录的 <code>index.html</code>。所有入口使用相对路径，不依赖固定端口或外部站点。浏览器对直接打开本地文件的音频、下载或按需数据请求有限制时，可在目录中启动本机服务：</p>
+<pre>python3 -m http.server 8088 --bind 127.0.0.1 --directory outputs/workbench</pre>
+<p>随后访问 <code>http://127.0.0.1:8088/</code>。原报告的外部链接和未包含的文件不会被自动下载或补齐。</p>
+<h2>复核与保存</h2>
+<p>每个工具仍使用原来的复核、配置和任务导出格式。工作台中的改动不会自动写回源目录或数据库；按原页面流程导出，再通过对应 CLI 导入。浏览器记住的是当前标签，刷新并不保证保留未导出的表单数据。</p>
+<p>导出是一次快照。源报告更新后，指定新的空目录再次生成工作台。<code>workbench.json</code> 记录包版本与各标签的导入/生成/空状态。</p>
+</main></body></html>
