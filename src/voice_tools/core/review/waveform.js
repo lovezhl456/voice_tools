@@ -97,6 +97,7 @@ window.createReviewWaveform = (player, onRangeChange, onError, {focusSelection =
         annotation = regions.addRegion({id: "annotation-window", start: entry.op.at_s, end: entry.op.observed_until_s,
           drag: false, resize: false, color: "rgba(232, 174, 53, .10)"});
         annotation.element.style.pointerEvents = "none";
+        annotation.element.hidden = entry.showEvidence === false;
         annotation.element.style.borderInline = "1px dashed #bd8617";
         audition = regions.addRegion({id: "audition-range", start: Number($("start").value), end: Number($("end").value),
           drag: false, resize: true, minLength: minRange(), color: "rgba(24, 156, 151, .07)"});
@@ -107,10 +108,13 @@ window.createReviewWaveform = (player, onRangeChange, onError, {focusSelection =
       } catch (error) { if (ticket === generation) onError(`波形无法加载：${error.message}`); }
     },
     syncRange,
-    setEvidenceRange(start, end) {
+    setEvidenceRange(start, end, showEvidence = true) {
       if (!entry || !Number.isFinite(start + end) || start < 0 || end <= start || end > duration()) return;
-      entry = {...entry, op: {...entry.op, at_s: start, observed_until_s: end}};
-      if (annotation) annotation.setOptions({start, end});
+      entry = {...entry, showEvidence, op: {...entry.op, at_s: start, observed_until_s: end}};
+      if (annotation) {
+        annotation.setOptions({start, end});
+        annotation.element.hidden = !showEvidence;
+      }
     },
     setTime(value) { if (!Number.isFinite(value)) return; if (ready) wave.setTime(value); else if (player.getAttribute("src")) player.currentTime = value; },
     syncChannel(channel) {

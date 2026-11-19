@@ -10,11 +10,17 @@ __WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href=
 </section>
 <div class="toolbar"><button id="exportResults">导出筛选结果</button><button id="exportReviews" class="primary">导出复核文件</button><label class="fileButton">重新导入草稿<input type="file" id="importDraft" accept=".json"></label><button id="clearFilters">清空筛选</button></div>
 <p id="message" role="status" aria-live="polite"></p><p id="progress" class="muted"></p>
-<div class="workspace"><aside><h2>命中片段</h2><div id="queue"></div></aside><section id="detail" hidden>
-<h2 id="name"></h2><p id="identity" class="muted"></p><p id="reason"></p><details><summary>指标、判定条件与原始标签</summary><pre id="evidence"></pre></details>
+<div class="workspace"><aside><h2>录音列表</h2><div id="queue"></div></aside><section id="detail" hidden>
+<header class="recording-heading"><div><h2 id="name"></h2><p id="recordingSummary" class="muted"></p><p id="recordingNote" class="muted" hidden></p></div><button id="addRecordingAnnotation" type="button">在这份录音上补标</button></header>
+<section id="recordingAnnotations" aria-label="录音标注">
+<div class="annotation-tools"><label>全长标注<select id="annotationSelect"></select></label></div>
+<div id="annotationTimeline" class="annotation-timeline" role="group" aria-label="全长标注时间轴"></div>
+<div class="annotation-time muted"><span>0 秒</span><span id="annotationDuration"></span></div>
+</section>
 __WAVEFORM_PANEL__
 __PLAYBACK_CONTROLS__
 <p id="audioHint" class="muted"></p>
+<section id="annotationDetail" hidden><h3 id="annotationName"></h3><p id="identity" class="muted"></p><p id="reason"></p><details id="annotationEvidence"><summary>指标、判定条件与原始标签</summary><pre id="evidence"></pre></details></section>
 <form id="reviewForm"><h3>人工结论</h3><div class="formGrid"><label>状态<select id="reviewStatus"><option value="pending">待复核</option><option value="confirmed">已确认</option><option value="false_positive">误报</option><option value="corrected">修正标签／片段</option></select></label><label>标签<input id="reviewLabel" required maxlength="100"></label><label>起点（秒）<input id="reviewStart" type="number" min="0" step="any" required></label><label>终点（秒）<input id="reviewEnd" type="number" min="0" step="any" required></label><label>复核人<input id="reviewer" required maxlength="100"></label><label>备注<input id="comment" maxlength="4000"></label></div><button class="primary" type="submit">保存到草稿</button><button id="discard" type="button">放弃表单修改</button><p class="muted">草稿保存在本浏览器，尚未写入检测库。修正标签／时间后请选择“修正标签／片段”。</p></form>
 </section></div>
 <section id="auditPanel" class="card" hidden><h2>未命中抽检</h2><p>只列出检测成功且所选规则未命中的录音。选择后试听，再确认正常范围或在下方补充漏检；未检查录音不会自动视为正常。</p><label>抽检录音<select id="auditEvaluation"></select></label><button id="auditListen" type="button">试听这条未命中录音</button><p id="auditProgress"></p></section>

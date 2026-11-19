@@ -37,7 +37,8 @@ async function runAndReview(page){
   await page.getByRole('button',{name:'开始质检',exact:true}).click();
   await page.getByRole('link',{name:'打开本次录音复核',exact:true}).click();
   await expect(page.locator('#liveToolbar')).toBeVisible();
-  await expect(page.locator('#queue button')).toHaveCount(1);
+  await expect(page.locator('#queue button')).toHaveCount(2);
+  await expect(page.locator('#annotationTimeline button')).toHaveCount(1);
 }
 
 test('W01 daily rules, online review, false-positive reason, audit and reopening persist',async({page},info)=>{
@@ -147,7 +148,9 @@ test('W04 valid long-ID offline drafts import online and survive reopening',asyn
   await expect(page.locator('#manualQueue li')).toHaveCount(2);
   await page.getByRole('button',{name:'将已有草稿保存到检测库',exact:true}).click();
   await expect(page.locator('#message')).toContainText('已保存到检测库');
-  await page.reload();await expect(page.locator('#queue button')).toHaveCount(2);
+  await page.reload();
+  await expect(page.locator('#queue button')).toHaveCount(2);
+  await expect(page.locator('#annotationTimeline button')).toHaveCount(2);
   await page.getByRole('link',{name:'返回质检工作区'}).click();
   await expect(page.locator('#sampleList .row')).toHaveCount(2);
   expect(errors).toEqual([]);

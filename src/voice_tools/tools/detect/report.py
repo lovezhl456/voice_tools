@@ -77,7 +77,7 @@ def render(db, output, include_audio=False, hide_paths=False, batch=None):
     page = page.replace('__STYLE__', (ROOT / 'report.css').read_text(encoding='utf-8'))
     page = page.replace('__FILTER__', (ASSETS / 'file-filter.js').read_text(encoding='utf-8'))
     page = page.replace('__SCRIPT__', (ROOT / 'report.js').read_text(encoding='utf-8')).replace('__DATA__', data)
-    page = page.replace('当前机会', '当前片段').replace('标注窗口 · 固定', '检测片段 · 固定')
+    page = page.replace('当前机会', '当前片段').replace('标注窗口 · 固定', '当前标注 · 固定')
     (output / 'index.html').write_text(page, encoding='utf-8')
     return {'recordings': len(records), 'findings': len(payload['findings']), 'batches': len(payload['batches']),
             'audio_unavailable': sum('audio_error' in record for record in records)}

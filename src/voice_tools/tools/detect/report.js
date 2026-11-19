@@ -30,6 +30,7 @@
   const decisions = new Map(), manual = new Map();
   const key = `voice-tools-detect:${data.library_id}:${data.report_id}`;
   let current = null, currentRecord = null, visible = [], formDirty = false, notExported = false;
+  let recordingGroups = new Map();
   const message = (value) => { $('message').textContent = value; };
   const fileFilter = createReviewFileFilter(data.records, (record) => record.id, refresh);
   const waveform = createReviewWaveform($('player'), (start, end) => playback.setRange(start, end), message, {focusSelection:true});
@@ -76,7 +77,6 @@
     try { localStorage.setItem(key,JSON.stringify(packet())); }
     catch(error) { /* The database save succeeded even if browser draft storage is unavailable. */ }
     renderManual(); refresh();
-    if (current && originals.has(current.id)) select(originals.get(current.id));
     message('已保存到检测库，重新打开仍可继续复核。');
   }
   if (session) {
@@ -109,39 +109,127 @@
       } catch(error) { message(error.message); }
     };
   }
+  const rangeLabel = (row) => `${row.start_s.toFixed(2)}–${row.end_s.toFixed(2)} 秒`;
+  const statusLabel = (row) => row.draft ? '漏检草稿' : names[row.status];
+  const matchesScope = (row) => (!$('batch').value || row.batch_id === $('batch').value) &&
+    (!$('definition').value || row.definition_id === $('definition').value) &&
+    (!$('version').value || row.version === $('version').value);
+  function updateSelection() {
+    for (const button of $('queue').children) {
+      button.setAttribute('aria-current', String(currentRecord?.id === button.dataset.recordingId));
+    }
+    for (const button of $('annotationTimeline').children) {
+      button.setAttribute('aria-pressed', String(current?.id === button.dataset.annotationId));
+    }
+    $('annotationSelect').value = current?.id || '';
+  }
+  function showProgress() {
+    $('progress').textContent = `${recordingGroups.size} 份录音 · ${visible.length} 条符合筛选的检测记录 · ${decisions.size} 条复核草稿 · ${manual.size} 条漏检补标` +
+      (formDirty ? ' · 表单尚未保存' : '');
+  }
   function renderQueue() {
     $('queue').replaceChildren();
-    for (const row of visible) {
-      const button = document.createElement('button'), small = document.createElement('small');
-      button.type = 'button'; button.textContent = `${row.label} · ${filename(row.sources[0])}`;
-      small.textContent = `${row.start_s.toFixed(2)}–${row.end_s.toFixed(2)} 秒 · ${names[row.status]} · ${row.definition_id}@${row.version} · ${row.batch_id}`;
-      button.append(small); button.setAttribute('aria-current', String(current?.id === row.id));
-      button.onclick = () => select(row); $('queue').append(button);
+    for (const [id, annotations] of recordingGroups) {
+      const button = document.createElement('button'), count = document.createElement('small');
+      button.type = 'button'; button.dataset.recordingId = id;
+      button.textContent = filename(records.get(id).input);
+      count.textContent = annotations.length ? `${annotations.length} 条标注` : '无标注';
+      button.append(count);
+      button.onclick = () => {
+        if (formDirty) { message('请先保存或放弃当前表单修改。'); return; }
+        selectRecording(records.get(id), annotations[0] || null);
+      };
+      $('queue').append(button);
     }
-    if (!visible.length) $('queue').textContent = '没有符合条件的标签。可清空筛选，或在下方检查无命中的录音。';
-    $('progress').textContent = `${visible.length} 条符合筛选 · ${decisions.size} 条复核草稿 · ${manual.size} 条漏检补标` + (formDirty ? ' · 表单尚未保存' : '');
+    if (!recordingGroups.size) $('queue').textContent = '没有符合条件的录音。';
+    updateSelection();
+    showProgress();
+  }
+  function renderAnnotations(record) {
+    const annotations = recordingGroups.get(record.id) || [];
+    $('recordingAnnotations').classList.toggle('with-waveform', Boolean(record.waveform?.channels?.length));
+    const picker = $('annotationSelect'), timeline = $('annotationTimeline');
+    picker.replaceChildren(new Option(annotations.length ? '选择一条标注' : '暂无标注', ''));
+    picker.disabled = !annotations.length;
+    timeline.replaceChildren();
+    const laneEnds = [];
+    for (const row of annotations) {
+      const title = `${row.label} · ${rangeLabel(row)} · ${statusLabel(row)}`;
+      picker.add(new Option(title, row.id));
+      const marker = document.createElement('button');
+      marker.type = 'button'; marker.dataset.annotationId = row.id;
+      marker.dataset.status = row.draft ? 'draft' : row.status;
+      marker.title = `${title} · ${row.batch_id} · ${row.definition_id}@${row.version}`;
+      marker.setAttribute('aria-label', marker.title);
+      const availableLane = laneEnds.findIndex((end) => end <= row.start_s);
+      const lane = availableLane < 0 ? laneEnds.length : availableLane;
+      laneEnds[lane] = row.end_s;
+      marker.style.setProperty('--lane', String(lane));
+      marker.style.setProperty('--start', `${row.start_s / record.duration_s * 100}%`);
+      marker.style.setProperty('--width', `${(row.end_s - row.start_s) / record.duration_s * 100}%`);
+      marker.onclick = () => select(row);
+      timeline.append(marker);
+    }
+    timeline.style.setProperty('--lane-count', String(laneEnds.length));
+    picker.onchange = () => {
+      const selected = annotations.find((row) => row.id === picker.value);
+      if (selected) select(selected);
+      else updateSelection();
+    };
+    $('annotationDuration').textContent = `${Number(record.duration_s.toFixed(2))} 秒`;
+    $('recordingSummary').textContent = `${annotations.length} 条标注 · ${Number(record.duration_s.toFixed(2))} 秒`;
   }
   function refresh() {
     const tags = $('tags').value.split(/[,，]/).map((value) => value.trim()).filter(Boolean);
+    const status = $('status').value;
     let rows = data.findings.map(effective).filter((row) => fileFilter.matches(records.get(row.recording_id)) &&
-      (!$('batch').value || row.batch_id === $('batch').value) &&
-      (!$('definition').value || row.definition_id === $('definition').value) &&
-      (!$('version').value || row.version === $('version').value) &&
-      (!$('status').value || row.status === $('status').value));
-    if (tags.length && $('tagMode').value === 'all') {
-      const groups = new Map();
+      matchesScope(row) && (!status || row.status === status));
+    const matchAll = tags.length && $('tagMode').value === 'all';
+    if (matchAll) {
+      const tagsByCall = new Map();
       for (const row of rows) {
-        const id = row.batch_id + ':' + row.recording_id;
-        if (!groups.has(id)) groups.set(id,new Set());
-        groups.get(id).add(row.label);
+        const key = row.batch_id + ':' + row.recording_id;
+        if (!tagsByCall.has(key)) tagsByCall.set(key,new Set());
+        tagsByCall.get(key).add(row.label);
       }
-      rows = rows.filter((row) => tags.every((tag) => groups.get(row.batch_id + ':' + row.recording_id).has(tag)));
+      rows = rows.filter((row) => tags.every((tag) => tagsByCall.get(row.batch_id + ':' + row.recording_id).has(tag)));
     }
     visible = rows.filter((row) => !tags.length || tags.includes(row.label));
+    recordingGroups = new Map();
+    for (const row of visible) {
+      if (!recordingGroups.has(row.recording_id)) recordingGroups.set(row.recording_id, []);
+      recordingGroups.get(row.recording_id).push(row);
+    }
+    if (!tags.length && !status) {
+      for (const evaluation of data.evaluations) {
+        if (!recordingGroups.has(evaluation.recording_id) && matchesScope(evaluation) &&
+            fileFilter.matches(records.get(evaluation.recording_id))) {
+          recordingGroups.set(evaluation.recording_id, []);
+        }
+      }
+    }
+    if (!status) {
+      for (const item of manual.values()) {
+        const evaluation = data.evaluations.find((row) => row.batch_id === item.batch_id &&
+          row.recording_id === item.recording_id && row.config_hash === item.config_hash);
+        if (!evaluation || !matchesScope(evaluation) || !fileFilter.matches(records.get(item.recording_id)) ||
+            (tags.length && !tags.includes(item.label)) || (matchAll && !recordingGroups.has(item.recording_id))) continue;
+        if (!recordingGroups.has(item.recording_id)) recordingGroups.set(item.recording_id, []);
+        recordingGroups.get(item.recording_id).push({...evaluation, ...item, draft: true});
+      }
+    }
+    for (const annotations of recordingGroups.values()) {
+      annotations.sort((a,b) => a.start_s - b.start_s || a.end_s - b.end_s);
+    }
     renderQueue();
     if (formDirty) { message('筛选已更新；请先保存或放弃当前表单修改。'); return; }
-    if (visible.length && !visible.some((row) => row.id === current?.id)) select(visible[0]);
-    else if (!visible.length) { playback.pause(); current = null; $('detail').hidden = true; }
+    const target = recordingGroups.has(currentRecord?.id) ? currentRecord.id : recordingGroups.keys().next().value;
+    if (target) {
+      const annotations = recordingGroups.get(target);
+      selectRecording(records.get(target), annotations.find((row) => row.id === current?.id) || annotations[0] || null, true);
+    } else {
+      playback.pause(); current = null; currentRecord = null; $('detail').hidden = true;
+    }
   }
   function setAudio(keepTime=false) {
     const sources = currentRecord?.playback_sources || {};
@@ -151,27 +239,68 @@
     waveform.syncChannel($('channel').value);
     $('audioHint').textContent = currentRecord.audio_error || (sources.both ? '音频摘要已核对。图形保持原始声道；单轨选择仅改变试听。' : '未附带音频；生成报告时增加 --include-audio 可试听。波形仍可查看。');
   }
-  function showAudio(record, start, end) {
-    currentRecord = record; playback.pause(); $('seek').max = record.duration_s;
+  function showAudio(record, start, end, showEvidence) {
+    const sameRecording = currentRecord?.id === record.id;
+    currentRecord = record;
+    playback.pause();
+    if (sameRecording) {
+      waveform.setEvidenceRange(start, end, showEvidence);
+      playback.setRange(start, end);
+      playback.applyRange(true);
+      return;
+    }
+    $('seek').max = record.duration_s;
     $('start').value = start; $('end').value = end;
     for (const [index,id] of ['leftTitle','rightTitle'].entries()) {
       $(id).querySelector('.role-name').textContent = `声道 ${index}`;
       $(id).querySelector('.role-meta').textContent = '角色按检测配置约定';
     }
-    setAudio(); waveform.load({record, op:{at_s:start, observed_until_s:end}});
+    setAudio(); waveform.load({record, op:{at_s:start, observed_until_s:end}, showEvidence});
   }
   function select(row) {
-    if (formDirty) { message('请先保存到草稿或放弃表单修改。'); return; }
-    current = effective(originals.get(row.id)); $('detail').hidden = false; $('reviewForm').hidden = false;
-    $('name').textContent = `${current.label} · ${filename(current.sources[0])}`;
-    $('identity').textContent = `${current.definition_id}@${current.version} · ${current.batch_id} · ${current.id} · 复核版本 ${current.revision}`;
-    $('reason').textContent = current.reason;
-    $('evidence').textContent = JSON.stringify(current.automatic, null, 2);
-    $('reviewStatus').value = current.status; $('reviewLabel').value = current.label;
-    $('reviewStart').value = current.start_s; $('reviewEnd').value = current.end_s;
-    $('reviewer').value = current.reviewer || $('reviewer').value;
-    $('comment').value = current.comment;
-    showAudio(records.get(current.recording_id), current.start_s, current.end_s); renderQueue();
+    if (formDirty) { message('请先保存或放弃当前表单修改。'); updateSelection(); return; }
+    selectRecording(records.get(row.recording_id), row);
+  }
+  function selectRecording(record, row, refreshAnnotations = false) {
+    const changed = currentRecord?.id !== record.id;
+    const previous = current;
+    current = row; $('detail').hidden = false;
+    $('name').textContent = filename(record.input);
+    $('recordingNote').hidden = true;
+    if (changed || refreshAnnotations) renderAnnotations(record);
+    $('annotationDetail').hidden = !row;
+    $('reviewForm').hidden = !row || Boolean(row.draft);
+    if (row) {
+      $('annotationName').textContent = `${row.label} · ${rangeLabel(row)}`;
+      $('identity').textContent = row.draft
+        ? `${row.definition_id}@${row.version} · ${row.batch_id} · 漏检草稿`
+        : `${row.definition_id}@${row.version} · ${row.batch_id} · 复核版本 ${row.revision}`;
+      $('reason').textContent = row.draft ? row.comment : row.reason;
+      $('annotationEvidence').hidden = Boolean(row.draft);
+      if (!row.draft) {
+        $('evidence').textContent = JSON.stringify(row.automatic, null, 2);
+        $('reviewStatus').value = row.status; $('reviewLabel').value = row.label;
+        $('reviewStart').value = row.start_s; $('reviewEnd').value = row.end_s;
+        $('reviewer').value = row.reviewer || $('reviewer').value;
+        $('comment').value = row.comment;
+      }
+    }
+    const start = row?.start_s ?? 0, end = row?.end_s ?? record.duration_s;
+    if (changed || previous?.id !== row?.id || previous?.start_s !== row?.start_s || previous?.end_s !== row?.end_s) {
+      showAudio(record, start, end, Boolean(row));
+    }
+    const index = data.evaluations.findIndex((item) => item.recording_id === record.id &&
+      (row ? item.batch_id === row.batch_id && item.config_hash === row.config_hash : matchesScope(item)));
+    $('addRecordingAnnotation').hidden = index < 0;
+    $('addRecordingAnnotation').onclick = () => {
+      $('manualEvaluation').value = String(index);
+      $('manualStart').value = $('start').value;
+      $('manualEnd').value = $('end').value;
+      $('normalChecked').checked = false;
+      $('manualForm').scrollIntoView({block:'start'});
+      $('manualLabel').focus({preventScroll:true});
+    };
+    updateSelection();
   }
   function validateRange(start,end,duration) {
     if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > duration) throw Error('片段必须在录音范围内，终点大于起点。');
@@ -200,7 +329,7 @@
     for (const item of manual.values()) {
       const li = document.createElement('li'), remove = document.createElement('button');
       li.textContent = `${item.label} · ${item.start_s}–${item.end_s} 秒 · ${item.comment} `;
-      remove.textContent = '移除草稿'; remove.onclick = () => { manual.delete(item.id); persist(); renderManual(); renderQueue(); };
+      remove.textContent = '移除草稿'; remove.onclick = () => { manual.delete(item.id); persist(); renderManual(); refresh(); };
       li.append(remove); $('manualQueue').append(li);
     }
   }
@@ -217,7 +346,6 @@
     for (const item of value.reviews) decisions.set(item.finding_id,item);
     for (const item of value.manual) manual.set(item.id,item);
     renderManual(); refresh();
-    if (current) select(current);
   }
   function download(value, name) {
     const url = URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));
@@ -235,8 +363,8 @@
     }
     catch(error) { message(error.message); }
   };
-  for (const id of ['reviewStatus','reviewLabel','reviewStart','reviewEnd','reviewer','comment']) $(id).oninput = () => { formDirty=true; renderQueue(); };
-  $('discard').onclick = () => { formDirty=false; select(current); message('已放弃表单修改。'); };
+  for (const id of ['reviewStatus','reviewLabel','reviewStart','reviewEnd','reviewer','comment']) $(id).oninput = () => { formDirty=true; showProgress(); };
+  $('discard').onclick = () => { formDirty=false; refresh(); message('已放弃表单修改。'); };
   $('channel').onchange = () => setAudio(true);
   $('player').addEventListener('error', () => { if ($('player').getAttribute('src')) message('音频加载失败，不能完成试听；请核对报告资源。'); });
   for (const id of ['directoryFilter','fileFilter','batch','definition','version','status','tagMode']) $(id).onchange = () => {
@@ -263,11 +391,12 @@
   $('listenManual').onclick = () => {
     if (formDirty) { message('请先保存或放弃表单修改。'); return; }
     const item = data.evaluations[Number($('manualEvaluation').value)]; if (!item) return;
-    current=null; $('detail').hidden=false; $('reviewForm').hidden=true;
-    $('name').textContent = filename(item.sources[0]); $('identity').textContent = `${item.batch_id} · ${item.definition_id}@${item.version} · ${item.status}`;
-    $('reason').textContent = item.note || '请试听后在下方补充漏检片段。'; $('evidence').textContent='';
+    selectRecording(records.get(item.recording_id), null);
+    playback.setRange(0, item.duration_s); playback.applyRange(true);
+    $('recordingNote').textContent = `${item.batch_id} · ${item.definition_id}@${item.version} · ${item.status}${item.note ? ' · ' + item.note : ''}`;
+    $('recordingNote').hidden = false;
     $('manualStart').value=0; $('manualEnd').value=item.duration_s;
-    showAudio(records.get(item.recording_id),0,item.duration_s); $('detail').scrollIntoView({block:'start'});
+    $('detail').scrollIntoView({block:'start'});
   };
   for (const id of ['manualEvaluation','manualLabel','manualStart','manualEnd','manualReviewer','manualComment']) {
     $(id).addEventListener('input', () => { $('normalChecked').checked=false; });
@@ -281,7 +410,7 @@
       end_s:$('manualEnd').valueAsNumber, reviewer:$('manualReviewer').value, comment:$('manualComment').value};
     try { validateManual(item);
       if (session) await submitPacket({schema_version:'1.0',library_id:data.library_id,reviews:[],manual:[item]});
-      else { manual.set(item.id,item); persist(); renderManual(); renderQueue(); }
+      else { manual.set(item.id,item); persist(); renderManual(); refresh(); }
     }
     catch(error) { message(error.message); }
   };

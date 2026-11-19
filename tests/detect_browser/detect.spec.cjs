@@ -28,16 +28,25 @@ test('D01 filters versions, multiple tags and exports the visible result',async(
   await page.locator('#batch').selectOption('baseline');
   await page.locator('#tags').fill('AI低音量,待核实');
   await page.locator('#tagMode').selectOption('all');
-  await expect(page.locator('#queue button')).toHaveCount(4);
-  await page.locator('#fileSearch').fill('quiet');
   await expect(page.locator('#queue button')).toHaveCount(2);
+  await expect(page.locator('#annotationTimeline button')).toHaveCount(2);
+  await page.locator('#fileSearch').fill('quiet');
+  await expect(page.locator('#queue button')).toHaveCount(1);
+  const markers = page.locator('#annotationTimeline button');
+  await expect(markers).toHaveCount(2);
+  await markers.nth(1).click();
+  await expect(markers.nth(1)).toHaveAttribute('aria-pressed','true');
+  await expect(page.locator('#name')).toHaveText('quiet.wav');
   await page.locator('#version').selectOption('2');
   await expect(page.locator('#queue button')).toHaveCount(0);
   await page.locator('#version').selectOption('1');
   const saved=await download(page,'#exportResults',test.info().outputPath('query.json'));
   expect(saved).toHaveLength(2); expect(saved.every(row=>row.batch_id==='baseline')).toBe(true);
   await page.locator('#clearFilters').click();
-  expect(await page.locator('#queue button').count()).toBeGreaterThan(4);
+  await expect(page.locator('#queue button')).toHaveCount(3);
+  await page.locator('#queue button').filter({hasText:'loud.wav'}).click();
+  await expect(page.locator('#annotationTimeline button')).toHaveCount(0);
+  await expect(page.locator('#reviewForm')).toBeHidden();
   expect(errors).toEqual([]);
 });
 
@@ -97,6 +106,7 @@ test('D04 manual missed segment, unknown source, and hostile labels remain data'
   await page.locator('#manualLabel').fill('人工补标'); await page.locator('#manualStart').fill('2'); await page.locator('#manualEnd').fill('4');
   await page.locator('#manualReviewer').fill('tester'); await page.locator('#manualComment').fill('自动规则漏检');
   await page.locator('#manualForm button[type=submit]').click(); await expect(page.locator('#manualQueue li')).toHaveCount(1);
+  await expect(page.locator('#annotationTimeline button[data-status=draft]')).toHaveCount(1);
   const file=info.outputPath('manual.json'); const packet=await download(page,'#exportReviews',file);
   expect(packet.manual).toHaveLength(1);
   const db=info.outputPath('manual.sqlite3'); fs.copyFileSync(path.join(site,'library.sqlite3'),db);
