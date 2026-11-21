@@ -117,3 +117,29 @@ cp -R outputs/gaps-task-review outputs/gaps-site/task-review
 优先检查 run.json 的 errors、逐录音 error 和 evidence.sources 中的状态。没有事件保持声学等级；没有匹配绑定为 not_bound；旧汇总、未对齐、部分时序均不被解释成“没有异常”。
 
 参考问题定义：[hiccup 固定版本](https://github.com/AhmadIbrahiim/hiccup/tree/260c92e867203f192dd8d5c37879b4e624ec3f11)。本实现独立编写；未复制上游代码、测试、UI，未引入运行依赖。
+
+## 回声拨测的旧音与双腿 RTP
+
+`voice-tools gaps echo` 接收单通 8–48 kHz PCM16 双声道 WAV。默认左轨放上行原声，右轨放浏览器实际播放。反向录制时传入 `--reference-channel right`。两轨需是同一已知音源的原声与回声。自然背景音可照常保留。正常人机问答的上下行内容不同，应使用逐轮延迟分析。
+
+```bash
+voice-tools gaps echo browser-stereo.wav --out outputs/echo-audit
+```
+
+报告会列出源轨仍有音频时返听近静音的起止，以及每次确定性波形匹配的原声时间、观察时间、年龄和相关度。默认筛选 120 ms 以上的返听近静音，将匹配后超过 1000 ms 的样本计入旧音，最多搜索 20 秒的源音历史。可用 `--pause-ms`、`--silence-db`、`--old-audio-ms` 和 `--max-age-ms` 调整。重复音调、全静音、证据不唯一或拉伸失真可能无法匹配，报告会保留匹配覆盖情况。
+
+同一个 PCAP/PCAPNG 可包含 FreeSWITCH 两侧的多条 RTP 流。输入已核实的录音零点（Unix epoch 秒）和实际抓包方向的 UDP 端口。对于加密的浏览器 WebRTC 流，只分析包头。对确认是**明文 G.711 PCMU/PCMA** 的流，使用 `--plaintext-flow`，额外对比该跳观察到的音频内容及年龄。
+
+```bash
+voice-tools gaps echo browser-stereo.wav --pcap switch.pcapng \
+  --recording-start-epoch 1800000000.250 \
+  --flow browser-in=54097:37436 --flow browser-out=37436:54097 \
+  --flow fs-to-gateway=37468:36858 --flow gateway-to-fs=36858:37468 \
+  --plaintext-flow fs-to-gateway --out outputs/echo-with-rtp
+```
+
+示例端口和 epoch 仅说明格式。使用浏览器实际选用的媒体方向与抓包时钟。不同机器的时钟未对齐时，先确定时差并处理漂移。每个指定方向在录音窗口内应匹配单一 IP 端点组合和 SSRC。通话迁移或重拨后分段分析。最长相邻包间隔、序号增量、其他流同期包数均是抓包点观察。如果 B-leg 明文和浏览器播放均匹配到同一段源音，报告给出该段的源音、B-leg 抓包、浏览器播放时间。RTP 时间戳只用于检查每条流内部的连续性。
+
+命令生成 `echo.md` 与 `echo.json`，不会复制原始录音、PCAP 或解码音频。显式抓包输入分析失败或部分缺失时返回 3，保留已完成的录音结果。零候选或匹配覆盖不足仍需按实际播放验收。已有 `gaps analyze` 查对话中的自然停顿与短断音，`report build` 仍可生成完整媒体报告。
+
+安装包验证可运行 `python scripts/check_echo_audit.py --out outputs/echo-check`，需要当前安装包和 tshark。脚本自行生成合成 WAV、带连续序号的停转发 PCAP 以及重复波形反例。

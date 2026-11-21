@@ -21,6 +21,22 @@ def register(commands):
     cmd.add_argument("--hide-paths", action="store_true", help="报告隐藏绝对路径；JSON 保留来源")
     cmd.add_argument("--fail-on-findings", action="store_true")
     cmd.set_defaults(run=run_analyze)
+    echo = actions.add_parser("echo", help="对齐回声拨测双轨，量化停顿、旧音及 RTP 旁证")
+    echo.add_argument("wav", type=Path, help="双声道 PCM16 WAV，原声与浏览器实际返听各一轨")
+    echo.add_argument("--out", required=True, type=Path)
+    echo.add_argument("--reference-channel", choices=("left", "right"), default="left")
+    echo.add_argument("--pause-ms", type=float, default=120)
+    echo.add_argument("--silence-db", type=float, default=-60)
+    echo.add_argument("--old-audio-ms", type=float, default=1000)
+    echo.add_argument("--max-age-ms", type=float, default=20000)
+    echo.add_argument("--pcap", type=Path, help="可选，单通同一采集点的 PCAP/PCAPNG")
+    echo.add_argument("--recording-start-epoch", type=float, help="已核实的录音零点，对应抓包 epoch 秒")
+    echo.add_argument("--flow", action="append", default=[], metavar="NAME=SRC:DST",
+                      help="命名的 RTP 方向与 UDP 端口，可重复")
+    echo.add_argument("--plaintext-flow", action="append", default=[], metavar="NAME",
+                      help="明确为明文 G.711 的流向，可重复")
+    echo.add_argument("--tshark", default="tshark", help="本机 tshark 路径")
+    echo.set_defaults(run=run_echo)
     review = actions.add_parser("review-check", help="校验间隙 CSV 与检测身份、人工区间和复核信息")
     review.add_argument("review", type=Path)
     review.add_argument("--results", type=Path, required=True)
@@ -47,3 +63,20 @@ def run_review(args):
     from voice_tools.core.command import emit_result
     result = check(args.review, args.results)
     return emit_result(args, result, f"已校验 {result['labels']} 条标注，人工补标 {result['manual']} 条")
+
+
+def run_echo(args):
+    from voice_tools.core.command import artifacts, emit_result
+    from .echo import analyze
+    from .echo_capture import capture_options
+
+    capture = capture_options(args.pcap, args.recording_start_epoch, args.flow, args.plaintext_flow, args.tshark)
+    result = analyze(args.wav, args.out, args.reference_channel, args.pause_ms, args.silence_db,
+                     args.old_audio_ms, args.max_age_ms, capture)
+    playback = result["playback"]
+    capture_status = result.get("capture", {}).get("status", "not_requested")
+    summary = {"pauses": len(result["quiet_intervals"]), "matched_windows": playback["matched_windows"],
+               "max_playback_age_ms": playback["max_age_ms"], "old_audio_windows": playback["old_audio_windows"],
+               "capture_status": capture_status}
+    return emit_result(args, summary, f"回声分析：{args.out / 'echo.md'}",
+                       artifacts(args.out, "echo.md", "echo.json"), 3 if capture_status in ("error", "partial") else 0)
