@@ -3,8 +3,10 @@
 .recording-heading{align-items:flex-start;margin-bottom:14px}
 .recording-heading h2{margin-bottom:2px}
 .recording-heading p{margin:0}
-.annotation-tools{display:flex;align-items:flex-end;gap:10px;margin-bottom:8px}
-.annotation-tools label{width:min(100%,420px)}
+#recordingAnnotations{--timeline-label-width:104px;--duplex-left:#267f78;--duplex-right:#6052a3}
+.annotation-tools{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 20px;margin-bottom:8px}
+.annotation-tools h3{margin:0}
+.annotation-tools label{width:min(100%,310px)}
 .annotation-timeline{
   position:relative;height:min(122px,max(36px,calc(var(--lane-count,0)*22px + 12px)));
   overflow:auto;border:1px solid var(--line);
@@ -23,12 +25,31 @@
 .annotation-timeline button:hover,.annotation-timeline button:focus-visible{z-index:2;border-color:var(--accent)}
 .annotation-timeline button[aria-pressed=true]{z-index:1;outline:2px solid var(--accent)}
 .annotation-timeline button:focus-visible{z-index:3;outline-offset:1px}
-.annotation-time{display:flex;justify-content:space-between;margin-top:3px}
-.with-waveform{--waveform-label-width:104px}
-.with-waveform .annotation-timeline,.with-waveform .annotation-time{
-  margin-inline:calc(var(--waveform-label-width) + 1px) 1px
+.annotation-time{position:relative;height:24px;margin-top:3px;white-space:nowrap}
+.annotation-time span{position:absolute;transform:translateX(-50%)}
+.annotation-time span:first-child{transform:none}
+.annotation-time span:last-child{transform:translateX(-100%)}
+.with-duplex .annotation-timeline,.with-duplex .annotation-time{margin-inline-start:var(--timeline-label-width)}
+.duplex-timeline{
+  --duplex-height:52px;display:grid;grid-template-columns:var(--timeline-label-width) minmax(0,1fr);margin-top:4px
 }
-@media(max-width:740px){.with-waveform{--waveform-label-width:72px}}
+.duplex-timeline[hidden]{display:none}
+.duplex-timeline.two-channels{--duplex-height:100px}
+.duplex-channels{display:grid;grid-auto-rows:40px;align-content:center;gap:8px;padding-right:8px;font-size:13px;font-weight:600}
+.duplex-channels span{align-self:center;color:var(--duplex-left)}
+.duplex-channels span+span{color:var(--duplex-right)}
+.duplex-plot{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:7px;background:var(--wash)}
+.duplex-plot.can-seek{cursor:crosshair}
+.duplex-plot canvas{display:block;width:100%;height:var(--duplex-height)}
+.duplex-range,.duplex-playhead{position:absolute;inset-block:0;pointer-events:none}
+.duplex-range{background:color-mix(in srgb,var(--accent) 10%,transparent);border-inline:1px solid var(--accent)}
+.duplex-playhead{width:2px;background:var(--ink);transform:translateX(-1px)}
+#precisionWave summary{color:var(--accent);font-weight:600}
+#precisionWave .wave-panel{margin-top:8px}
+@media(max-width:740px){
+  #recordingAnnotations{--timeline-label-width:58px}
+  .annotation-time span:nth-child(even){display:none}
+}
 #annotationDetail h3{margin:16px 0 2px}
 #annotationDetail #identity{margin:0}
 #queue button{transition:background-color 120ms,border-color 120ms}
@@ -44,6 +65,7 @@
 }
 @media(prefers-color-scheme:dark){
   :root{color-scheme:dark;--ink:#e0ecee;--muted:#aabcc2;--accent:#8bddcf;--line:#3b5056;--paper:#192a30;--wash:#102025}
+  #recordingAnnotations{--duplex-left:#71d2bf;--duplex-right:#b6a6f5}
   input,select,button,.fileButton{background:var(--paper);color:var(--ink)}
   .primary{background:var(--accent);color:var(--wash)}
   .notice,#queue button[aria-current=true]{background:#213e41}

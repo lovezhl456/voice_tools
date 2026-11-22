@@ -35,6 +35,16 @@ with store.connect(db_path,create=True) as db:
     service.run(db,[inputs],[value],'escaped')
     report.render(db,args.out/'report',include_audio=True,hide_paths=True)
     report.render(db,args.out/'no-audio',include_audio=False,hide_paths=True)
+
+mono = args.out / 'mono.wav'
+write_wav(mono, .2 * np.sin(2 * np.pi * 440 * np.arange(8000) / 8000), 8000)
+mono_definition = validate({'schema_version': '1.0', 'id': 'mono', 'version': '1', 'name': '单轨复核',
+    'metrics': {'rms': {'kind': 'rms_dbfs', 'channel': 0}},
+    'rules': [{'id': 'audible', 'label': '可听', 'when': {'metric': 'rms', 'op': 'gt', 'value': -30}}]})
+with store.connect(args.out / 'mono.sqlite3', create=True) as db:
+    service.run(db, [mono], [mono_definition], 'mono')
+    report.render(db, args.out / 'mono-report', include_audio=True, hide_paths=True)
+
 from voice_tools.tools.recording_qa.batch import analyze_batch
 analyze_batch([inputs], args.out/'qa', include_audio=True, hide_paths=True)
 print(json.dumps({'package':str(Path(voice_tools.__file__).resolve()),'report':str(args.out/'report/index.html')}))

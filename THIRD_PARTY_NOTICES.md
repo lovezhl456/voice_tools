@@ -9,6 +9,7 @@
 | 组件 | 版本 / 范围 | 许可 | 保留方式与来源 |
 | --- | --- | --- | --- |
 | wavesurfer.js | 7.12.12，含 regions、timeline 插件 | BSD-3-Clause | 完整版权及许可保存在 `src/voice_tools/core/review/vendor/wavesurfer.LICENSE.txt`；同目录 `manifest.json` 记录来源与摘要；[上游](https://github.com/katspaugh/wavesurfer.js/tree/7.12.12) |
+| Pipecat UI Duplex Timeline | `d9f94f5` 的 Canvas 条形及渐隐逻辑 | BSD-2-Clause | 改编为按录音峰值和播放时间绘制，使用现有检测标注。完整版权及许可保存在 `src/voice_tools/tools/detect/resources/pipecat-ui.LICENSE.txt`，随 Python 包和导出的 HTML 分发。[固定上游源码](https://github.com/pipecat-ai/pipecat-ui/blob/d9f94f5f9e885e474f29a03619f8dab243382b5b/packages/registry/src/components/duplex-timeline-renderer.ts) |
 
 wavesurfer.js 的版权归原权利人所有；分发源码或二进制时保留其许可声明，不得擅自使用权利人名称为产品背书。其许可文件保留在 Python 包内，并随发行包的许可资料一同分发。
 

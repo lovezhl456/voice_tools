@@ -64,7 +64,7 @@ test('W01 daily rules, online review, false-positive reason, audit and reopening
   await expect(page.locator('#message')).toContainText('已保存到检测库');await page.reload();
   await expect(page.locator('#reviewStatus')).toHaveValue('confirmed');
   await page.getByRole('button',{name:'试听这条未命中录音',exact:true}).click();
-  await expect(page.locator('#waveform canvas').first()).toBeVisible();
+  await expect(page.locator('#duplexCanvas')).toBeVisible();
   await page.locator('#player').evaluate(async audio=>{await audio.play();});
   await expect.poll(()=>page.locator('#player').evaluate(audio=>audio.currentTime)).toBeGreaterThan(0);
   await page.locator('#player').evaluate(audio=>audio.pause());

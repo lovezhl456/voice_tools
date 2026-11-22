@@ -33,10 +33,17 @@
   let recordingGroups = new Map();
   const message = (value) => { $('message').textContent = value; };
   const fileFilter = createReviewFileFilter(data.records, (record) => record.id, refresh);
-  const waveform = createReviewWaveform($('player'), (start, end) => playback.setRange(start, end), message, {focusSelection:true});
-  const playback = createReviewPlayback($('player'), {
+  const player = $('player');
+  const waveform = createReviewWaveform(player, (start, end) => playback.setRange(start, end), message, {focusSelection:true});
+  const duplex = createRecordingDuplexTimeline(player, (time) => waveform.setTime(time));
+  const playback = createReviewPlayback(player, {
     duration: () => currentRecord?.duration_s,
-    seek: (time) => waveform.setTime(time), rangeChanged: (a,b) => waveform.syncRange(a,b), error:message
+    seek: (time) => waveform.setTime(time),
+    rangeChanged: (start, end) => {
+      waveform.syncRange(start, end);
+      duplex.setRange(start, end);
+    },
+    error:message
   });
   const filename = (path) => path.split(/[\\/]/).pop();
   const packet = () => ({schema_version:'1.0', library_id:data.library_id, reviews:[...decisions.values()], manual:[...manual.values()]});
@@ -147,7 +154,6 @@
   }
   function renderAnnotations(record) {
     const annotations = recordingGroups.get(record.id) || [];
-    $('recordingAnnotations').classList.toggle('with-waveform', Boolean(record.waveform?.channels?.length));
     const picker = $('annotationSelect'), timeline = $('annotationTimeline');
     picker.replaceChildren(new Option(annotations.length ? '选择一条标注' : '暂无标注', ''));
     picker.disabled = !annotations.length;
@@ -176,7 +182,6 @@
       if (selected) select(selected);
       else updateSelection();
     };
-    $('annotationDuration').textContent = `${Number(record.duration_s.toFixed(2))} 秒`;
     $('recordingSummary').textContent = `${annotations.length} 条标注 · ${Number(record.duration_s.toFixed(2))} 秒`;
   }
   function refresh() {
@@ -255,7 +260,12 @@
       $(id).querySelector('.role-name').textContent = `声道 ${index}`;
       $(id).querySelector('.role-meta').textContent = '角色按检测配置约定';
     }
-    setAudio(); waveform.load({record, op:{at_s:start, observed_until_s:end}, showEvidence});
+    setAudio();
+    const hasDuplex = duplex.load(record.waveform, record.duration_s);
+    $('recordingAnnotations').classList.toggle('with-duplex', hasDuplex);
+    if (!hasDuplex) $('precisionWave').open = true;
+    duplex.setRange(start, end);
+    waveform.load({record, op:{at_s:start, observed_until_s:end}, showEvidence});
   }
   function select(row) {
     if (formDirty) { message('请先保存或放弃当前表单修改。'); updateSelection(); return; }

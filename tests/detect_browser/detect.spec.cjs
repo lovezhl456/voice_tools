@@ -50,10 +50,30 @@ test('D01 filters versions, multiple tags and exports the visible result',async(
   expect(errors).toEqual([]);
 });
 
-test('D02 shared waveform, channel, volume, seeking and interval playback',async({page})=>{
+test('D02 duplex timeline, precise waveform and interval playback share the recording clock',async({page})=>{
   const errors=await open(page);
   const buttonBoxes=await page.locator('#queue button').evaluateAll(items=>items.map(item=>item.getBoundingClientRect().height));
   expect(buttonBoxes.every(height=>height>=40)).toBe(true);
+  await page.locator('#queue button').filter({hasText:'loud.wav'}).click();
+  const plot = page.locator('#duplexPlot');
+  const canvas = page.locator('#duplexCanvas');
+  await expect(plot).toHaveClass(/can-seek/);
+  await expect(page.locator('#duplexRight')).toBeVisible();
+  await expect.poll(() => canvas.evaluate((el) => {
+    const ratio = el.height / 100;
+    const ctx = el.getContext('2d');
+    // The second lane has loud audio. Its bar color must be painted away from the baseline.
+    const pixels = ctx.getImageData(0, Math.floor(70 * ratio), el.width, 1).data;
+    return pixels.some((value, i) => i % 4 === 2 && value - pixels[i - 1] > 30 && pixels[i + 1] > 100);
+  })).toBe(true);
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  const player = page.locator('#player');
+  await expect.poll(() => player.evaluate(el => el.currentTime)).toBeCloseTo(4, 1);
+  await expect.poll(() => page.locator('#duplexPlayhead').evaluate(el => parseFloat(el.style.left))).toBeCloseTo(50, 0);
+  await expect(page.locator('#precisionWave')).not.toHaveAttribute('open', '');
+  await page.locator('#precisionWave summary').click();
   await expect(page.locator('#waveform canvas').first()).toBeVisible();
   await page.locator('#zoomIn').click(); await expect(page.locator('#zoomValue')).toContainText('2');
   await page.locator('#waveGain').selectOption('4'); await expect(page.locator('#waveScale')).toContainText('4');
@@ -70,6 +90,11 @@ test('D02 shared waveform, channel, volume, seeking and interval playback',async
   expect(current).toBeGreaterThanOrEqual(1.49); expect(current).toBeLessThan(1.7);
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.screenshot({path:test.info().outputPath('review.png'),fullPage:true});
+  await page.goto('/mono-report/');
+  await expect(page.locator('#name')).toHaveText('mono.wav');
+  await expect(canvas).toBeVisible();
+  await expect(page.locator('#duplexRight')).toBeHidden();
+  await expect(page.locator('#channel option[value=right]')).toHaveJSProperty('disabled', true);
   expect(errors).toEqual([]);
 });
 
@@ -102,7 +127,7 @@ test('D04 manual missed segment, unknown source, and hostile labels remain data'
   const errors=await open(page);
   await page.locator('#manualEvaluation').selectOption({label:await page.locator('#manualEvaluation option').filter({hasText:'loud.wav'}).first().textContent()});
   await page.locator('#listenManual').click(); await expect(page.locator('#reviewForm')).toBeHidden();
-  await expect(page.locator('#waveform canvas').first()).toBeVisible();
+  await expect(page.locator('#duplexCanvas')).toBeVisible();
   await page.locator('#manualLabel').fill('人工补标'); await page.locator('#manualStart').fill('2'); await page.locator('#manualEnd').fill('4');
   await page.locator('#manualReviewer').fill('tester'); await page.locator('#manualComment').fill('自动规则漏检');
   await page.locator('#manualForm button[type=submit]').click(); await expect(page.locator('#manualQueue li')).toHaveCount(1);
@@ -113,6 +138,10 @@ test('D04 manual missed segment, unknown source, and hostile labels remain data'
   expect(cli(['review-import',file,'--db',db]).code).toBe(0);
   expect(cli(['query','--db',db,'--tag','人工补标']).result.summary.count).toBe(1);
   await page.goto('/no-audio/'); await expect(page.locator('#play')).toBeDisabled();
+  await expect(page.locator('#duplexCanvas')).toBeVisible();
+  await expect(page.locator('#duplexPlayhead')).toBeHidden();
+  await expect(page.locator('#duplexPlot')).not.toHaveClass(/can-seek/);
+  await page.locator('#precisionWave summary').click();
   await expect(page.locator('#waveform canvas').first()).toBeVisible();
   await page.locator('#tags').fill('</script><img src=x onerror=alert(1)>');
   await expect(page.locator('#queue button')).toHaveCount(1);
