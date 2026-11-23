@@ -47,6 +47,7 @@ test('H01 relocated CLI export loads five tabs and retains input, playback and n
     expect(await frame.locator('html').evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   }
   const detection = await select(page, '检测与复核');
+  await detection.locator('#reportTools summary').click();
   await detection.locator('#fileSearch').fill('quiet');
   await detection.locator('#play').click();
   await expect.poll(async () => detection.locator('#player').evaluate(audio => audio.paused)).toBe(false);
@@ -77,6 +78,7 @@ test('H02 review exported inside a tab imports through CLI and reopens in a new 
   await frame.locator('#comment').fill('试听完成');
   await frame.locator('#saveReview').click();
   const file = info.outputPath('reviews.json');
+  await frame.locator('#reportTools summary').click();
   const packet = await saveDownload(page, () => frame.locator('#exportReviews').click(), file);
   expect(packet.reviews).toHaveLength(1);
   const db = info.outputPath('library.sqlite3');
@@ -88,6 +90,7 @@ test('H02 review exported inside a tab imports through CLI and reopens in a new 
   expect(cli(['workbench','build','--detection',report,'--out',path.join(site,name)], info,'workbench').code).toBe(0);
   await page.goto('/' + name + '/#detection');
   const reopened = await select(page, '检测与复核');
+  await reopened.locator('#reportTools summary').click();
   await reopened.locator('#tags').fill('多标签复核完成');
   await expect(reopened.locator('#queue button')).toHaveCount(1);
   await expect(reopened.locator('#identity')).toContainText('复核版本 1');

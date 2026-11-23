@@ -114,10 +114,14 @@
 
     function layoutAnnotations() {
       const laneEnds = [];
+      const visibleLabels = new Set();
       for (const mark of markerList.children) {
         const bounds = clip({start: Number(mark.dataset.start), end: Number(mark.dataset.end)});
         mark.hidden = !bounds;
         if (!bounds) continue;
+        const label = mark.textContent;
+        mark.toggleAttribute("data-repeat", visibleLabels.has(label));
+        visibleLabels.add(label);
         const freeLane = laneEnds.findIndex(end => end <= bounds.start);
         const lane = freeLane < 0 ? laneEnds.length : freeLane;
         laneEnds[lane] = bounds.end;

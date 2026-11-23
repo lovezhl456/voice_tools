@@ -18,7 +18,7 @@
       const batches = new Set(data.batches.map((item) => item.id));
       data.findings = live.findings.filter((item) => batches.has(item.batch_id));
       standardRows = live.standards;
-      $('liveToolbar').hidden=false; $('auditPanel').hidden=false; $('normalControls').hidden=false;
+      $('snapshotHelp').hidden=true; $('liveToolbar').hidden=false; $('auditPanel').hidden=false; $('normalControls').hidden=false;
       $('saveReview').textContent='保存到检测库';
       $('manualForm').querySelector('[type=submit]').textContent='保存漏检到检测库';
     } catch(error) { $('message').textContent=error.message + '；请重新打开服务后刷新。'; return; }
@@ -63,7 +63,7 @@
     $('reviewLabel').add(new Option(label));
   }
   $('reviewLabel').add(new Option('自定义标签…', ''));
-  $('summary').textContent = `${data.records.length} 通录音 · ${data.batches.length} 个批次 · ${data.findings.length} 条标签 · ${data.created_at}`;
+  $('summary').textContent = `${data.records.length} 通录音 · ${data.batches.length} 个批次 · ${data.findings.length} 条检测标注`;
   $('configs').textContent = JSON.stringify(data.definitions.map((item) => item.config), null, 2);
   for (const batch of data.batches) {
     const p = document.createElement('p');
@@ -141,6 +141,10 @@
     $('annotationSelect').value = current?.id || '';
   }
   function showProgress() {
+    const filters = ['directoryFilter','fileFilter','fileSearch','tags','batch','definition','version','status'];
+    const active = filters.filter(id => $(id).value.trim()).length;
+    $('activeFilters').textContent = active ? ' · ' + active : '';
+    $('progress').hidden = Boolean(recordingGroups.size && !active && !decisions.size && !manual.size && !formDirty);
     $('discard').hidden = !formDirty;
     $('progress').textContent = `${recordingGroups.size} 份录音 · ${visible.length} 条符合筛选的检测记录 · ${decisions.size} 条复核草稿 · ${manual.size} 条漏检补标` +
       (formDirty ? ' · 表单尚未保存' : '');
@@ -274,9 +278,14 @@
     $('playbackDuration').textContent = record.duration_s.toFixed(2) + ' s';
     $('recordingReplayHeading').textContent = record.channels === 2 ? '双轨录音回放' : '单轨录音回放';
     $('start').value = start; $('end').value = end;
+    const roleNames = {user:'用户上行', assistant:'助手下行'};
     for (const [index,id] of ['leftTitle','rightTitle'].entries()) {
-      $(id).querySelector('.role-name').textContent = `声道 ${index}`;
-      $(id).querySelector('.role-meta').textContent = '角色按检测配置约定';
+      const role = roleNames[record.channel_roles?.[index]];
+      const name = role || `声道 ${index}`;
+      $(index === 0 ? 'duplexLeft' : 'duplexRight').textContent = name;
+      $(id).querySelector('.role-name').textContent = name;
+      $(id).querySelector('.role-meta').textContent = role ? `声道 ${index} · 按检测配置` : '角色未指定';
+      $('channel').options[index + 1].textContent = role ? '只听' + role : (index === 0 ? '只听左轨' : '只听右轨');
     }
     setAudio();
     const hasDuplex = duplex.load(record.waveform, record.duration_s);
@@ -310,6 +319,7 @@
     $('name').textContent = filename(record.input);
     $('recordingNote').hidden = true;
     if (changed || refreshAnnotations) renderAnnotations(record);
+    $('selectedTag').textContent = row?.label || '';
     $('annotationDetail').hidden = !row;
     $('reviewForm').hidden = !row || Boolean(row.draft);
     if (row) {

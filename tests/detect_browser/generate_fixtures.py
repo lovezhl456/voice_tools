@@ -21,7 +21,7 @@ for name, amplitude in [('quiet',.005),('loud',.4),('silent',0)]:
     samples[8000:16000,0]=.1*np.sin(2*np.pi*440*np.arange(8000)/8000)
     samples[:,1]=amplitude*np.sin(2*np.pi*330*np.arange(64000)/8000)
     write_wav(inputs/(name+'.wav'),samples,8000)
-value=validate({'schema_version':'1.0','id':'level','version':'1','name':'演示电平',
+value=validate({'schema_version':'1.0','id':'level','version':'1','name':'演示电平','channel_layout':'assistant-user',
   'metrics':{'rms':{'kind':'rms_dbfs','channel':1}},
   'rules':[{'id':'low','label':'AI低音量','when':{'metric':'rms','op':'lt','value':-30}},
            {'id':'quiet','label':'待核实','when':{'metric':'rms','op':'lt','value':-30}}]})
@@ -44,6 +44,14 @@ mono_definition = validate({'schema_version': '1.0', 'id': 'mono', 'version': '1
 with store.connect(args.out / 'mono.sqlite3', create=True) as db:
     service.run(db, [mono], [mono_definition], 'mono')
     report.render(db, args.out / 'mono-report', include_audio=True, hide_paths=True)
+
+# The same stereo recording can be evaluated under incompatible channel conventions.
+with store.connect(args.out/'roles.sqlite3', create=True) as db:
+    first = dict(value, id='roles', version='1', channel_layout='user-assistant')
+    service.run(db, [inputs/'loud.wav'], [first], 'first')
+    reverse = dict(first, version='2', channel_layout='assistant-user')
+    service.run(db, [inputs/'loud.wav'], [reverse], 'reverse')
+    report.render(db, args.out/'conflict-report', include_audio=True, hide_paths=True)
 
 from voice_tools.tools.recording_qa.batch import analyze_batch
 analyze_batch([inputs], args.out/'qa', include_audio=True, hide_paths=True)

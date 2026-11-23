@@ -17,6 +17,7 @@ async function open(page,route='/report/') {
   return errors;
 }
 async function download(page,button,file) {
+  if (!(await page.locator(button).isVisible())) await page.locator('#reportTools summary').click();
   const promise=page.waitForEvent('download');
   await page.locator(button).click();
   const item=await promise; await item.saveAs(file);
@@ -25,6 +26,8 @@ async function download(page,button,file) {
 
 test('D01 filters versions, multiple tags and exports the visible result',async({page})=>{
   const errors=await open(page);
+  await expect(page.locator('#batch')).toBeHidden();
+  await page.locator('#reportTools summary').click();
   await page.locator('#batch').selectOption('baseline');
   await page.locator('#tags').fill('AI低音量,待核实');
   await page.locator('#tagMode').selectOption('all');
@@ -61,7 +64,8 @@ test('D02 duplex timeline, precise waveform and interval playback share the reco
   const canvas = page.locator('#duplexCanvas');
   await expect(plot).toHaveClass(/can-seek/);
   await expect(page.locator('#audioHint')).toBeHidden();
-  await expect(page.locator('#duplexRight')).toBeVisible();
+  await expect(page.locator('#duplexLeft')).toHaveText('助手下行');
+  await expect(page.locator('#duplexRight')).toHaveText('用户上行');
   await expect.poll(() => canvas.evaluate((el) => {
     const ratio = el.height / el.clientHeight;
     const ctx = el.getContext('2d');
@@ -107,7 +111,11 @@ test('D02 duplex timeline, precise waveform and interval playback share the reco
   await expect(page.locator('#name')).toHaveText('mono.wav');
   await expect(canvas).toBeVisible();
   await expect(page.locator('#duplexRight')).toBeHidden();
+  await expect(page.locator('#duplexLeft')).toHaveText('声道 0');
   await expect(page.locator('#channel option[value=right]')).toHaveJSProperty('disabled', true);
+  await page.goto('/conflict-report/');
+  await expect(page.locator('#duplexLeft')).toHaveText('声道 0');
+  await expect(page.locator('#duplexRight')).toHaveText('声道 1');
   expect(errors).toEqual([]);
 });
 
@@ -125,6 +133,7 @@ test('D03 correction draft survives reopening and imports into the installed CLI
   expect(packet.reviews).toHaveLength(1);
   expect(packet.reviews[0]).toMatchObject({status:'corrected',label:'已核实问题',reviewer:'本机复核',comment:''});
   await page.reload(); await expect(page.locator('#progress')).toContainText('1 条复核草稿');
+  await page.locator('#reportTools summary').click();
   await page.locator('#importDraft').setInputFiles(file);
   const db=info.outputPath('library.sqlite3'); fs.copyFileSync(path.join(site,'library.sqlite3'),db);
   expect(cli(['review-import',file,'--db',db]).code).toBe(0);
@@ -133,6 +142,7 @@ test('D03 correction draft survives reopening and imports into the installed CLI
   expect(cli(['report','--db',db,'--out',target,'--include-audio','--hide-paths']).code).toBe(0);
   await page.locator('#exportReviews').click();
   await page.goto('/reopened-'+info.project.name+'/');
+  await page.locator('#reportTools summary').click();
   await page.locator('#tags').fill('已核实问题');
   await expect(page.locator('#queue button')).toHaveCount(1);
   await expect(page.locator('#identity')).toContainText('复核版本 1');
@@ -161,6 +171,7 @@ test('D04 manual missed segment, unknown source, and hostile labels remain data'
   await expect(page.locator('#audioHint')).toBeVisible();
   await page.locator('#precisionWave summary').click();
   await expect(page.locator('#waveform canvas').first()).toBeVisible();
+  await page.locator('#reportTools summary').click();
   await page.locator('#tags').fill('</script><img src=x onerror=alert(1)>');
   await expect(page.locator('#queue button')).toHaveCount(1);
   await expect(page.locator('#queue img')).toHaveCount(0);

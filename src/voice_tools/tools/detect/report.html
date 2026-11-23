@@ -1,14 +1,18 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>业务标签 · 录音复核</title><style>__STYLE__
 __WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href="/workspace">← 返回质检工作区</a> · 在线复核，结论直接保存到检测库 <button id="saveDrafts" type="button">将已有草稿保存到检测库</button></p>
-<header><div><p class="eyebrow">VOICE TOOLS · 可配置检测</p><h1>业务标签与录音复核</h1><p id="summary" class="muted"></p></div><nav><a href="config.html">定义指标与标签</a> · <a href="results.json" download>下载完整快照</a></nav></header>
-<p class="notice">标签是配置的自动判断，需结合片段核实。声道编号与角色由配置约定，能量活动不等于有效回答。此页为本地快照；导出复核后，用 <code>voice-tools detect review-import 文件 --db 检测库</code> 保存到库。</p>
+<div class="report-head"><header><h1>录音复核</h1><p id="summary" class="muted"></p></header>
+<details id="reportTools"><summary>筛选与文件<span id="activeFilters"></span></summary>
+<div class="tools-body">
 <section class="filters" aria-label="检索条件">
 <label>目录<select id="directoryFilter"></select></label><label>录音<select id="fileFilter"></select></label><label>文件／路径关键词<input id="fileSearch" type="search" placeholder="支持多个关键词"></label>
 <label>标签（逗号分隔）<input id="tags" placeholder="AI无声,AI低音量" list="tagOptions"><datalist id="tagOptions"></datalist></label><label>标签匹配<select id="tagMode"><option value="any">任一标签</option><option value="all">同批录音包含全部标签</option></select></label>
 <label>批次<select id="batch"><option value="">全部批次</option></select></label><label>检测定义<select id="definition"><option value="">全部定义</option></select></label><label>配置版本<select id="version"><option value="">全部版本</option></select></label>
 <label>复核状态<select id="status"><option value="">全部状态</option><option value="pending">待复核</option><option value="confirmed">已确认</option><option value="false_positive">误报</option><option value="corrected">已修正</option></select></label>
 </section>
-<div class="toolbar"><button id="exportResults">导出筛选结果</button><button id="exportReviews" class="primary">导出复核文件</button><label class="fileButton">重新导入草稿<input type="file" id="importDraft" accept=".json"></label><button id="clearFilters">清空筛选</button></div>
+<div class="toolbar"><button id="exportResults">导出筛选结果</button><button id="exportReviews">导出复核文件</button><label class="fileButton">重新导入草稿<input type="file" id="importDraft" accept=".json"></label><button id="clearFilters">清空筛选</button></div>
+<nav><a href="config.html">定义指标与标签</a> · <a href="results.json" download>下载完整快照</a></nav>
+<p class="muted" id="snapshotHelp">导出的复核文件可用 <code>voice-tools detect review-import 文件 --db 检测库</code> 导入。</p>
+</div></details></div>
 <p id="message" role="status" aria-live="polite"></p><p id="progress" class="muted"></p>
 <div class="workspace"><aside><h2>录音列表</h2><div id="queue"></div></aside><section id="detail" hidden>
 <header class="recording-heading"><div><h2 id="name"></h2><p id="recordingSummary" class="muted"></p><p id="recordingNote" class="muted" hidden></p></div><button id="addRecordingAnnotation" type="button">在这份录音上补标</button></header>
@@ -35,15 +39,15 @@ __WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href=
 <div class="annotation-tools"><h3 id="recordingTimelineHeading">录音时间轴</h3><label>定位标注<select id="annotationSelect"></select></label></div>
 <div id="annotationTime" class="annotation-time muted" aria-label="时间刻度"></div>
 <div id="duplexTimeline" class="duplex-timeline" hidden>
-<div id="duplexChannels" class="duplex-channels"><span class="duplex-channel">声道 0</span><span id="duplexRight" class="duplex-channel">声道 1</span></div>
+<div id="duplexChannels" class="duplex-channels"><span id="duplexLeft" class="duplex-channel">声道 0</span><span id="duplexRight" class="duplex-channel">声道 1</span></div>
 <div class="duplex-plot">
-<div id="annotationTimeline" class="annotation-timeline" role="group" aria-label="波形标注"></div>
 <div id="duplexWave" class="duplex-wave">
 <canvas id="duplexCanvas" aria-hidden="true"></canvas>
 <span id="duplexRange" class="duplex-range" aria-hidden="true"></span>
-<span id="duplexEvidence" class="duplex-evidence" aria-hidden="true" hidden></span>
+<span id="duplexEvidence" class="duplex-evidence" aria-hidden="true" hidden><span id="selectedTag"></span></span>
 <span id="duplexPlayhead" class="duplex-playhead" aria-hidden="true" hidden></span>
 </div>
+<div id="annotationTimeline" class="annotation-timeline" role="group" aria-label="波形标注"></div>
 </div>
 </div>
 <details id="replaySettings"><summary id="replaySettingsLabel">试听区间与音量</summary>
