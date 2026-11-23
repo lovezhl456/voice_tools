@@ -19,12 +19,13 @@
       data.findings = live.findings.filter((item) => batches.has(item.batch_id));
       standardRows = live.standards;
       $('liveToolbar').hidden=false; $('auditPanel').hidden=false; $('normalControls').hidden=false;
-      $('reviewForm').querySelector('[type=submit]').textContent='保存到检测库';
+      $('saveReview').textContent='保存到检测库';
       $('manualForm').querySelector('[type=submit]').textContent='保存漏检到检测库';
-      $('reviewForm').querySelector('p.muted').textContent='在线保存直接入库；问题确认和误报原因同时积累为人工标准。';
     } catch(error) { $('message').textContent=error.message + '；请重新打开服务后刷新。'; return; }
   }
   const names = {pending:'待复核', confirmed:'已确认', false_positive:'误报', corrected:'已修正'};
+  // Older reports and imports require a reviewer field. Browser reviews record their source.
+  const localReviewer = '本机复核';
   const records = new Map(data.records.map((record) => [record.id, record]));
   const originals = new Map(data.findings.map((row) => [row.id, row]));
   const decisions = new Map(), manual = new Map();
@@ -55,7 +56,13 @@
   populate('batch', data.batches.map((batch) => batch.id));
   populate('definition', data.definitions.map((item) => item.id));
   populate('version', data.definitions.map((item) => item.version));
-  for (const label of new Set(data.findings.map((row) => row.label))) $('tagOptions').append(new Option(label,label));
+  const labels = new Set(data.definitions.flatMap(item => item.config.rules.map(rule => rule.label)));
+  for (const finding of data.findings) labels.add(finding.label);
+  for (const label of [...labels].sort()) {
+    $('tagOptions').append(new Option(label));
+    $('reviewLabel').add(new Option(label));
+  }
+  $('reviewLabel').add(new Option('自定义标签…', ''));
   $('summary').textContent = `${data.records.length} 通录音 · ${data.batches.length} 个批次 · ${data.findings.length} 条标签 · ${data.created_at}`;
   $('configs').textContent = JSON.stringify(data.definitions.map((item) => item.config), null, 2);
   for (const batch of data.batches) {
@@ -113,7 +120,7 @@
         if (!evaluation || evaluation.status!=='ok') throw Error('只能对已成功分析的录音保存正常抽检结论');
         await liveApi('/api/workspace/standard',{id:crypto.randomUUID(),expected_revision:0,recording_id:evaluation.recording_id,
           label:$('manualLabel').value,start_s:$('manualStart').valueAsNumber,end_s:$('manualEnd').valueAsNumber,
-          verdict:'normal',reviewer:$('manualReviewer').value,comment:$('manualComment').value,checked:$('normalChecked').checked,
+          verdict:'normal',reviewer:localReviewer,comment:$('manualComment').value,checked:$('normalChecked').checked,
           source:'audit:'+evaluation.batch_id});
         $('normalChecked').checked=false; message('正常范围已保存到标准样本；未检查范围仍保持未知。');
       } catch(error) { message(error.message); }
@@ -128,12 +135,13 @@
     for (const button of $('queue').children) {
       button.setAttribute('aria-current', String(currentRecord?.id === button.dataset.recordingId));
     }
-    for (const button of document.querySelectorAll('#annotationTimeline button, #annotationChips button')) {
+    for (const button of $('annotationTimeline').children) {
       button.setAttribute('aria-pressed', String(current?.id === button.dataset.annotationId));
     }
     $('annotationSelect').value = current?.id || '';
   }
   function showProgress() {
+    $('discard').hidden = !formDirty;
     $('progress').textContent = `${recordingGroups.size} 份录音 · ${visible.length} 条符合筛选的检测记录 · ${decisions.size} 条复核草稿 · ${manual.size} 条漏检补标` +
       (formDirty ? ' · 表单尚未保存' : '');
   }
@@ -157,10 +165,10 @@
   }
   function renderAnnotations(record) {
     const annotations = recordingGroups.get(record.id) || [];
-    const picker = $('annotationSelect'), timeline = $('annotationTimeline'), chips = $('annotationChips');
+    const picker = $('annotationSelect'), timeline = $('annotationTimeline');
     picker.replaceChildren(new Option(annotations.length ? '选择一条标注' : '暂无标注', ''));
     picker.disabled = !annotations.length;
-    const chipButtons = [], markers = document.createDocumentFragment();
+    const markers = document.createDocumentFragment();
     for (const row of annotations) {
       const title = `${row.label} · ${rangeLabel(row)} · ${statusLabel(row)}`;
       picker.add(new Option(title, row.id));
@@ -171,17 +179,13 @@
       marker.setAttribute('aria-label', marker.title);
       marker.dataset.start = row.start_s;
       marker.dataset.end = row.end_s;
+      const label = document.createElement('span');
+      label.textContent = row.label;
+      marker.append(label);
       marker.onclick = () => select(row);
       markers.append(marker);
-      if (chipButtons.length < 6) {
-        const chip = marker.cloneNode();
-        chip.textContent = `${row.label} · ${rangeLabel(row)}`;
-        chip.onclick = marker.onclick;
-        chipButtons.push(chip);
-      }
     }
     timeline.replaceChildren(markers);
-    chips.replaceChildren(...chipButtons);
     duplex.layoutAnnotations();
     picker.onchange = () => {
       const selected = annotations.find((row) => row.id === picker.value);
@@ -285,6 +289,20 @@
     if (formDirty) { message('请先保存或放弃当前表单修改。'); updateSelection(); return; }
     selectRecording(records.get(row.recording_id), row);
   }
+  function syncCustomLabel() {
+    const custom = $('reviewLabel').value === '';
+    $('customReviewLabel').hidden = !custom;
+    $('customReviewLabel').disabled = !custom;
+  }
+  function fillReviewLabel(label) {
+    const picker = $('reviewLabel');
+    if (![...picker.options].some(option => option.value === label)) {
+      picker.add(new Option(label), picker.options.length - 1);
+    }
+    picker.value = label;
+    $('customReviewLabel').value = '';
+    syncCustomLabel();
+  }
   function selectRecording(record, row, refreshAnnotations = false) {
     const changed = currentRecord?.id !== record.id;
     const previous = current;
@@ -299,13 +317,13 @@
       $('identity').textContent = row.draft
         ? `${row.definition_id}@${row.version} · ${row.batch_id} · 漏检草稿`
         : `${row.definition_id}@${row.version} · ${row.batch_id} · 复核版本 ${row.revision}`;
-      $('reason').textContent = row.draft ? row.comment : row.reason;
+      $('reason').textContent = row.reason;
+      $('reason').hidden = !row.reason || row.reason === row.label;
       $('annotationEvidence').hidden = Boolean(row.draft);
       if (!row.draft) {
         $('evidence').textContent = JSON.stringify(row.automatic, null, 2);
-        $('reviewStatus').value = row.status; $('reviewLabel').value = row.label;
+        fillReviewLabel(row.label);
         $('reviewStart').value = row.start_s; $('reviewEnd').value = row.end_s;
-        $('reviewer').value = row.reviewer || $('reviewer').value;
         $('comment').value = row.comment;
       }
     }
@@ -325,6 +343,7 @@
       $('manualLabel').focus({preventScroll:true});
     };
     updateSelection();
+    showProgress();
   }
   function validateRange(start,end,duration) {
     if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > duration) throw Error('片段必须在录音范围内，终点大于起点。');
@@ -332,20 +351,26 @@
   function required(value,name,max) {
     if (typeof value !== 'string' || !value.trim() || value.length > max) throw Error(`${name}不能为空，且最多 ${max} 字符。`);
   }
+  function validateComment(value) {
+    if (typeof value !== 'string' || value.length > 4000) throw Error('备注格式错误。');
+  }
+  function changesOriginal(item, automatic) {
+    return item.label !== automatic.label || item.start_s !== automatic.start_s || item.end_s !== automatic.end_s;
+  }
   function validateReview(item) {
     const original = originals.get(item.finding_id);
     if (!original || item.expected_revision !== original.revision) throw Error('草稿与此报告的检测身份或复核版本不匹配，请使用原报告或重新生成报告。');
     if (!Object.hasOwn(names,item.status)) throw Error('未知复核状态。');
     required(item.reviewer,'复核人',100); required(item.label,'标签',100);
-    if (typeof item.comment !== 'string' || item.comment.length > 4000) throw Error('备注格式错误。');
+    validateComment(item.comment);
     validateRange(item.start_s,item.end_s,original.duration_s);
-    const auto = original.automatic;
-    if ((item.label !== auto.label || item.start_s !== auto.start_s || item.end_s !== auto.end_s) && item.status !== 'corrected') throw Error('修正标签／时间后，请选择“修正标签／片段”。');
+    if (changesOriginal(item, original.automatic) && item.status !== 'corrected') throw Error('复核文件的修正状态与标签或片段不一致。');
   }
   function validateManual(item) {
     const evaluation = data.evaluations.find((row) => row.batch_id === item.batch_id && row.recording_id === item.recording_id && row.config_hash === item.config_hash);
     if (!evaluation || typeof item.id !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.-]{0,79}$/.test(item.id) || originals.has(item.id)) throw Error('漏检补标的身份不匹配。');
-    required(item.label,'标签',100); required(item.reviewer,'复核人',100); required(item.comment,'漏检原因',4000);
+    required(item.label,'标签',100); required(item.reviewer,'复核人',100);
+    validateComment(item.comment);
     validateRange(item.start_s,item.end_s,evaluation.duration_s);
   }
   function renderManual() {
@@ -378,16 +403,24 @@
   }
   $('reviewForm').onsubmit = async (event) => {
     event.preventDefault();
-    const item = {finding_id:current.id, expected_revision:current.revision, status:$('reviewStatus').value,
-      label:$('reviewLabel').value, start_s:$('reviewStart').valueAsNumber, end_s:$('reviewEnd').valueAsNumber,
-      reviewer:$('reviewer').value, comment:$('comment').value};
+    const action = event.submitter?.value || 'save';
+    const original = current.automatic;
+    const label = $('reviewLabel').value || $('customReviewLabel').value;
+    const bounds = action === 'save'
+      ? {label, start_s:$('reviewStart').valueAsNumber, end_s:$('reviewEnd').valueAsNumber}
+      : {label:original.label, start_s:original.start_s, end_s:original.end_s};
+    let status = action;
+    if (action === 'save') status = changesOriginal(bounds, original) ? 'corrected' : 'confirmed';
+    const item = {finding_id:current.id, expected_revision:current.revision, status, ...bounds,
+      reviewer:localReviewer, comment:$('comment').value};
     try { validateReview(item);
       if (session) await submitPacket({schema_version:'1.0',library_id:data.library_id,reviews:[item],manual:[]});
       else { decisions.set(item.finding_id,item); formDirty=false; persist(); refresh(); }
     }
     catch(error) { message(error.message); }
   };
-  for (const id of ['reviewStatus','reviewLabel','reviewStart','reviewEnd','reviewer','comment']) $(id).oninput = () => { formDirty=true; showProgress(); };
+  $('reviewLabel').onchange = syncCustomLabel;
+  for (const id of ['reviewLabel','customReviewLabel','reviewStart','reviewEnd','comment']) $(id).oninput = () => { formDirty=true; showProgress(); };
   $('discard').onclick = () => { formDirty=false; refresh(); message('已放弃表单修改。'); };
   $('channel').onchange = () => setAudio(true);
   $('player').addEventListener('error', () => { if ($('player').getAttribute('src')) message('音频加载失败，不能完成试听；请核对报告资源。'); });
@@ -422,7 +455,7 @@
     $('manualStart').value=0; $('manualEnd').value=item.duration_s;
     $('detail').scrollIntoView({block:'start'});
   };
-  for (const id of ['manualEvaluation','manualLabel','manualStart','manualEnd','manualReviewer','manualComment']) {
+  for (const id of ['manualEvaluation','manualLabel','manualStart','manualEnd','manualComment']) {
     $(id).addEventListener('input', () => { $('normalChecked').checked=false; });
     $(id).addEventListener('change', () => { $('normalChecked').checked=false; });
   }
@@ -431,7 +464,7 @@
     if (!evaluation) { message('没有可补标的检测记录。'); return; }
     const item = {id:crypto.randomUUID(), batch_id:evaluation.batch_id, recording_id:evaluation.recording_id,
       config_hash:evaluation.config_hash, label:$('manualLabel').value, start_s:$('manualStart').valueAsNumber,
-      end_s:$('manualEnd').valueAsNumber, reviewer:$('manualReviewer').value, comment:$('manualComment').value};
+      end_s:$('manualEnd').valueAsNumber, reviewer:localReviewer, comment:$('manualComment').value};
     try { validateManual(item);
       if (session) await submitPacket({schema_version:'1.0',library_id:data.library_id,reviews:[],manual:[item]});
       else { manual.set(item.id,item); persist(); renderManual(); refresh(); }

@@ -32,12 +32,11 @@ test('D01 filters versions, multiple tags and exports the visible result',async(
   await expect(page.locator('#annotationTimeline button')).toHaveCount(2);
   await page.locator('#fileSearch').fill('quiet');
   await expect(page.locator('#queue button')).toHaveCount(1);
-  const markers = page.locator('#annotationTimeline button');
+  const markers = page.locator('.duplex-plot #annotationTimeline button');
   await expect(markers).toHaveCount(2);
-  const chips = page.locator('#annotationChips button');
-  await expect(chips.nth(1)).toContainText(/· .* 秒/);
-  await chips.nth(1).click();
-  await expect(chips.nth(1)).toHaveAttribute('aria-pressed','true');
+  await expect(markers.nth(1)).toContainText(/AI低音量|待核实/);
+  await expect(markers.nth(1)).toHaveAccessibleName(/· .* 秒/);
+  await markers.nth(1).click();
   await expect(markers.nth(1)).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('#name')).toHaveText('quiet.wav');
   await page.locator('#version').selectOption('2');
@@ -58,9 +57,10 @@ test('D02 duplex timeline, precise waveform and interval playback share the reco
   const buttonBoxes=await page.locator('#queue button').evaluateAll(items=>items.map(item=>item.getBoundingClientRect().height));
   expect(buttonBoxes.every(height=>height>=40)).toBe(true);
   await page.locator('#queue button').filter({hasText:'loud.wav'}).click();
-  const plot = page.locator('#duplexPlot');
+  const plot = page.locator('#duplexWave');
   const canvas = page.locator('#duplexCanvas');
   await expect(plot).toHaveClass(/can-seek/);
+  await expect(page.locator('#audioHint')).toBeHidden();
   await expect(page.locator('#duplexRight')).toBeVisible();
   await expect.poll(() => canvas.evaluate((el) => {
     const ratio = el.height / el.clientHeight;
@@ -113,13 +113,17 @@ test('D02 duplex timeline, precise waveform and interval playback share the reco
 
 test('D03 correction draft survives reopening and imports into the installed CLI',async({page},info)=>{
   const errors=await open(page);
-  await page.locator('#reviewStatus').selectOption('corrected'); await page.locator('#reviewLabel').fill('已核实问题');
+  await expect(page.getByLabel('复核人')).toHaveCount(0);
+  await expect(page.locator('#reviewStart')).toBeHidden();
+  await page.locator('#reviewLabel').selectOption('');
+  await page.locator('#customReviewLabel').fill('已核实问题');
+  await page.locator('#reviewOptions summary').click();
   await page.locator('#reviewStart').fill('1'); await page.locator('#reviewEnd').fill('3');
-  await page.locator('#reviewer').fill('browser-tester'); await page.locator('#comment').fill('听后修正');
   await page.locator('#queue button').nth(1).click(); await expect(page.locator('#message')).toContainText('保存');
-  await page.locator('#reviewForm button[type=submit]').click();
+  await page.locator('#saveReview').click();
   const file=info.outputPath('reviews.json'); const packet=await download(page,'#exportReviews',file);
   expect(packet.reviews).toHaveLength(1);
+  expect(packet.reviews[0]).toMatchObject({status:'corrected',label:'已核实问题',reviewer:'本机复核',comment:''});
   await page.reload(); await expect(page.locator('#progress')).toContainText('1 条复核草稿');
   await page.locator('#importDraft').setInputFiles(file);
   const db=info.outputPath('library.sqlite3'); fs.copyFileSync(path.join(site,'library.sqlite3'),db);
@@ -142,18 +146,19 @@ test('D04 manual missed segment, unknown source, and hostile labels remain data'
   await page.locator('#listenManual').click(); await expect(page.locator('#reviewForm')).toBeHidden();
   await expect(page.locator('#duplexCanvas')).toBeVisible();
   await page.locator('#manualLabel').fill('人工补标'); await page.locator('#manualStart').fill('2'); await page.locator('#manualEnd').fill('4');
-  await page.locator('#manualReviewer').fill('tester'); await page.locator('#manualComment').fill('自动规则漏检');
   await page.locator('#manualForm button[type=submit]').click(); await expect(page.locator('#manualQueue li')).toHaveCount(1);
   await expect(page.locator('#annotationTimeline button[data-status=draft]')).toHaveCount(1);
   const file=info.outputPath('manual.json'); const packet=await download(page,'#exportReviews',file);
   expect(packet.manual).toHaveLength(1);
+  expect(packet.manual[0]).toMatchObject({label:'人工补标',reviewer:'本机复核',comment:''});
   const db=info.outputPath('manual.sqlite3'); fs.copyFileSync(path.join(site,'library.sqlite3'),db);
   expect(cli(['review-import',file,'--db',db]).code).toBe(0);
   expect(cli(['query','--db',db,'--tag','人工补标']).result.summary.count).toBe(1);
   await page.goto('/no-audio/'); await expect(page.locator('#play')).toBeDisabled();
   await expect(page.locator('#duplexCanvas')).toBeVisible();
   await expect(page.locator('#duplexPlayhead')).toBeHidden();
-  await expect(page.locator('#duplexPlot')).not.toHaveClass(/can-seek/);
+  await expect(page.locator('#duplexWave')).not.toHaveClass(/can-seek/);
+  await expect(page.locator('#audioHint')).toBeVisible();
   await page.locator('#precisionWave summary').click();
   await expect(page.locator('#waveform canvas').first()).toBeVisible();
   await page.locator('#tags').fill('</script><img src=x onerror=alert(1)>');
@@ -164,8 +169,8 @@ test('D04 manual missed segment, unknown source, and hostile labels remain data'
 
 test('D05 invalid ranges, mismatched identity and stale draft are rejected',async({page},info)=>{
   const errors=await open(page);
-  await page.locator('#reviewer').fill('tester'); await page.locator('#reviewStatus').selectOption('corrected');
-  await page.locator('#reviewEnd').fill('100'); await page.locator('#reviewForm button[type=submit]').click();
+  await page.locator('#reviewOptions summary').click();
+  await page.locator('#reviewEnd').fill('100'); await page.locator('#saveReview').click();
   await expect(page.locator('#message')).toContainText('录音范围');
   await page.locator('#discard').click();
   const fixture=JSON.parse(fs.readFileSync(path.join(site,'report/results.json'),'utf8'));

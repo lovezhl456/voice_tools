@@ -72,10 +72,10 @@ test('H01 relocated CLI export loads five tabs and retains input, playback and n
 test('H02 review exported inside a tab imports through CLI and reopens in a new workbench', async ({page}, info) => {
   await page.goto('/moved-workbench/#detection');
   const frame = await select(page, '检测与复核');
-  await frame.locator('#reviewStatus').selectOption('corrected');
-  await frame.locator('#reviewLabel').fill('多标签复核完成');
-  await frame.locator('#reviewer').fill('workbench-e2e');
-  await frame.locator('#reviewForm button[type=submit]').click();
+  await frame.locator('#reviewLabel').selectOption('');
+  await frame.locator('#customReviewLabel').fill('多标签复核完成');
+  await frame.locator('#comment').fill('试听完成');
+  await frame.locator('#saveReview').click();
   const file = info.outputPath('reviews.json');
   const packet = await saveDownload(page, () => frame.locator('#exportReviews').click(), file);
   expect(packet.reviews).toHaveLength(1);

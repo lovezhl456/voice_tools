@@ -28,16 +28,6 @@ main{padding:20px}
 .replay-zoom button{min-width:36px;padding-inline:8px}
 .replay-zoom button:nth-child(2){min-width:48px;font-variant-numeric:tabular-nums}
 .replay-hint{margin:6px 0 0}
-.annotation-chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;max-height:80px;overflow:auto;padding:2px}
-.annotation-chips:empty{display:none}
-.annotation-chips button{
-  max-width:100%;min-height:30px;padding:4px 8px;text-align:left;overflow-wrap:anywhere;
-  border-inline-start:3px solid var(--mark-edge);font-size:12px;color:var(--ink);background:var(--paper)
-}
-.annotation-chips button[aria-pressed=true]{
-  color:var(--ink);background:var(--mark-fill);border-block-color:var(--mark-edge);border-inline-end-color:var(--mark-edge)
-}
-
 .annotation-tools{
   display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
   gap:6px 14px;padding:12px 0 6px;margin-top:12px;border-top:1px solid var(--line)
@@ -52,27 +42,25 @@ main{padding:20px}
 .annotation-time span{position:absolute;transform:translateX(-50%)}
 .annotation-time span:first-child{transform:none}
 .annotation-time span:last-child{transform:translateX(-100%)}
-.duplex-timeline,.annotation-row{display:grid;grid-template-columns:var(--timeline-label-width) minmax(0,1fr)}
-.duplex-timeline{--duplex-height:52px}
+.duplex-timeline{display:grid;grid-template-columns:var(--timeline-label-width) minmax(0,1fr);--duplex-height:52px}
 .duplex-timeline.two-channels{--duplex-height:104px}
-.duplex-timeline[hidden],.annotation-row[hidden]{display:none}
-.duplex-channels{display:grid;grid-auto-rows:52px;font-size:13px;font-weight:650}
+.duplex-timeline[hidden],.duplex-channels[hidden]{display:none}
+.duplex-channels{display:grid;grid-auto-rows:52px;align-self:end;font-size:13px;font-weight:650}
 .duplex-channel{display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line)}
 .duplex-channel[hidden]{display:none}
 .duplex-channel::before{content:"";background:var(--duplex-left);width:7px;height:7px;border-radius:50%}
 .duplex-channel+span::before{background:var(--duplex-right)}
-.duplex-plot{position:relative;overflow:hidden;background:var(--wash);border-block-end:1px solid var(--line)}
-.duplex-plot.can-seek{cursor:crosshair}
-.duplex-plot canvas{display:block;width:100%;height:var(--duplex-height)}
+.duplex-plot{grid-column:2;min-width:0;background:var(--wash);border-block-end:1px solid var(--line)}
+.duplex-wave{position:relative;overflow:hidden}
+.duplex-wave.can-seek{cursor:crosshair}
+.duplex-wave canvas{display:block;width:100%;height:var(--duplex-height)}
 .duplex-range,.duplex-evidence,.duplex-playhead{position:absolute;inset-block:0;pointer-events:none}
 .duplex-range{background:color-mix(in srgb,var(--accent) 9%,transparent)}
 .duplex-evidence{border-inline:1px dashed var(--selected-mark)}
 .duplex-playhead{width:2px;background:var(--ink);transform:translateX(-1px)}
-.annotation-row{margin-top:6px;align-items:start}
-.annotation-row>span{font-size:12px;color:var(--muted);padding-top:4px}
 .annotation-timeline{
-  position:relative;height:min(98px,calc(var(--lane-count,0)*17px + 6px));overflow:auto;
-  background:var(--wash);border-radius:3px
+  position:relative;height:min(104px,calc(var(--lane-count,0)*25px + 4px));overflow:auto;
+  scrollbar-width:none
 }
 [data-annotation-id]{--mark-fill:#f7ebd5;--mark-edge:#a45f19}
 [data-annotation-id][data-status=confirmed]{--mark-fill:#def0eb;--mark-edge:#188271}
@@ -80,14 +68,16 @@ main{padding:20px}
 [data-annotation-id][data-status=false_positive]{--mark-fill:#e8eeef;--mark-edge:#637b86}
 [data-annotation-id][data-status=draft]{--mark-fill:#eee8f7;--mark-edge:#8257aa}
 .annotation-timeline button{
-  position:absolute;inset-block-start:calc(3px + var(--lane)*17px);height:12px;
-  inset-inline-start:clamp(0px,var(--start),calc(100% - 5px));
-  inline-size:max(5px,var(--width));min-height:0;padding:0;
-  border:1px solid var(--mark-edge);border-radius:2px;background:var(--mark-fill)
+  position:absolute;inset-block-start:calc(3px + var(--lane)*25px);height:22px;
+  inset-inline-start:clamp(0px,var(--start),calc(100% - 8px));
+  inline-size:max(8px,var(--width));min-height:0;padding:0;
+  border:1px solid var(--mark-edge);border-radius:4px;background:var(--mark-fill);
+  text-align:left;color:var(--ink);font-size:12px;font-weight:600;line-height:20px
 }
+.annotation-timeline button span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-inline:5px}
 .annotation-timeline button[data-status=draft]{border-style:dashed}
 .annotation-timeline button:hover,.annotation-timeline button:focus-visible{z-index:2}
-.annotation-timeline button[aria-pressed=true]{z-index:1;background:var(--mark-edge)}
+.annotation-timeline button[aria-pressed=true]{z-index:1;border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
 .annotation-timeline button:focus-visible{z-index:3;outline-offset:1px}
 #replaySettings{margin:8px 0 0}
 #replaySettings summary,#precisionWave summary{color:var(--accent);font-size:13px;font-weight:600}
@@ -97,8 +87,15 @@ main{padding:20px}
 .replay-settings input[type=range],.replay-settings input[type=checkbox]{accent-color:var(--accent)}
 #precisionWave{margin:8px 0 14px}
 #precisionWave .wave-panel{margin-top:8px}
-#annotationDetail h3{margin:16px 0 2px}
+#annotationDetail h3{margin:16px 0 6px}
 #annotationDetail #identity{margin:0}
+.quick-review,.review-options{display:flex;flex-wrap:wrap;align-items:end;gap:8px 12px}
+.quick-review label{flex:1 1 160px}
+.quick-review button,.review-options button{margin:0}
+.review-options label{width:min(120px,100%)}
+#reviewOptions,#annotationEvidence{margin:8px 0;font-size:13px}
+#reviewOptions summary,#annotationEvidence summary{color:var(--accent);font-weight:600}
+.review-options{margin-top:8px}
 
 @media(max-width:740px){
   #recordingAnnotations{--timeline-label-width:68px}
@@ -110,8 +107,6 @@ main{padding:20px}
   .annotation-tools label{font-size:12px}
   .annotation-tools select{width:min(37vw,142px)}
   .replay-options{width:100%;justify-content:space-between}
-  .annotation-chips{flex-wrap:nowrap;max-height:none;scrollbar-width:thin}
-  .annotation-chips button{flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   #play{padding-inline:8px}
 }
 @media(prefers-color-scheme:dark){

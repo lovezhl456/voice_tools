@@ -61,7 +61,7 @@
   window.createRecordingDuplexTimeline = (player, seek) => {
     const $ = (id) => document.getElementById(id);
     const timeline = $("duplexTimeline");
-    const plot = $("duplexPlot");
+    const plot = $("duplexWave");
     const canvas = $("duplexCanvas");
     const cursor = $("duplexPlayhead");
     const range = $("duplexRange");
@@ -126,7 +126,7 @@
         mark.style.setProperty("--width", (bounds.end - bounds.start) / viewSpan() * 100 + "%");
       }
       markerList.style.setProperty("--lane-count", String(laneEnds.length));
-      $("annotationRow").hidden = !laneEnds.length;
+      markerList.hidden = !laneEnds.length;
     }
 
     function setView(nextZoom, at) {
@@ -190,7 +190,9 @@
           Number.isFinite(waveform?.bin_s) && waveform.bin_s > 0 &&
           channels?.length >= 1 && channels.length <= 2 && channels.every(channel => channel.length));
         summary = available ? waveform : null;
-        timeline.hidden = !available;
+        timeline.hidden = false;
+        plot.hidden = !available;
+        $("duplexChannels").hidden = !available;
         $("duplexRight").hidden = channels?.length !== 2;
         timeline.classList.toggle("two-channels", channels?.length === 2);
         setView(1, 0);
