@@ -39,12 +39,15 @@
   const playback = createReviewPlayback(player, {
     duration: () => currentRecord?.duration_s,
     seek: (time) => waveform.setTime(time),
-    rangeChanged: (start, end) => {
-      waveform.syncRange(start, end);
-      duplex.setRange(start, end);
-    },
+    rangeChanged: updateListeningRange,
+    formatTime: (time) => time.toFixed(2) + ' s',
     error:message
   });
+  function updateListeningRange(start, end) {
+    waveform.syncRange(start, end);
+    duplex.setRange(start, end);
+    $('replaySettingsLabel').textContent = '试听区间 ' + rangeLabel({start_s:start, end_s:end}) + ' · 音量';
+  }
   const filename = (path) => path.split(/[\\/]/).pop();
   const packet = () => ({schema_version:'1.0', library_id:data.library_id, reviews:[...decisions.values()], manual:[...manual.values()]});
   const effective = (row) => ({...row, ...(decisions.get(row.id) || {})});
@@ -125,7 +128,7 @@
     for (const button of $('queue').children) {
       button.setAttribute('aria-current', String(currentRecord?.id === button.dataset.recordingId));
     }
-    for (const button of $('annotationTimeline').children) {
+    for (const button of document.querySelectorAll('#annotationTimeline button, #annotationChips button')) {
       button.setAttribute('aria-pressed', String(current?.id === button.dataset.annotationId));
     }
     $('annotationSelect').value = current?.id || '';
@@ -154,11 +157,10 @@
   }
   function renderAnnotations(record) {
     const annotations = recordingGroups.get(record.id) || [];
-    const picker = $('annotationSelect'), timeline = $('annotationTimeline');
+    const picker = $('annotationSelect'), timeline = $('annotationTimeline'), chips = $('annotationChips');
     picker.replaceChildren(new Option(annotations.length ? '选择一条标注' : '暂无标注', ''));
     picker.disabled = !annotations.length;
-    timeline.replaceChildren();
-    const laneEnds = [];
+    const chipButtons = [], markers = document.createDocumentFragment();
     for (const row of annotations) {
       const title = `${row.label} · ${rangeLabel(row)} · ${statusLabel(row)}`;
       picker.add(new Option(title, row.id));
@@ -167,16 +169,20 @@
       marker.dataset.status = row.draft ? 'draft' : row.status;
       marker.title = `${title} · ${row.batch_id} · ${row.definition_id}@${row.version}`;
       marker.setAttribute('aria-label', marker.title);
-      const availableLane = laneEnds.findIndex((end) => end <= row.start_s);
-      const lane = availableLane < 0 ? laneEnds.length : availableLane;
-      laneEnds[lane] = row.end_s;
-      marker.style.setProperty('--lane', String(lane));
-      marker.style.setProperty('--start', `${row.start_s / record.duration_s * 100}%`);
-      marker.style.setProperty('--width', `${(row.end_s - row.start_s) / record.duration_s * 100}%`);
+      marker.dataset.start = row.start_s;
+      marker.dataset.end = row.end_s;
       marker.onclick = () => select(row);
-      timeline.append(marker);
+      markers.append(marker);
+      if (chipButtons.length < 6) {
+        const chip = marker.cloneNode();
+        chip.textContent = `${row.label} · ${rangeLabel(row)}`;
+        chip.onclick = marker.onclick;
+        chipButtons.push(chip);
+      }
     }
-    timeline.style.setProperty('--lane-count', String(laneEnds.length));
+    timeline.replaceChildren(markers);
+    chips.replaceChildren(...chipButtons);
+    duplex.layoutAnnotations();
     picker.onchange = () => {
       const selected = annotations.find((row) => row.id === picker.value);
       if (selected) select(selected);
@@ -241,8 +247,11 @@
     for (const option of $('channel').options) option.disabled = !sources[option.value];
     if (!sources[$('channel').value]) $('channel').value = sources.both ? 'both' : 'left';
     playback.setSource(sources[$('channel').value] || '', keepTime);
+    $('seek').disabled = !sources[$('channel').value];
     waveform.syncChannel($('channel').value);
-    $('audioHint').textContent = currentRecord.audio_error || (sources.both ? '音频摘要已核对。图形保持原始声道；单轨选择仅改变试听。' : '未附带音频；生成报告时增加 --include-audio 可试听。波形仍可查看。');
+    const hint = currentRecord.audio_error || (!sources.both ? '本报告未附带音频，可查看波形与标注。' : '');
+    $('audioHint').textContent = hint;
+    $('audioHint').hidden = !hint;
   }
   function showAudio(record, start, end, showEvidence) {
     const sameRecording = currentRecord?.id === record.id;
@@ -250,11 +259,16 @@
     playback.pause();
     if (sameRecording) {
       waveform.setEvidenceRange(start, end, showEvidence);
+      duplex.setEvidence(start, end, showEvidence);
       playback.setRange(start, end);
       playback.applyRange(true);
       return;
     }
     $('seek').max = record.duration_s;
+    $('seek').value = start;
+    $('time').textContent = start.toFixed(2) + ' s';
+    $('playbackDuration').textContent = record.duration_s.toFixed(2) + ' s';
+    $('recordingReplayHeading').textContent = record.channels === 2 ? '双轨录音回放' : '单轨录音回放';
     $('start').value = start; $('end').value = end;
     for (const [index,id] of ['leftTitle','rightTitle'].entries()) {
       $(id).querySelector('.role-name').textContent = `声道 ${index}`;
@@ -262,9 +276,9 @@
     }
     setAudio();
     const hasDuplex = duplex.load(record.waveform, record.duration_s);
-    $('recordingAnnotations').classList.toggle('with-duplex', hasDuplex);
     if (!hasDuplex) $('precisionWave').open = true;
-    duplex.setRange(start, end);
+    duplex.setEvidence(start, end, showEvidence);
+    updateListeningRange(start, end);
     waveform.load({record, op:{at_s:start, observed_until_s:end}, showEvidence});
   }
   function select(row) {

@@ -34,7 +34,10 @@ test('D01 filters versions, multiple tags and exports the visible result',async(
   await expect(page.locator('#queue button')).toHaveCount(1);
   const markers = page.locator('#annotationTimeline button');
   await expect(markers).toHaveCount(2);
-  await markers.nth(1).click();
+  const chips = page.locator('#annotationChips button');
+  await expect(chips.nth(1)).toContainText(/· .* 秒/);
+  await chips.nth(1).click();
+  await expect(chips.nth(1)).toHaveAttribute('aria-pressed','true');
   await expect(markers.nth(1)).toHaveAttribute('aria-pressed','true');
   await expect(page.locator('#name')).toHaveText('quiet.wav');
   await page.locator('#version').selectOption('2');
@@ -60,7 +63,7 @@ test('D02 duplex timeline, precise waveform and interval playback share the reco
   await expect(plot).toHaveClass(/can-seek/);
   await expect(page.locator('#duplexRight')).toBeVisible();
   await expect.poll(() => canvas.evaluate((el) => {
-    const ratio = el.height / 100;
+    const ratio = el.height / el.clientHeight;
     const ctx = el.getContext('2d');
     // The second lane has loud audio. Its bar color must be painted away from the baseline.
     const pixels = ctx.getImageData(0, Math.floor(70 * ratio), el.width, 1).data;
@@ -72,6 +75,15 @@ test('D02 duplex timeline, precise waveform and interval playback share the reco
   const player = page.locator('#player');
   await expect.poll(() => player.evaluate(el => el.currentTime)).toBeCloseTo(4, 1);
   await expect.poll(() => page.locator('#duplexPlayhead').evaluate(el => parseFloat(el.style.left))).toBeCloseTo(50, 0);
+  await page.getByRole('button',{name:'放大录音时间轴'}).click();
+  await expect(page.locator('#annotationTime span').first()).toHaveText('2.0 s');
+  await expect(page.locator('#annotationTime span').last()).toHaveText('6.0 s');
+  await canvas.scrollIntoViewIfNeeded();
+  const zoomedBox = await canvas.boundingBox();
+  await page.mouse.click(zoomedBox.x + zoomedBox.width * .75, zoomedBox.y + 12);
+  await expect.poll(() => player.evaluate(el => el.currentTime)).toBeCloseTo(5, 1);
+  await page.getByRole('button',{name:'查看录音全长'}).click();
+  await expect(page.locator('#annotationTime span').last()).toHaveText('8.0 s');
   await expect(page.locator('#precisionWave')).not.toHaveAttribute('open', '');
   await page.locator('#precisionWave summary').click();
   await expect(page.locator('#waveform canvas').first()).toBeVisible();
@@ -79,6 +91,7 @@ test('D02 duplex timeline, precise waveform and interval playback share the reco
   await page.locator('#waveGain').selectOption('4'); await expect(page.locator('#waveScale')).toContainText('4');
   await page.locator('#channel').selectOption('right');
   await expect(page.locator('#player')).toHaveAttribute('src',/-ch1.wav$/);
+  await page.locator('#replaySettings summary').click();
   await page.locator('#volume').fill('0.5'); await page.locator('#mute').check();
   expect(await page.locator('#player').evaluate(el=>[el.volume,el.muted])).toEqual([0.5,true]);
   await page.locator('#mute').uncheck(); await page.locator('#loop').uncheck();

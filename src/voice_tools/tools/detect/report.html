@@ -12,21 +12,51 @@ __WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href=
 <p id="message" role="status" aria-live="polite"></p><p id="progress" class="muted"></p>
 <div class="workspace"><aside><h2>录音列表</h2><div id="queue"></div></aside><section id="detail" hidden>
 <header class="recording-heading"><div><h2 id="name"></h2><p id="recordingSummary" class="muted"></p><p id="recordingNote" class="muted" hidden></p></div><button id="addRecordingAnnotation" type="button">在这份录音上补标</button></header>
-<section id="recordingAnnotations" aria-labelledby="recordingTimelineHeading">
-<div class="annotation-tools"><div><h3 id="recordingTimelineHeading">录音时间轴</h3><span class="muted">幅度概览 · 对数显示</span></div><label>定位标注<select id="annotationSelect"></select></label></div>
-<div id="annotationTimeline" class="annotation-timeline" role="group" aria-label="全长标注时间轴"></div>
+<section id="recordingAnnotations" aria-labelledby="recordingReplayHeading">
+<h3 id="recordingReplayHeading">录音回放</h3>
+<div class="replay-toolbar">
+<div class="replay-scrubber">
+<button id="play" type="button" aria-label="播放试听">▶ 播放</button>
+<span id="time" class="replay-time">0.00 s</span>
+<input id="seek" type="range" min="0" step="0.01" value="0" aria-label="跳转播放时间">
+<span id="playbackDuration" class="replay-time"></span>
+</div>
+<div class="replay-options">
+<label>试听<select id="channel"><option value="both">双轨</option><option value="left">只听左轨</option><option value="right">只听右轨</option></select></label>
+<div class="replay-zoom" role="group" aria-label="录音时间轴缩放">
+<button id="duplexZoomOut" type="button" aria-label="缩小录音时间轴">−</button>
+<button id="duplexFit" type="button" aria-label="查看录音全长">全长</button>
+<button id="duplexZoomIn" type="button" aria-label="放大录音时间轴">＋</button>
+</div>
+</div>
+</div>
+<audio id="player" preload="metadata" hidden></audio>
+<p id="audioHint" class="muted replay-hint" hidden></p>
+<div id="annotationChips" class="annotation-chips" role="group" aria-label="录音标注"></div>
+<div class="annotation-tools"><h3 id="recordingTimelineHeading">录音时间轴</h3><label>定位标注<select id="annotationSelect"></select></label></div>
+<div id="annotationTime" class="annotation-time muted" aria-label="时间刻度"></div>
 <div id="duplexTimeline" class="duplex-timeline" hidden>
-<div class="duplex-channels"><span>声道 0</span><span id="duplexRight">声道 1</span></div>
+<div class="duplex-channels"><span class="duplex-channel">声道 0</span><span id="duplexRight" class="duplex-channel">声道 1</span></div>
 <div id="duplexPlot" class="duplex-plot">
 <canvas id="duplexCanvas" aria-hidden="true"></canvas>
 <span id="duplexRange" class="duplex-range" aria-hidden="true"></span>
+<span id="duplexEvidence" class="duplex-evidence" aria-hidden="true" hidden></span>
 <span id="duplexPlayhead" class="duplex-playhead" aria-hidden="true" hidden></span>
 </div>
 </div>
-<div id="annotationTime" class="annotation-time muted" aria-label="时间刻度"></div>
+<div id="annotationRow" class="annotation-row" hidden>
+<span>检测标注</span><div id="annotationTimeline" class="annotation-timeline" role="group" aria-label="录音标注时间轴"></div>
+</div>
+<details id="replaySettings"><summary id="replaySettingsLabel">试听区间与音量</summary>
+<div class="replay-settings">
+<label>试听起点（秒）<input id="start" type="number" min="0" step="0.1"></label>
+<label>试听终点（秒）<input id="end" type="number" min="0" step="0.1"></label>
+<label class="check"><input id="loop" type="checkbox" checked>循环所选区间</label>
+<label>试听音量<input id="volume" type="range" min="0" max="1" step="0.05" value="1"></label>
+<label class="check"><input id="mute" type="checkbox">静音</label>
+</div>
+</details>
 </section>
-__PLAYBACK_CONTROLS__
-<p id="audioHint" class="muted"></p>
 <details id="precisionWave"><summary>精细波形与区间调整</summary>
 __WAVEFORM_PANEL__
 </details>
