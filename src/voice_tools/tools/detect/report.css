@@ -149,3 +149,13 @@ main{padding:20px}
   body #waveform > div::part(canvases){background:var(--wash)}
   body #waveform > div::part(timeline){background:var(--paper);color:var(--muted);border-color:var(--line)}
 }
+
+label[hidden]{display:none}
+.card>summary{font-weight:650}
+#manualCount{margin-inline-start:8px;color:var(--muted);font-size:13px;font-weight:400}
+#manualForm{margin-top:14px;scroll-margin-block:16px}
+#reviewFeedback #message,#manualFeedback #message{min-height:0;margin:8px 0 0}
+#message:empty{margin:0}
+
+#replayRange{white-space:nowrap}
+#currentReviewState:empty{display:none}

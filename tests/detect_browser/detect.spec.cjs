@@ -28,6 +28,7 @@ test('D01 filters versions, multiple tags and exports the visible result',async(
   const errors=await open(page);
   await expect(page.locator('#batch')).toBeHidden();
   await page.locator('#reportTools summary').click();
+  await expect(page.locator('#tagMode')).toBeHidden();
   await page.locator('#batch').selectOption('baseline');
   await page.locator('#tags').fill('AI低音量,待核实');
   await page.locator('#tagMode').selectOption('all');
@@ -133,6 +134,8 @@ test('D03 correction draft survives reopening and imports into the installed CLI
   expect(packet.reviews).toHaveLength(1);
   expect(packet.reviews[0]).toMatchObject({status:'corrected',label:'已核实问题',reviewer:'本机复核',comment:''});
   await page.reload(); await expect(page.locator('#progress')).toContainText('1 条复核草稿');
+  await expect(page.locator('#currentReviewState')).toHaveText('已存草稿');
+  await expect(page.locator('#replayRange')).toHaveText(/试听 .* 秒/);
   await page.locator('#reportTools summary').click();
   await page.locator('#importDraft').setInputFiles(file);
   const db=info.outputPath('library.sqlite3'); fs.copyFileSync(path.join(site,'library.sqlite3'),db);
@@ -152,11 +155,17 @@ test('D03 correction draft survives reopening and imports into the installed CLI
 
 test('D04 manual missed segment, unknown source, and hostile labels remain data',async({page},info)=>{
   const errors=await open(page);
+  await expect(page.locator('#manualForm')).toBeHidden();
+  await page.locator('#manualPanel summary').click();
   await page.locator('#manualEvaluation').selectOption({label:await page.locator('#manualEvaluation option').filter({hasText:'loud.wav'}).first().textContent()});
   await page.locator('#listenManual').click(); await expect(page.locator('#reviewForm')).toBeHidden();
   await expect(page.locator('#duplexCanvas')).toBeVisible();
   await page.locator('#manualLabel').fill('人工补标'); await page.locator('#manualStart').fill('2'); await page.locator('#manualEnd').fill('4');
   await page.locator('#manualForm button[type=submit]').click(); await expect(page.locator('#manualQueue li')).toHaveCount(1);
+  await page.getByRole('button',{name:'移除草稿',exact:true}).click();
+  await expect(page.locator('#manualQueue li')).toHaveCount(0);
+  await page.getByRole('button',{name:'撤销移除草稿',exact:true}).click();
+  await expect(page.locator('#manualQueue li')).toHaveCount(1);
   await expect(page.locator('#annotationTimeline button[data-status=draft]')).toHaveCount(1);
   const file=info.outputPath('manual.json'); const packet=await download(page,'#exportReviews',file);
   expect(packet.manual).toHaveLength(1);

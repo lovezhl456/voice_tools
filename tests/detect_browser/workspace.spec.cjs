@@ -96,7 +96,13 @@ test('W02 fixed samples reveal a regression and explicit daily selection survive
   await page.getByRole('button',{name:'将此新版本选为日常规则',exact:true}).click();
   await expect(page.locator('#notice')).toContainText('已明确选用');await page.reload();
   await expect(page.locator('#definitions input[value="level@2"]')).toBeChecked();
-  await page.getByRole('button',{name:'查看逐录音片段与保存对比',exact:true}).click();
+  await page.locator('#comparisons summary').filter({hasText:'查看逐录音片段与保存对比'}).click();
+  const details = page.locator('#comparisons summary');
+  await expect(page.getByRole('link',{name:'下载本次对比 JSON',exact:true})).toBeVisible();
+  await details.click();
+  await expect(page.getByRole('link',{name:'下载本次对比 JSON',exact:true})).toBeHidden();
+  await details.click();
+  await expect(page.locator('#comparisons pre')).toHaveCount(1);
   const download=page.waitForEvent('download');await page.getByRole('link',{name:'下载本次对比 JSON',exact:true}).click();
   const file=info.outputPath('comparison.json');await(await download).saveAs(file);
   expect(JSON.parse(fs.readFileSync(file)).totals.after.misses).toBe(1);
@@ -107,9 +113,11 @@ test('W02 fixed samples reveal a regression and explicit daily selection survive
 test('W03 trial selection, manual miss and sample revision keep frozen evidence unchanged',async({page},info)=>{
   const {errors}=await start(page,info);
   await page.locator('#definitions input[value="level@2"]').check();
+  await expect(page.locator('#trialFiles')).toBeHidden();
   await page.getByRole('combobox',{name:'检测方式',exact:true}).selectOption('trial');
   await page.getByText('查看录音 / 勾选试跑范围',{exact:true}).click();
   await page.locator('#inputs label').filter({hasText:'quiet.wav'}).getByRole('checkbox').check();
+  await expect(page.locator('#trialSizeLabel')).toBeHidden();
   await page.getByRole('button',{name:'开始质检',exact:true}).click();
   await page.getByRole('link',{name:'打开本次录音复核',exact:true}).click();
   await expect(page.locator('#summary')).toContainText('1 通录音');
@@ -125,7 +133,7 @@ test('W03 trial selection, manual miss and sample revision keep frozen evidence 
   await expect(page.locator('#sampleList')).toContainText('0–4 秒');
   await page.locator('#before').selectOption('level@1');await page.locator('#after').selectOption('level@2');
   await page.getByRole('button',{name:'运行新旧版本对比',exact:true}).click();await expect(page.locator('#comparisons')).toContainText('对比完成');
-  await page.getByRole('button',{name:'查看逐录音片段与保存对比',exact:true}).click();
+  await page.locator('#comparisons summary').filter({hasText:'查看逐录音片段与保存对比'}).click();
   await expect(page.locator('#comparisons pre')).toContainText('"end_s": 8');expect(errors).toEqual([]);
 });
 
