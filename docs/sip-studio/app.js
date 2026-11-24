@@ -219,7 +219,7 @@
       .join(
         ''
       )}<button class="plugin" data-act="add" data-action="hangup" ${c.steps.some((s) => s.action === 'hangup') ? 'disabled' : ''}>${icon('hangup')}<span><strong>挂断</strong><small>固定在用例末尾</small></span></button></div><a class="design-link" href="design.html">调研依据与产品设计 ↗</a></aside>
-<section class="canvas" aria-label="步骤编排画布"><div class="canvas-head"><span>顺序执行 / SEQUENCE</span><div class="actions"><button data-act="undo" aria-label="撤销" ${history.length ? '' : 'disabled'}>↶</button><button data-act="redo" aria-label="重做" ${redo.length ? '' : 'disabled'}>↷</button></div></div><div class="flow"><div class="call-start"><span class="start-dot"></span><div><strong>呼叫接通后开始</strong><small>${esc(e.config.target_uri)}</small></div></div>${c.steps.map((s, i) => `<div class="drop-zone" data-drop="${i}"><span>放在这里</span></div><article class="step ${s.id === selected ? 'selected' : ''}" draggable="${s.action !== 'hangup'}" data-step="${s.id}" tabindex="0" role="button" aria-label="步骤 ${i + 1} ${esc(s.label)}" aria-pressed="${s.id === selected}"><span class="grip" aria-hidden="true">⠿</span>${icon(s.action)}<div class="step-main"><div class="step-title"><span class="num">${String(i + 1).padStart(2, '0')}</span><strong>${esc(s.label)}</strong></div><div class="step-summary">${esc(describe(s))}</div></div><span class="step-time">${s.action === 'hangup' ? '结束' : seconds(duration(s))}</span><div class="step-tools"><button data-act="up" data-id="${s.id}" aria-label="上移步骤 ${i + 1}" ${i === 0 || s.action === 'hangup' ? 'disabled' : ''}>↑</button><button data-act="down" data-id="${s.id}" aria-label="下移步骤 ${i + 1}" ${i === c.steps.length - 1 || c.steps[i + 1]?.action === 'hangup' || s.action === 'hangup' ? 'disabled' : ''}>↓</button></div></article>`).join('')}${c.steps.at(-1)?.action === 'hangup' ? '' : `<div class="drop-zone" data-drop="${c.steps.length}"><span>放在这里</span></div>`}<div class="record-lane"><span class="record-light"></span><span>通话级 RX 录音 · ${e.config.record_early ? '包含 early media' : '接通后自动开始'}<br>播放和等待期间持续录制，由 CLI 执行器保存。</span></div></div></section>
+<section class="canvas" aria-label="步骤编排画布"><div class="canvas-head"><span>顺序执行 / SEQUENCE</span><div class="actions"><button data-act="undo" aria-label="撤销" ${history.length ? '' : 'disabled'}>↶</button><button data-act="redo" aria-label="重做" ${redo.length ? '' : 'disabled'}>↷</button></div></div><div class="flow"><div class="call-start"><span class="start-dot"></span><div><strong>呼叫接通后开始</strong><small>${esc(e.config.target_uri)}</small></div></div>${c.steps.map((s, i) => `<div class="drop-zone" data-drop="${i}"><span>放在这里</span></div><article class="step ${s.id === selected ? 'selected' : ''}" draggable="${s.action !== 'hangup'}" data-step="${s.id}" data-motion-key="${esc(s.id)}" tabindex="0" role="button" aria-label="步骤 ${i + 1} ${esc(s.label)}" aria-pressed="${s.id === selected}"><span class="grip" aria-hidden="true">⠿</span>${icon(s.action)}<div class="step-main"><div class="step-title"><span class="num">${String(i + 1).padStart(2, '0')}</span><strong>${esc(s.label)}</strong></div><div class="step-summary">${esc(describe(s))}</div></div><span class="step-time">${s.action === 'hangup' ? '结束' : seconds(duration(s))}</span><div class="step-tools"><button data-act="up" data-id="${s.id}" aria-label="上移步骤 ${i + 1}" ${i === 0 || s.action === 'hangup' ? 'disabled' : ''}>↑</button><button data-act="down" data-id="${s.id}" aria-label="下移步骤 ${i + 1}" ${i === c.steps.length - 1 || c.steps[i + 1]?.action === 'hangup' || s.action === 'hangup' ? 'disabled' : ''}>↓</button></div></article>`).join('')}${c.steps.at(-1)?.action === 'hangup' ? '' : `<div class="drop-zone" data-drop="${c.steps.length}"><span>放在这里</span></div>`}<div class="record-lane"><span class="record-light"></span><span>通话级 RX 录音 · ${e.config.record_early ? '包含 early media' : '接通后自动开始'}<br>播放和等待期间持续录制，由 CLI 执行器保存。</span></div></div></section>
 <aside class="inspector" aria-label="步骤参数">${inspector()}</aside></div>
 <div class="footer-bar"><div class="budget">${v.unknownDuration ? '已知动作时长' : '预计动作时长'}<strong>${seconds(v.knownDuration)} / ${e.config.max_call_s} s</strong><div class="meter"><i style="width:${Math.max(0, Math.min(100, (v.knownDuration / e.config.max_call_s) * 100))}%"></i></div></div><div class="validation ${v.errors.length ? 'bad' : ''}"><span>${v.errors.length ? '! ' + esc(v.errors[0]) : v.warnings.length ? '○ 素材待 CLI 校验' : '✓ 字段检查通过'}</span><button data-act="export">查看 JSON</button></div></div>${preview ? previewHtml(preview) : ''}`;
   }
@@ -326,10 +326,13 @@ voice-tools --json sip run scenario.json --dry-run --out outputs/plan-001</pre><
   }
   function move(id, delta) {
     const i = item().steps.findIndex((s) => s.id === id);
-    mutate(() => {
-      item().steps = C.moveStep(item().steps, id, i + delta);
+    reorderStep(id, i + delta);
+  }
+  function reorderStep(id, index) {
+    VoiceMotion.reorder($('#workspace'), '[data-motion-key]', () => mutate(() => {
+      item().steps = C.moveStep(item().steps, id, index);
       selected = id;
-    });
+    }));
   }
   function offlinePreview() {
     if (preview) {
@@ -355,7 +358,9 @@ voice-tools --json sip run scenario.json --dry-run --out outputs/plan-001</pre><
     state.runs.unshift(C.clone(preview));
     state.runs = state.runs.slice(0, 30);
     render();
-    $('.preview')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const panel = $('.preview');
+    VoiceMotion.reveal(panel);
+    VoiceMotion.scrollTo(panel);
   }
   function pcapHelp() {
     modal(
@@ -426,6 +431,7 @@ voice-tools --json sip pcap-import capture.pcap \\\n  --stream '从 inspect 输�
       if (page !== pageButton.dataset.page) {
         page = pageButton.dataset.page;
         render();
+        VoiceMotion.reveal($('#workspace').firstElementChild);
       }
       return;
     }
@@ -537,7 +543,7 @@ voice-tools --json sip pcap-import capture.pcap \\\n  --stream '从 inspect 输�
     if (s) {
       selected = s.dataset.step;
       render();
-      if (innerWidth < 620) $('.inspector').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (innerWidth < 620) VoiceMotion.scrollTo($('.inspector'), 'start');
     }
   });
   function saveEnv() {
@@ -703,10 +709,7 @@ voice-tools --json sip pcap-import capture.pcap \\\n  --stream '从 inspect 输�
     if (d.action) add(d.action, to);
     else {
       const from = item().steps.findIndex((s) => s.id === d.id);
-      mutate(() => {
-        item().steps = C.moveStep(item().steps, d.id, to > from ? to - 1 : to);
-        selected = d.id;
-      });
+      reorderStep(d.id, to > from ? to - 1 : to);
     }
   });
   document.addEventListener('dragend', () => {

@@ -32,11 +32,13 @@
   const key = `voice-tools-detect:${data.library_id}:${data.report_id}`;
   let current = null, currentRecord = null, visible = [], formDirty = false, notExported = false;
   let recordingGroups = new Map(), saving = false, removedManual = null;
+  const recordingButtons = new Map();
+  let queuedIds = [];
   function message(value, location = 'reportFeedback') {
     if (location === 'reviewFeedback' && ($('detail').hidden || $('annotationDetail').hidden)) location = 'reportFeedback';
     const status = $('message'), container = $(location);
     if (status.parentNode !== container) container.append(status);
-    status.textContent = value;
+    VoiceMotion.feedback(status, value);
   }
   async function saveWithFeedback(action, location, form) {
     if (saving) return;
@@ -62,6 +64,7 @@
     duration: () => currentRecord?.duration_s,
     seek: (time) => waveform.setTime(time),
     rangeChanged: updateListeningRange,
+    positionChanged: duplex.setPosition,
     formatTime: (time) => time.toFixed(2) + ' s',
     error:message
   });
@@ -163,7 +166,8 @@
     (!$('version').value || row.version === $('version').value);
   function updateSelection() {
     for (const button of $('queue').children) {
-      button.setAttribute('aria-current', String(currentRecord?.id === button.dataset.recordingId));
+      const selected = String(currentRecord?.id === button.dataset.recordingId);
+      if (button.getAttribute('aria-current') !== selected) button.setAttribute('aria-current', selected);
     }
     for (const button of $('annotationTimeline').children) {
       button.setAttribute('aria-pressed', String(current?.id === button.dataset.annotationId));
@@ -188,22 +192,41 @@
     if (formDirty) progress.push('表单尚未保存');
     $('progress').textContent = progress.join(' · ');
   }
+  function createRecordingButton(id) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.recordingId = id;
+    button.append(document.createTextNode(filename(records.get(id).input)), document.createElement('small'));
+    button.onclick = () => {
+      if (currentRecord?.id === id) return;
+      if (formDirty || saving) {
+        message(saving ? '正在保存，稍后可切换录音。' : '请先保存或放弃当前表单修改。');
+        return;
+      }
+      const annotations = recordingGroups.get(id);
+      if (annotations) selectRecording(records.get(id), annotations[0] || null);
+    };
+    return button;
+  }
   function renderQueue() {
-    $('queue').replaceChildren();
-    for (const [id, annotations] of recordingGroups) {
-      const button = document.createElement('button'), count = document.createElement('small');
-      button.type = 'button'; button.dataset.recordingId = id;
-      button.textContent = filename(records.get(id).input);
-      count.textContent = annotations.length ? `${annotations.length} 条标注` : '无标注';
-      button.append(count);
-      button.onclick = () => {
-        if (currentRecord?.id === id) return;
-        if (formDirty || saving) { message(saving ? '正在保存，稍后可切换录音。' : '请先保存或放弃当前表单修改。'); return; }
-        selectRecording(records.get(id), annotations[0] || null);
-      };
-      $('queue').append(button);
+    const queue = $('queue');
+    const ids = [...recordingGroups.keys()];
+    const buttons = ids.map(id => {
+      if (!recordingButtons.has(id)) recordingButtons.set(id, createRecordingButton(id));
+      const button = recordingButtons.get(id);
+      const count = recordingGroups.get(id).length;
+      const label = count ? `${count} 条标注` : '无标注';
+      if (button.lastElementChild.textContent !== label) button.lastElementChild.textContent = label;
+      return button;
+    });
+    if (!ids.length) {
+      if (queue.firstElementChild || !queue.textContent) queue.textContent = '没有符合条件的录音。';
+    } else if (ids.length !== queuedIds.length || ids.some((id, i) => id !== queuedIds[i])) {
+      const fragment = document.createDocumentFragment();
+      for (const button of buttons) fragment.append(button);
+      queue.replaceChildren(fragment);
     }
-    if (!recordingGroups.size) $('queue').textContent = '没有符合条件的录音。';
+    queuedIds = ids;
     updateSelection();
     showProgress();
   }
@@ -411,6 +434,9 @@
     };
     updateSelection();
     showProgress();
+    if (changed || previous?.id !== row?.id) {
+      VoiceMotion.reveal(row ? $('annotationName') : $('name'), 'feedback');
+    }
   }
   function validateRange(start,end,duration) {
     if (!Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start || end > duration) throw Error('片段必须在录音范围内，终点大于起点。');

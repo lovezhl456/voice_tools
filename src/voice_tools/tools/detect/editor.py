@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from voice_tools import __version__
+from voice_tools.core.review.motion import embed_motion
 from .definition import load, validate
 from .metrics import catalog
 from .schema import schema
@@ -27,7 +28,7 @@ def document(definitions=(), session=None, back_link=None):
     if back_link:
         label = '返回质检工作区' if back_link == '/workspace' else '返回录音复核'
         link = '<a href="' + html.escape(back_link, quote=True) + '">' + label + '</a>'
-    return page.replace('__BACK__', link).replace('__DATA__', encoded)
+    return embed_motion(page.replace('__BACK__', link).replace('__DATA__', encoded))
 
 
 def render(path, definitions=(), back_link=None):

@@ -2,6 +2,8 @@
 import html
 from datetime import datetime, timezone
 
+from voice_tools.core.review.motion import embed_motion
+
 
 def esc(value):
     return html.escape(str(value), quote=True)
@@ -171,7 +173,7 @@ def render(data):
         captures += (f'<article><h3>抓包来源 · {esc(item["host"])}</h3><p>状态 {esc(item["status"])}</p>'
                      f'{health_text}<p class="mono">{esc(item["bpf"] or "恢复取回，原端点未知")}</p>{bullets(item["warnings"])}</article>')
     status = '包含错误或部分统计' if data['partial'] else '分析完成'
-    return '''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    document = '''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>''' + esc(data['title']) + '''</title><style>
 :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#20333e;background:#f2f5f7;line-height:1.65}
 *{box-sizing:border-box}body{margin:0}header,main,footer{max-width:1160px;margin:auto;padding:28px}header{padding-top:44px}
@@ -182,11 +184,12 @@ article{background:#fff;border:1px solid #d9e3e9;border-radius:12px;padding:24px
 .scroll{overflow-x:auto;max-width:100%;margin:12px 0}table{border-collapse:collapse;width:100%;font-size:13px;text-align:left}th,td{padding:11px 13px;border-bottom:1px solid #e5ebef;white-space:nowrap}th{background:#f5f8fa;color:#516673}details{margin-top:14px}summary{cursor:pointer;color:#075f79}pre{white-space:pre-wrap;overflow-wrap:anywhere}.mono{font-family:ui-monospace,monospace;font-size:12px;overflow-wrap:anywhere}.error{color:#ac3030;background:#fff2f0;padding:14px;border-radius:7px}
 .wave,.packets{display:block;width:100%;height:80px;background:#f6fafb;border-radius:4px}audio{width:100%;margin-top:20px}footer{font-size:12px;color:#62717b;padding-bottom:45px}
 @media(max-width:600px){header,main,footer{padding:18px}header{padding-top:28px}article{padding:16px}.stats{gap:7px}.stats span{padding:8px 11px;font-size:13px}h2{font-size:22px}ul{padding-left:20px}}
-</style><header><div class="eyebrow">VOICE TOOLS / MEDIA EVIDENCE</div><h1>''' + esc(data['title']) + \
+</style></head><body><header data-motion-enter><div class="eyebrow">VOICE TOOLS / MEDIA EVIDENCE</div><h1>''' + esc(data['title']) + \
         f'''</h1><p class="muted">{esc(data['created_at'])} · {status} · CPU / 离线分析</p>
 <div class="stats"><span>录音 <b>{len(data['audio'])}</b></span><span>PCAP <b>{len(data['pcaps'])}</b></span><span>错误 <b>{data['errors']}</b></span></div>
 <p class="notice">{esc(data['conclusion'])}</p><nav><a href="#audio">录音分析</a><a href="#network">网络分析</a><a href="report.json">完整 JSON</a></nav></header>
 <main>{captures}<h2 id="audio">录音分析</h2><p class="muted">20 ms 分帧，活动门限 {data['parameters']['threshold_db']} dBFS。各文件时间从自身起点计算。</p>
 {''.join(cards) or '<p>未提供录音。</p>'}<h2 id="network">网络分析</h2>{''.join(pcaps) or '<p>未提供 PCAP。</p>'}
 <article><h3>如何解释这些结果</h3><p>录音低能量、RTP 序号缺口和到达间隔异常是不同观测。单份 PCAP 无法测出单向网络延迟，缺少起始时间映射的录音不能与网络事件自动对齐。仅凭这些指标不能确认用户/AI 角色、LLM/TTS 故障或运营商转码根因。</p><p>序号相邻差超过 3000 时分段计数并标记大跳变；该处缺失量未知。动态 PT 的时钟由 --clock-rate 明确指定，不能把音频采样率直接当作所有编码的 RTP 时钟。</p></article>
-</main><footer>voice-tools {esc(data['tool_version'])} · 输入摘要及参数见 report.json。报告可能包含 IP、路径和录音附件，请按原证据权限保存。</footer></html>'''
+</main><footer>voice-tools {esc(data['tool_version'])} · 输入摘要及参数见 report.json。报告可能包含 IP、路径和录音附件，请按原证据权限保存。</footer></body></html>'''
+    return embed_motion(document, interactive=False)

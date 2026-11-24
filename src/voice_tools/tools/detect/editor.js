@@ -15,7 +15,7 @@
   let definitions=data.definitions.map(normalize), draft=clone(data.templates[0]), baseline=null;
   let dirty=false, busy=false;
   const selectedRuns=new Set();
-  function message(value,success=false) { $('message').textContent=value; $('message').classList.toggle('success',success); }
+  function message(value,success=false) { VoiceMotion.feedback($('message'), value); $('message').classList.toggle('success',success); }
   function element(tag,text,className) { const node=document.createElement(tag); if(text)node.textContent=text;if(className)node.className=className;return node; }
   function button(text,action,className) { const node=element('button',text,className);node.type='button';node.onclick=action;return node; }
   function field(name,value,onChange,options={}) {

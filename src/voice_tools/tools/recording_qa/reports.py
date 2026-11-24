@@ -3,6 +3,8 @@ import html
 import json
 from pathlib import Path
 
+from voice_tools.core.review.motion import embed_motion
+
 LABELS = {
     "NO_OUTPUT_CANDIDATE": "无输出候选", "LATE_OUTPUT_CANDIDATE": "延迟输出候选",
     "OUTPUT_NEEDS_REVIEW": "有活动，需试听", "CENSORED": "观察时长不足",
@@ -72,13 +74,13 @@ def render_report(output, records, summary, hide_paths=False):
                         f'AI 声道 {result["config"]["system_channel"]}（0 左 / 1 右）</p><ul>{warnings}</ul>{table}</section>')
     write_csv(output / "summary.csv", ["file", "audio_sha256", "status", "candidates", "opportunities", "error"], summaries)
     write_csv(output / "review.csv", REVIEW_FIELDS + EXTRA_REVIEW_FIELDS, reviews)
-    document = '''<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+    document = '''<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>双声道录音质检报告</title><style>
 body{font:16px/1.6 system-ui,sans-serif;background:#f3f6fa;color:#182535;margin:0}main{max-width:1120px;margin:auto;padding:24px}
 h1{font-size:30px}h2{font-size:19px;overflow-wrap:anywhere}section,.intro{background:#fff;padding:20px;margin:18px 0;border-radius:12px;border:1px solid #dce3ed}
 li,p{overflow-wrap:anywhere}.table{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}td,th{text-align:left;padding:12px;border-bottom:1px solid #dce3ed;vertical-align:top}
 audio{display:block;width:240px;margin-top:8px}.bad{color:#a62924}.count{font-size:20px;font-weight:600}@media(max-width:600px){main{padding:12px}section,.intro{padding:14px}h1{font-size:25px}}
-</style><main><h1>双声道录音质检报告</h1><div class="intro">'''
+</style></head><body><main><h1 data-motion-enter>双声道录音质检报告</h1><div class="intro">'''
     document += f'<p class="count">{summary["files"]} 个文件 · {summary["candidates"]} 个候选 · {summary["errors"]} 个处理错误</p>'
     document += '<p><a href="review.html"><strong>进入交互复核：双轨波形、单轨试听与人工标注 →</strong></a></p>'
     document += ('<p>所有结果都需要复核。有活动不等于 AI 正确回答；录音无法单独定位模型、TTS 或 RTP 根因。'
@@ -87,7 +89,7 @@ audio{display:block;width:240px;margin-top:8px}.bad{color:#a62924}.count{font-si
                  'decision 取 missing / delayed / audible / exclude / uncertain；时间使用含时区的 ISO 8601。'
                  '确认后使用 qa promote 晋升，自动输出不会被自动标为黄金数据。</p>'
                  '<p><a href="review.csv" download>下载人工复核表</a> · <a href="summary.csv" download>下载文件汇总</a></p></div>')
-    document += "".join(sections) + "</main></html>"
-    (output / "report.html").write_text(document, encoding="utf-8")
+    document += "".join(sections) + "</main></body></html>"
+    (output / "report.html").write_text(embed_motion(document, interactive=False), encoding="utf-8")
     from .workbench import render_workbench
     render_workbench(output, records, summary, hide_paths)

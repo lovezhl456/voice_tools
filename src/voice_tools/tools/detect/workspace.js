@@ -7,7 +7,7 @@
     const status = $('notice');
     const region = control?.closest('.actions') || control?.closest('form') || control;
     if (region) region.after(status);
-    status.textContent = text;
+    VoiceMotion.feedback(status, text);
   }
   async function api(path, body) {
     const response = await fetch(path, {method:body === undefined ? 'GET' : 'POST', headers:{
@@ -134,6 +134,7 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
           };
           content.replaceChildren(node('pre', json), link);
+          VoiceMotion.reveal(content);
           loaded = true;
         } catch (error) {
           content.replaceChildren(node('p', error.message + '。收起后重新打开可重试。'));
@@ -149,14 +150,33 @@
     }
   }
   function renderJobs() {
-    $('jobs').replaceChildren();
+    const container = $('jobs');
+    const previous = new Map([...container.children].map(card => [card.dataset.jobId, card]));
     for (const job of state.jobs) {
-      const card = node('div', undefined, 'job');
-      card.append(node('strong', `${job.kind} · ${job.status === 'running' ? `处理中 ${job.done}/${job.total || '…'}` : job.status === 'failed' ? '失败' : '已完成'}`));
-      if (job.error) card.append(node('p',job.error));
-      if (job.result?.report_url) { const link=node('a','打开本次录音复核'); link.href=job.result.report_url; card.append(document.createTextNode(' · '),link); }
-      $('jobs').append(card);
+      const card = previous.get(job.id) || node('div', undefined, 'job');
+      previous.delete(job.id);
+      const status = job.status === 'running' ? `处理中 ${job.done}/${job.total || '…'}`
+        : job.status === 'failed' ? '失败' : '已完成';
+      const title = card.querySelector('strong') || card.appendChild(node('strong'));
+      const text = `${job.kind} · ${status}`;
+      if (job.status !== card.dataset.status) {
+        VoiceMotion.feedback(title, text);
+        card.dataset.status = job.status;
+        if (job.error) card.append(node('p', job.error));
+        if (job.result?.report_url) {
+          const link = node('a', '打开本次录音复核');
+          link.href = job.result.report_url;
+          card.append(document.createTextNode(' · '), link);
+        }
+      } else if (title.textContent !== text) {
+        title.textContent = text;
+      }
+      if (!card.isConnected) {
+        card.dataset.jobId = job.id;
+        container.append(card);
+      }
     }
+    for (const card of previous.values()) card.remove();
   }
   async function refresh(initial=false) {
     const previous = state;

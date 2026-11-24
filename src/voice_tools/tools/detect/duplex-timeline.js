@@ -69,7 +69,7 @@
     const markerList = $("annotationTimeline");
     const ctx = canvas.getContext("2d");
     const theme = matchMedia("(prefers-color-scheme: dark)");
-    let summary = null, duration = 0;
+    let summary = null, duration = 0, plotWidth = 0;
     let zoom = 1, viewStart = 0, auditionRange = null, evidenceRange = null;
     const viewSpan = () => duration / zoom;
     const viewEnd = () => viewStart + viewSpan();
@@ -153,14 +153,18 @@
       draw();
     }
 
-    function syncPlayhead() {
-      const available = summary && player.readyState >= 1 && !player.error;
-      cursor.hidden = !available;
-      plot.classList.toggle("can-seek", Boolean(available));
-      if (!available) return;
-      const at = Math.min(duration, player.currentTime);
+    function setPosition(time) {
+      if (!summary || !plotWidth || cursor.hidden) return;
+      const at = Math.min(duration, time);
       if (at < viewStart || at > viewEnd()) setView(zoom, at);
-      cursor.style.left = percent(at);
+      cursor.style.translate = ((at - viewStart) / viewSpan() * plotWidth - 1) + "px 0";
+    }
+
+    function syncPlayhead() {
+      const available = Boolean(summary && player.readyState >= 1 && !player.error);
+      cursor.hidden = !available;
+      plot.classList.toggle("can-seek", available);
+      if (available) setPosition(player.currentTime);
     }
 
     const zoomAt = () => player.readyState >= 1 ? player.currentTime : evidenceRange?.start ?? 0;
@@ -171,9 +175,13 @@
     $("duplexZoomOut").onclick = () => changeZoom(Math.max(1, zoom / 2));
     $("duplexZoomIn").onclick = () => changeZoom(Math.min(MAX_ZOOM, zoom * 2));
     $("duplexFit").onclick = () => changeZoom(1);
-    new ResizeObserver(draw).observe(canvas);
+    new ResizeObserver(([entry]) => {
+      plotWidth = entry.contentRect.width;
+      draw();
+      syncPlayhead();
+    }).observe(canvas);
     theme.addEventListener("change", draw);
-    for (const event of ["loadedmetadata", "emptied", "error", "seeking", "timeupdate"]) {
+    for (const event of ["loadedmetadata", "emptied", "error", "seeking"]) {
       player.addEventListener(event, syncPlayhead);
     }
     plot.addEventListener("click", (event) => {
@@ -204,6 +212,7 @@
         return available;
       },
       layoutAnnotations,
+      setPosition,
       setRange(start, end) {
         auditionRange = {start, end};
         layoutRange(range, auditionRange);

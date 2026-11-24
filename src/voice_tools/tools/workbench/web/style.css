@@ -21,3 +21,19 @@ body.document{display:block;height:auto;min-height:100vh;overflow:auto;padding:3
 .header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 #pause-background{color:inherit;cursor:pointer}
 #pause-background:hover{border-color:currentColor}
+
+#tabs{position:relative}
+/* Labels and their solid selection change together. Only the marker travels. */
+#tabs button[role=tab]{
+  transition-property:scale;
+  transition-duration:var(--motion-feedback);
+  transition-timing-function:var(--motion-ease)
+}
+#tabs button[role=tab]:active{transition-duration:var(--motion-press)}
+.tab-indicator{
+  position:absolute;inset:auto auto 3px 0;height:2px;border-radius:1px;background:#497564;
+  pointer-events:none;transition:translate var(--motion-enter) var(--motion-ease),
+    width var(--motion-enter) var(--motion-ease)
+}
+.tab-indicator.position-immediately{transition:none}
+@media(prefers-color-scheme:dark){.tab-indicator{background:#a6e3d6}}

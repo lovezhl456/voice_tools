@@ -79,7 +79,10 @@ test('D02 duplex timeline, precise waveform and interval playback share the reco
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   const player = page.locator('#player');
   await expect.poll(() => player.evaluate(el => el.currentTime)).toBeCloseTo(4, 1);
-  await expect.poll(() => page.locator('#duplexPlayhead').evaluate(el => parseFloat(el.style.left))).toBeCloseTo(50, 0);
+  await expect.poll(() => page.locator('#duplexPlayhead').evaluate(el => {
+    const plot = el.parentElement.getBoundingClientRect();
+    return ((el.getBoundingClientRect().left + 1 - plot.left) / plot.width) * 100;
+  })).toBeCloseTo(50, 0);
   await page.getByRole('button',{name:'放大录音时间轴'}).click();
   await expect(page.locator('#annotationTime span').first()).toHaveText('2.0 s');
   await expect(page.locator('#annotationTime span').last()).toHaveText('6.0 s');

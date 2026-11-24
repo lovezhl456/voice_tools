@@ -1,10 +1,15 @@
 "use strict";
 // Shared by the review and reference pages. The media element remains the only player.
-window.createReviewPlayback = (player, {duration, seek, rangeChanged, error,
+window.createReviewPlayback = (player, {duration, seek, rangeChanged, error, positionChanged,
   formatTime = (at, length) => `${at.toFixed(2)} / ${length.toFixed(2)} 秒`,
 }) => {
   const $ = id => document.getElementById(id);
-  let frame = 0, wantsToPlay = false, pending = null, sourceVersion = 0;
+  const play = $("play"), symbol = document.createElement("span"), caption = document.createTextNode("");
+  symbol.className = "play-symbol";
+  symbol.setAttribute("aria-hidden", "true");
+  play.replaceChildren(symbol, caption);
+  const seekControl = $("seek"), timeDisplay = $("time");
+  let lastTimestamp = -Infinity, previousPlaying, frame = 0, wantsToPlay = false, pending = null, sourceVersion = 0;
   function bounds() {
     const start = $("start").valueAsNumber, end = $("end").valueAsNumber, length = duration();
     if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(length) || length <= 0 ||
@@ -15,14 +20,26 @@ window.createReviewPlayback = (player, {duration, seek, rangeChanged, error,
   }
   function showState() {
     const active = !player.paused || (wantsToPlay && pending?.resume);
-    $("play").textContent = active ? "Ⅱ 暂停" : "▶ 播放";
-    $("play").setAttribute("aria-label", active ? "暂停试听" : "播放试听");
+    if (active === previousPlaying) return;
+    symbol.textContent = active ? "Ⅱ" : "▶";
+    caption.data = active ? " 暂停" : " 播放";
+    play.setAttribute("aria-label", active ? "暂停试听" : "播放试听");
+    if (previousPlaying !== undefined) VoiceMotion.reveal(symbol, 'feedback');
+    previousPlaying = active;
   }
   function showTime() {
     const length = duration();
     if (!Number.isFinite(length) || length <= 0) return;
-    $("seek").value = player.currentTime;
-    $("time").textContent = formatTime(player.currentTime, length);
+    const at = player.currentTime;
+    const seekValue = Math.round(at * 100) / 100;
+    if (seekControl.valueAsNumber !== seekValue) seekControl.value = seekValue;
+    // The cursor follows every frame. Reading text updates only as its value becomes legible.
+    if (player.paused || Math.abs(at - lastTimestamp) >= .08) {
+      const formatted = formatTime(at, length);
+      if (timeDisplay.textContent !== formatted) timeDisplay.textContent = formatted;
+      lastTimestamp = at;
+    }
+    positionChanged?.(at);
   }
   function showVolume() {
     $("volume").value = player.volume;
@@ -98,7 +115,7 @@ window.createReviewPlayback = (player, {duration, seek, rangeChanged, error,
     applyRange();
   }
   player.addEventListener("play", () => { wantsToPlay = true; stopFrame(); frame = requestAnimationFrame(tick); showState(); });
-  player.addEventListener("pause", () => { stopFrame(); showState(); });
+  player.addEventListener("pause", () => { stopFrame(); showTime(); showState(); });
   player.addEventListener("timeupdate", () => { checkRange(); showTime(); });
   for (const event of ["loadedmetadata", "emptied"]) player.addEventListener(event, showState);
   player.addEventListener("error", () => { pause(); pending = null; });
@@ -109,7 +126,8 @@ window.createReviewPlayback = (player, {duration, seek, rangeChanged, error,
     try { player.currentTime = bounds()[0]; player.play().catch(e => reportPlayError(e, version)); }
     catch (e) { pause(); error(e.message); }
   });
-  $("play").onclick = toggle;
+  play.onclick = toggle;
+  showState();
   $("volume").oninput = () => { player.volume = $("volume").valueAsNumber; };
   $("mute").onchange = () => { player.muted = $("mute").checked; };
   player.addEventListener("volumechange", showVolume);

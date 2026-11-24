@@ -84,7 +84,7 @@ voice-tools sip sipp-load sipp-package --out outputs/load-run-001</pre><p class=
   function notify(message) {
     notice = message;
     const target = document.querySelector('#batch-notice');
-    if (target) target.textContent = message;
+    if (target) VoiceMotion.feedback(target, message);
   }
   function download(name, data, type) {
     const url = URL.createObjectURL(new Blob([data], { type })),
