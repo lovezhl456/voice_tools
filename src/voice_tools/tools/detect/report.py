@@ -7,7 +7,7 @@ import uuid
 from voice_tools.audio.io import read_wav, write_wav
 from voice_tools.core.files import new_output, sha256, write_json
 from voice_tools.core.review.page import ASSETS, embed_playback_assets
-from . import store
+from . import definition, store
 
 ROOT = Path(__file__).parent
 
@@ -38,6 +38,32 @@ def add_audio(output, record):
         except (ValueError, OSError) as error:
             record['audio_error'] = str(error)
     record['audio_error'] = '源音频不存在、已变化或无法读取；保留波形和检测证据，试听不可用'
+
+
+def add_channel_roles(payload):
+    # These original examples predate channel_layout. Match their complete validated
+    # configurations, so renaming a metric or reversing channels cannot reuse a guess.
+    resources = ROOT / 'resources'
+    roles_by_hash = {
+        definition.fingerprint(definition.load(resources / 'ai-silence.json')): ('user', 'assistant'),
+        definition.fingerprint(definition.load(resources / 'low-volume.json')): (None, 'assistant'),
+    }
+    for item in payload['definitions']:
+        layout = item['config'].get('channel_layout')
+        if layout:
+            roles_by_hash[item['hash']] = layout.split('-')
+    candidates = {}
+    for evaluation in payload['evaluations']:
+        roles = roles_by_hash.get(evaluation['config_hash'])
+        if roles:
+            channels = candidates.setdefault(evaluation['recording_id'], [set(), set()])
+            for options, role in zip(channels, roles):
+                if role:
+                    options.add(role)
+    for record in payload['records']:
+        channels = candidates.get(record['id'])
+        if record['channels'] == 2 and channels and all(len(options) <= 1 for options in channels):
+            record['channel_roles'] = [next(iter(options), None) for options in channels]
 
 
 def render(db, output, include_audio=False, hide_paths=False, batch=None):
@@ -71,13 +97,21 @@ def render(db, output, include_audio=False, hide_paths=False, batch=None):
                 error.update(source=Path(source).name, error=error['error'].replace(source, Path(source).name))
     from .editor import render as render_editor
     render_editor(output / 'config.html', [item['config'] for item in payload['definitions']], 'index.html')
+    add_channel_roles(payload)
     write_json(output / 'results.json', payload)
+    (output / 'index.html').write_text(render_page(payload), encoding='utf-8')
+    return {'recordings': len(records), 'findings': len(payload['findings']), 'batches': len(payload['batches']),
+            'audio_unavailable': sum('audio_error' in record for record in records)}
+
+
+def render_page(payload):
     data = json.dumps(payload, ensure_ascii=False, allow_nan=False).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
     page = embed_playback_assets((ROOT / 'report.html').read_text(encoding='utf-8'))
     page = page.replace('__STYLE__', (ROOT / 'report.css').read_text(encoding='utf-8'))
     page = page.replace('__FILTER__', (ASSETS / 'file-filter.js').read_text(encoding='utf-8'))
+    duplex_license = (ROOT / 'resources' / 'pipecat-ui.LICENSE.txt').read_text(encoding='utf-8')
+    duplex_script = (ROOT / 'duplex-timeline.js').read_text(encoding='utf-8')
+    page = page.replace('__DUPLEX_SCRIPT__', f'/*\n{duplex_license}*/\n{duplex_script}')
     page = page.replace('__SCRIPT__', (ROOT / 'report.js').read_text(encoding='utf-8')).replace('__DATA__', data)
-    page = page.replace('当前机会', '当前片段').replace('标注窗口 · 固定', '检测片段 · 固定')
-    (output / 'index.html').write_text(page, encoding='utf-8')
-    return {'recordings': len(records), 'findings': len(payload['findings']), 'batches': len(payload['batches']),
-            'audio_unavailable': sum('audio_error' in record for record in records)}
+    page = page.replace('当前机会', '当前片段').replace('标注窗口 · 固定', '当前标注 · 固定')
+    return page

@@ -136,7 +136,11 @@ voice-tools detect report --db detection.sqlite3 --out review-confirmed --includ
 
 检测库保存：定义；录音身份／来源／波形；批次；每个录音和定义的执行状态（包含零命中、错误和无窗口）；自动标签；独立的人工复核事件。重跑创建新结果，**不会复制人工结论为新版本自动确认，也不会删除旧结论**。
 
-页面沿用共享双轨波形、时间轴、缩放、显示增益、单轨试听、循环、音量和静音；目录／录音筛选与模糊检索也复用原组件。波形随库保存，无音频仍可查看；试听副本来自摘要匹配的原文件，源文件移动或变化后显示不可试听，不能悄悄加载不同内容。报告是快照，新检测或复核入库后需生成新目录。
+复核列表按录音显示。展开「筛选与文件」可组合筛选、导入草稿或导出结果。标签直接显示在波形图的对应时间段中，点击标签即可定位；「定位标注」可查看完整名称和起止时间。声道与标签共用顶部刻度，使用「＋」「−」「全长」调整视图。点波形移动播放位置，虚线标出选中区间。「试听区间」可改起止、循环和音量，「精细波形与区间调整」提供原始幅度、增益和区间拖动。单声道只显示一个声道，双轨配置可用可选字段 `channel_layout` 指定左右顺序，取值为 `user-assistant` 或 `assistant-user`。原版内置示例按已有配置约定显示角色；缺少映射或同一录音的配置相互矛盾时使用声道编号。通话交接、插话和应答时延需要独立的事件输入。
+
+复核时选择标签即可保存，备注可以留空。保存会自动确定确认或修正状态；「更多操作」可改标注区间、标为误报或撤回复核。浏览器写入的 reviewer 字段表示「本机复核」来源，兼容已有导入格式。在线保存误报或正常样本时仍需注明判断原因。
+
+波形随库保存，无音频仍可查看。试听可选声道、循环、调整音量及静音。试听副本来自摘要匹配的原文件，源文件移动或变化后须重新确认来源才能附带试听。旧报告可以继续打开，从原检测库重新导出即可使用新时间轴。
 
 人工状态为 pending、confirmed、false_positive、corrected。修改标签或时间必须使用 corrected。每次复核包含复核人、备注、修正后的标签／范围，并追加修订号和时间。CLI 示例：
 
@@ -146,7 +150,7 @@ voice-tools detect review FINDING_ID --expected-revision 1 --status corrected --
 voice-tools detect history FINDING_ID --db detection.sqlite3
 ```
 
-页面导出的 `detection-review.json` 是 `schema_version:1.0`、`library_id`、`reviews`、`manual` 组成的对象。reviews 条目包含 finding_id、expected_revision、status、reviewer、label、start_s、end_s、comment。manual 条目包含唯一 id、batch_id、recording_id、config_hash、label、start_s、end_s、reviewer、comment（漏检原因必填）。漏检可关联零命中的已有检测记录，通过页面底部或 `manual-add` 命令追加。
+页面导出的 `detection-review.json` 是 `schema_version:1.0`、`library_id`、`reviews`、`manual` 组成的对象。reviews 条目包含 finding_id、expected_revision、status、reviewer、label、start_s、end_s、comment。manual 条目包含唯一 id、batch_id、recording_id、config_hash、label、start_s、end_s、reviewer、comment，comment 可为空字符串。漏检可关联零命中的已有检测记录，通过页面底部或 `manual-add` 命令追加。
 
 复核导入是**整包事务**：库身份错误、过期修订号、无效时间、重复补标或未知录音／配置时整包回滚，不覆盖别人的复核。导入成功后重新生成报告；原报告中的旧草稿不能再次当作新结论导入。
 

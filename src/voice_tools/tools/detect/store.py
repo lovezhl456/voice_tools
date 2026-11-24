@@ -209,7 +209,6 @@ def review(db, decision):
 def add_manual(db, item):
     fields(item, ('id', 'batch_id', 'recording_id', 'config_hash', 'label', 'start_s', 'end_s', 'reviewer', 'comment'), name='漏检补标')
     identifier(item['id'], 'manual.id')
-    text(item['comment'], '漏检原因', 4000)
     evaluation = db.execute('''SELECT r.duration_s FROM evaluations e JOIN recordings r ON r.id=e.recording_id
                                WHERE e.batch_id=? AND e.recording_id=? AND e.config_hash=?''',
                             (item['batch_id'], item['recording_id'], item['config_hash'])).fetchone()

@@ -1,6 +1,8 @@
 "use strict";
 // Shared by the review and reference pages. The media element remains the only player.
-window.createReviewPlayback = (player, {duration, seek, rangeChanged, error}) => {
+window.createReviewPlayback = (player, {duration, seek, rangeChanged, error,
+  formatTime = (at, length) => `${at.toFixed(2)} / ${length.toFixed(2)} 秒`,
+}) => {
   const $ = id => document.getElementById(id);
   let frame = 0, wantsToPlay = false, pending = null, sourceVersion = 0;
   function bounds() {
@@ -20,7 +22,7 @@ window.createReviewPlayback = (player, {duration, seek, rangeChanged, error}) =>
     const length = duration();
     if (!Number.isFinite(length) || length <= 0) return;
     $("seek").value = player.currentTime;
-    $("time").textContent = `${player.currentTime.toFixed(2)} / ${length.toFixed(2)} 秒`;
+    $("time").textContent = formatTime(player.currentTime, length);
   }
   function showVolume() {
     $("volume").value = player.volume;
