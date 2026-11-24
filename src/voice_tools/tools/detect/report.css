@@ -157,10 +157,5 @@ label[hidden]{display:none}
 #reviewFeedback #message,#manualFeedback #message{min-height:0;margin:8px 0 0}
 #message:empty{margin:0}
 
-#jumpReview{display:none}
-#reviewForm{scroll-margin-block:16px}
-@media (max-width:640px){
-  .recording-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px}
-  #jumpReview:not([hidden]){display:inline-flex;align-items:center;min-height:40px;font-size:13px;font-weight:650}
-  #addRecordingAnnotation{font-size:12px;border-color:transparent;background:transparent;color:var(--muted)}
-}
+#replayRange{white-space:nowrap}
+#currentReviewState:empty{display:none}

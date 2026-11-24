@@ -2,7 +2,6 @@
 (() => {
 'use strict';
 const D=window.VT_DATA,$=s=>document.querySelector(s),E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-document.body.classList.toggle('embedded', window.self !== window.top);
 const labels={completed:'完成',passed:'通过',failed:'失败',partial:'部分结果',insufficient_evidence:'证据不足',findings:'发现候选',pending:'待执行',running:'执行中',remote_running:'远端仍运行',skipped:'已跳过',interrupted:'已中断',cancelled:'已取消',ok:'已评分'};
 const badge=s=>`<span class="pill ${E(s)}">${E(labels[s]||s)}</span>`;
 const pretty=v=>JSON.stringify(v,null,2),clone=v=>JSON.parse(JSON.stringify(v));

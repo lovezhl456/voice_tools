@@ -15,18 +15,19 @@ __WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href=
 </div></details></div>
 <div id="reportFeedback"><p id="message" role="status"></p></div><p id="progress" class="muted"></p>
 <div class="workspace"><aside><h2>录音列表</h2><div id="queue"></div></aside><section id="detail" hidden>
-<header class="recording-heading"><div><h2 id="name"></h2><p id="recordingSummary" class="muted"></p><p id="recordingNote" class="muted" hidden></p></div><div class="recording-actions"><a id="jumpReview" href="#reviewForm" hidden>复核此标注</a><button id="addRecordingAnnotation" type="button">在这份录音上补标</button></div></header>
+<header class="recording-heading"><div><h2 id="name"></h2><p id="recordingSummary" class="muted"></p><p id="recordingNote" class="muted" hidden></p></div><button id="addRecordingAnnotation" type="button">在这份录音上补标</button></header>
 <section id="recordingAnnotations" aria-labelledby="recordingReplayHeading">
 <h3 id="recordingReplayHeading">录音回放</h3>
 <div class="replay-toolbar">
 <div class="replay-scrubber">
-<button id="play" type="button" aria-label="播放试听">▶ 播放</button>
+<button id="play" type="button" aria-label="播放试听" aria-describedby="replayRange">▶ 播放</button>
 <span id="time" class="replay-time">0.00 s</span>
 <input id="seek" type="range" min="0" step="0.01" value="0" aria-label="跳转播放时间">
 <span id="playbackDuration" class="replay-time"></span>
 </div>
 <div class="replay-options">
-<label>试听<select id="channel"><option value="both">双轨</option><option value="left">只听左轨</option><option value="right">只听右轨</option></select></label>
+<span id="replayRange" class="muted"></span>
+<label>声道<select id="channel"><option value="both">双轨</option><option value="left">只听左轨</option><option value="right">只听右轨</option></select></label>
 <div class="replay-zoom" role="group" aria-label="录音时间轴缩放">
 <button id="duplexZoomOut" type="button" aria-label="缩小录音时间轴">−</button>
 <button id="duplexFit" type="button" aria-label="查看录音全长">全长</button>
@@ -68,6 +69,7 @@ __WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href=
 <label>备注（可选）<input id="comment" maxlength="4000"></label>
 <button id="saveReview" class="primary" type="submit" value="save">保存到草稿</button>
 <button id="discard" type="button" hidden>放弃修改</button>
+<span id="currentReviewState" class="muted"></span>
 </div>
 <details id="reviewOptions"><summary>更多操作</summary>
 <div class="review-options">

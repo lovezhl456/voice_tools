@@ -299,9 +299,3 @@ dialog{max-height:88vh}
   .rose{background:#552f42}
   .batch-job,.batch-table td,.batch-table th{border-color:var(--line)}
 }
-
-@media (max-width:700px){
-  .step-tools{gap:5px}
-  .step-tools button{min-width:38px;min-height:40px;border:1px solid var(--line);padding:4px}
-  .main-shell{padding-bottom:8px}
-}

@@ -207,7 +207,7 @@
       v = check();
     if (!step()) selected = c.steps[0]?.id;
     return `
-<div class="editor-heading"><div><div class="breadcrumb">我的用例 / ${esc(c.tags.split(',')[0] || '未分类')}</div><div class="title-line"><h1>${esc(c.title)}</h1>${badge('草稿')}</div><div class="meta-line">${c.steps.length} 个步骤 <span> · </span> ${esc(e.name)} <span> · </span> SIP / UDP <span> · </span> ${esc(e.config.codec)}</div></div><div class="actions"><button data-act="cases">▤ 用例库</button><button data-act="settings">⚙ 用例设置</button><button data-act="assertions">◉ 接收证据断言 (${(c.assertions || []).length})</button><button data-act="export">↗ 导出用例</button><button data-act="preview" class="primary">▷ 离线预演</button></div></div>
+<div class="editor-heading"><div><div class="breadcrumb">我的用例 / ${esc(c.tags.split(',')[0] || '未分类')}</div><div class="title-line"><h1>${esc(c.title)}</h1>${badge('草稿')}</div><div class="meta-line">${c.steps.length} 个步骤 <span> · </span> ${esc(e.name)} <span> · </span> SIP / UDP <span> · </span> ${esc(e.config.codec)}</div></div><div class="actions"><button data-act="cases">▤ 用例库</button><button data-act="settings">⚙ 用例设置</button><button data-act="assertions">◉ 接收证据断言 (${(c.assertions || []).length})</button><button data-act="export">↗ 导出用例</button><button data-act="preview" class="primary" aria-expanded="${Boolean(preview)}" aria-controls="offline-preview">${preview ? '收起预演' : '▷ 离线预演'}</button></div></div>
 <div class="editor"><aside class="library"><div class="eyebrow">BUILD YOUR SCENARIO</div><h2>步骤插件</h2><p class="help">拖到步骤之间，或点击添加。</p><div class="plugin-list">${Object.entries(
       C.definitions
     )
@@ -238,7 +238,7 @@
     }</form><div class="info-box">${s.action === 'dtmf' ? '每个按键后均计入间隔。媒体时序预演不代表远端已收到按键。' : s.action === 'play_media' ? '先用 pcap-inspect 选择单方向、单 SSRC，再用 pcap-import 转换。此处引用 media.json，不直接发送原始 PCAP。' : s.action === 'play' ? '仅支持 8 kHz、单声道 PCM16 WAV。可以在素材库选择本地文件，检查格式并试听。' : s.action === 'hangup' ? '挂断固定为最后一步。CLI 会完成收尾；RX 录音和执行日志保存在输出目录。' : '等待期间保持通话和接收录音。本步骤没有识别欢迎语结束的能力。'}</div><div class="inspector-actions"><button data-act="duplicate-step" ${s.action === 'hangup' ? 'disabled' : ''}>复制步骤</button><button data-act="delete-step" class="danger">删除步骤</button></div><p class="help panel-label">小屏幕可用步骤上的 ↑ ↓ 调整顺序；选中步骤后也可按 Alt + ↑ / ↓。</p>`;
   }
   function previewHtml(p) {
-    return `<section class="preview" aria-label="离线预演结果"><h3>离线预演 ${badge('没有发起呼叫')}</h3><p>仅排列动作时间。接通等待不在此时间轴内；未知素材时长会中断精确计时。未生成录音，未评估 IVR 业务结果。</p><div class="preview-track">${p.steps.map((s) => `<div class="preview-segment"><b>${esc(s.label)}</b><span>${s.start === null ? '起点待确认' : seconds(s.start)} → ${s.end === null ? '终点待确认' : seconds(s.end)}</span></div>`).join('')}</div></section>`;
+    return `<section class="preview" id="offline-preview" aria-label="离线预演结果"><h3>离线预演 ${badge('没有发起呼叫')}</h3><p>仅排列动作时间。接通等待不在此时间轴内；未知素材时长会中断精确计时。未生成录音，未评估 IVR 业务结果。</p><div class="preview-track">${p.steps.map((s) => `<div class="preview-segment"><b>${esc(s.label)}</b><span>${s.start === null ? '起点待确认' : seconds(s.start)} → ${s.end === null ? '终点待确认' : seconds(s.end)}</span></div>`).join('')}</div></section>`;
   }
   function assetsPage() {
     return `<section class="page"><div class="page-heading"><div><div class="breadcrumb">工作区 / 素材管理</div><h1>通话素材</h1><p>选择本机文件检查与试听，执行时仍从 scenario.json 的相对路径读取。</p></div><div class="actions"><button data-act="pcap-help">PCAP 转换说明</button><button class="primary" data-act="asset-add">＋ 添加 WAV / media.json</button></div></div><div class="note">素材文件只在本次页面会话中可试听；浏览器保存名称、相对路径和时长。刷新后请重新选择同一路径文件，执行前用 CLI 校验磁盘文件。</div><div class="cards" style="margin-top:20px">${state.assets.length ? state.assets.map((a) => `<article class="card">${badge(a.kind === 'wav' ? 'WAV / PCM16' : 'PCAP MEDIA', a.kind === 'wav' ? '' : 'green')}<h3>${esc(a.name)}</h3><p>${esc(a.path)}<br>${seconds(a.duration)} · ${a.kind === 'wav' ? '8 kHz / 单声道' : a.eventCount + ' 个 DTMF 事件 / 哈希待 CLI 验证'}</p>${a.kind === 'wav' ? `<div class="waveform" aria-label="由所选文件采样生成的幅度包络">${a.peaks.map((p) => `<i style="height:${Math.max(2, Math.min(100, Number(p) * 100))}%"></i>`).join('')}</div>${objects.has(a.path) ? `<audio controls preload="metadata" src="${esc(objects.get(a.path))}" aria-label="试听 ${esc(a.name)}"></audio>` : '<p class="small">重新选择源文件后可试听。</p>'}` : ''}<div class="actions"><button data-act="asset-use" data-id="${a.id}">添加到当前用例</button><button data-act="asset-remove" data-id="${a.id}" class="subtle danger">移除索引</button></div></article>`).join('') : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">≋</div><h2>从一段声音开始</h2><p>添加测试录音，或选择 CLI 已转换的 media.json。这里不提供虚构波形、音频或测试结果。</p><button data-act="asset-add">选择本地文件</button></div>`}</div></section>`;
@@ -332,6 +332,12 @@ voice-tools --json sip run scenario.json --dry-run --out outputs/plan-001</pre><
     });
   }
   function offlinePreview() {
+    if (preview) {
+      preview = null;
+      render();
+      $('[data-act="preview"]').focus();
+      return;
+    }
     const v = check();
     if (v.errors.length) {
       toast(v.errors[0]);

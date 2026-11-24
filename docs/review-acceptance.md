@@ -4,12 +4,12 @@
 
 ## 必须保留的用户流程
 
-可执行用例在 [review.spec.cjs](../tests/browser/review.spec.cjs)，标题以 R01–R08 对应本表。默认运行必须覆盖每项的桌面与手机视口；缺项目、缺能力、空测试、跳过或失败都不能通过运行器的完整验收。
+可执行用例在 [review.spec.cjs](../tests/browser/review.spec.cjs)，标题以 R01–R08 对应本表。默认运行必须覆盖每项的桌面视口；缺项目、缺能力、空测试、跳过或失败都不能通过运行器的完整验收。
 
 | 编号 | 旧入口与新入口应保留的能力 | 实际验证 |
 |---|---|---|
 | R01 | 目录选择、文件／路径多关键词检索与队列筛选 | 从夹具导航进入报告，切换全部／例外／通过集合，大小写混合检索，目录与状态组合 |
-| R02 | 波形、时间轴、左右轨及角色提示 | 检查实际画布像素；缩放、显示增益、键盘／拖动边界、范围聚焦和点击定位；手机无横向溢出 |
+| R02 | 波形、时间轴、左右轨及角色提示 | 检查实际画布像素；缩放、显示增益、键盘／拖动边界、范围聚焦和点击定位；桌面无横向溢出 |
 | R03 | 定位、区间试听、音量／静音，单轨试听仍保留双轨图 | 建议范围同步播放器，播放中切换声道，音量／静音保留；取消循环到点暂停，循环发生实际时间跳转 |
 | R04 | 标注草稿保护、一次填写整通、完整 CSV 交接 | 筛选不丢草稿，保存后移出队列，导出全部记录，安装包 CLI 校验，再打开导入；错误身份不覆盖已有标签 |
 | R05 | 矛盾或不足证据不能自动放行 | 模型误报、跨用户边界旧输出、未知角色仍在例外队列；快速切换录音不会残留上一通 |
@@ -41,11 +41,11 @@
 python scripts/check_review.py
 ```
 
-仅复查上述模型冲突和旧输出时可运行 `python scripts/check_review.py --grep R05 --out .artifacts/review-r05`（使用新目录）。产物中的 `site/main/assessment.jsonl` 保存实际分析结论，`browser-results.json` 保存桌面／手机的 R05 断言结果；全量验收仍执行不带 `--grep` 的命令。
+仅复查上述模型冲突和旧输出时可运行 `python scripts/check_review.py --grep R05 --out .artifacts/review-r05`（使用新目录）。产物中的 `site/main/assessment.jsonl` 保存实际分析结论，`browser-results.json` 保存桌面的 R05 断言结果；全量验收仍执行不带 `--grep` 的命令。
 
 它构建一次 wheel、安装到独立目录、确认导入来源、生成确定性合成音频和模拟模型证据，启动带音频字节范围支持的临时本机服务，执行两种视口，最后关闭服务。无需本机 8080、个人录音、系统 TTS、GPU 或模型权重；测试不会安装产品可选模型。
 
-`verification.json` 记录提交／工作区状态、wheel SHA-256、环境、命令、能力覆盖及结果。完整通过须 `status=passed` 且 `coverage=full_baseline`，desktop/mobile 均有 R01–R08。`--grep`／`--project` 只做选测，记录为 `selected_cases`，不能宣称完整验收。失败日志、截图和 trace 保留供核对。
+`verification.json` 记录提交／工作区状态、wheel SHA-256、环境、命令、能力覆盖及结果。完整通过须 `status=passed` 且 `coverage=full_baseline`，默认桌面项目有 R01–R08。`--grep` 限定能力选测，记录为 `selected_cases`。失败日志、截图和 trace 保留供核对。
 
 GitHub `Review acceptance` 的[待启用配置](examples/review-acceptance.yml)已准备：启用后在 PR 和 main 更新时执行规则回归与同一浏览器命令，上传 7 天有效的证据。当前推送凭据缺少 `workflow` 权限，因此只提交配置示例，尚未部署或运行 GitHub CI。工作流计划使用只读仓库权限，无部署和外部业务调用；本次不改变分支保护设置，自动检查状态与平台是否强制要求该状态是两件事。
 

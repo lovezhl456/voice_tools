@@ -40,7 +40,7 @@ PYTHONPATH="$PWD/src" python -c 'import sys, voice_tools; from pathlib import Pa
 | QA 事件／freeze 或共享复核资源 | 上述 QA 组，并加 `tests.gaps.test_delivery`；涉及旁证加 `tests.gaps.test_evidence` |
 | 整通 QA 判定／模型证据 | `tests.recording_qa.test_assessment`、`test_assessment_workflow`、`test_assessment_delivery`、`test_speech_model`；涉及报告加 `test_assessment_waveform`，涉及安装加 `test_setup`；真实模型行为变化另跑 `test_assessment_real_model` 的 CPU 模型专项 |
 | 检测定义／标签／固定集 | `tests.detect.test_engine`、`test_library`、`test_workspace`；涉及编辑合同加 `test_editor`，涉及本机服务加 `test_editor_server`，涉及 CLI 加 `tests.test_machine_cli` |
-| 共享复核页和播放器 | `tests.recording_qa.test_file_filter`、`test_p0`、`test_assessment_waveform`、`tests.gaps.test_delivery`；检查相关业务入口的内嵌数据和音频映射，交互变化另走桌面／移动端浏览器流程 |
+| 共享复核页和播放器 | `tests.recording_qa.test_file_filter`、`test_p0`、`test_assessment_waveform`、`tests.gaps.test_delivery`；检查相关业务入口的内嵌数据和音频映射，交互变化另走桌面端浏览器流程 |
 | 任务页／结果包复查 | `tests.task.test_delivery`、`tests.benchmark.test_delivery`、`tests.benchmark.test_review_regressions`、`tests.gaps.test_delivery`、`tests.latency.test_web`，含 gaps 与 benchmark 混合任务；涉及 latency 执行／迁移时另跑真实引擎专项 |
 | latency 参数／契约／共享渲染 | `tests.latency.test_contract`、`tests.latency.test_web`、`tests.task.test_delivery`、`tests.benchmark.test_delivery`；算法、引擎接入或依赖变化另跑 `tests.latency.test_engine`，含 gaps／benchmark／latency 混合任务 |
 | HOMER 参数或分发 | `tests.homer.test_client`、`tests.homer.test_entrypoints`；关联链路加 `tests.sessions.test_homer_link` |
@@ -64,7 +64,7 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 
 ## 默认全量：E2E 与补充检查均需记录
 
-先按“安装包浏览器验收”一节准备锁定的 Playwright 与 Chromium，再执行桌面／手机 E2E。两次运行复用同一个安装包，每次使用新的产物目录：
+先按“安装包浏览器验收”一节准备锁定的 Playwright 与 Chromium，再执行桌面 E2E。两次运行复用同一个安装包，每次使用新的产物目录：
 
 ```bash
 python scripts/check_review.py --out .artifacts/review-check
@@ -116,7 +116,7 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 
 普通的 `tests.latency.test_contract` 和 `tests.latency.test_web` 不依赖该目录。`VOICE_TOOLS_LATENCY_DIR` 是产品运行配置，`VOICE_TOOLS_TEST_LATENCY_DIR` 才是测试启用开关；使用手册中的显式目录，避免把默认配置误当专项已执行。真实引擎专项含任务迁移与 gaps／benchmark／latency 混合复查，既有验收见 [latency 验证](latency-validation.md)。
 
-页面／交互变化按 [Studio 浏览器要求](sip-studio/README.md#文件与检查)、[复核页既有验收](output-gaps-validation.md#页面验收) 和 [latency 验证](latency-validation.md) 检查桌面与移动端、播放、定位、导入导出和控制台。页面字符串或资源检查仅证明产物完整性。
+页面／交互变化按 [Studio 浏览器要求](sip-studio/README.md#文件与检查)、[复核页既有验收](output-gaps-validation.md#页面验收) 和 [latency 验证](latency-validation.md) 检查桌面端、播放、定位、导入导出和控制台。页面字符串或资源检查仅证明产物完整性。
 
 ## 结果有效性与补跑
 
@@ -149,7 +149,7 @@ python scripts/check_review.py
 
 Linux 缺少浏览器系统库时，将安装浏览器的命令改为 `playwright install --with-deps chromium`（使用上面的本地可执行文件路径）；系统包安装可能需要管理员权限。Playwright 版本由 `tests/browser/package-lock.json` 固定，仅用于开发验收，不加入产品运行依赖。
 
-运行器构建并安装 wheel，确认夹具从安装目录导入产品，生成合成音频和确定性模型证据，启动临时本机服务，再执行桌面和手机两组 Chromium 流程。整个过程不依赖个人录音、本机固定端口、真实模型或外部页面。退出时关闭服务。浏览器视口模拟不代表真实手机设备或其他浏览器已验证；模拟模型也不代表实际准确率。
+运行器构建并安装 wheel，确认夹具从安装目录导入产品，生成合成音频和确定性模型证据，启动临时本机服务，再执行桌面 Chromium 流程。整个过程不依赖个人录音、本机固定端口、真实模型或外部页面。退出时关闭服务。浏览器结果适用于已验收的 Chromium 环境。模拟模型用于检查流程。
 
 默认产物位于新的 `.artifacts/review-时间-随机后缀/`；可用 `--out .artifacts/review-check` 指定**新的或空的目录**，避免覆盖历史证据。关键文件：
 
@@ -166,13 +166,13 @@ python scripts/check_review.py --wheel .artifacts/previous-run/wheels/voice_tool
 tests/browser/node_modules/.bin/playwright show-report .artifacts/review-check/browser-report
 ```
 
-第一条仅验证所选项，记录为 `coverage=selected_cases`。完整验收必须不带 `--project`／`--grep`，得到 `status=passed`、`coverage=full_baseline`，且 desktop/mobile 各包含 R01–R08；失败、跳过、空测试、遗漏能力、仅重试后成功都不算通过。使用 `--wheel` 时应确认其包含当前产品改动，并以记录的摘要为准。
+第一条仅验证所选项，记录为 `coverage=selected_cases`。桌面完整验收使用默认项目且省略 `--grep`，结果应包含 `status=passed`、`coverage=full_baseline` 与桌面 R01–R08。失败、跳过、空测试、遗漏能力、仅重试后成功都不算通过。使用 `--wheel` 时应确认其包含当前产品改动，并以记录的摘要为准。
 
 [Review acceptance 配置示例](examples/review-acceptance.yml)目前尚未启用：推送凭据缺少 `workflow` 权限。获得明确授权后，可将该文件部署为 `.github/workflows/review-acceptance.yml`，在每个 PR、main 更新和手动触发时运行关键规则回归及相同的安装包浏览器检查，并上传有效期为 7 天的日志、报告、截图和 wheel。部署后仍须观察一次真实 CI 运行；配置文件本身不证明检查已通过。CI 不替代 Python／Node／CLI 默认全量，也不自动改变 GitHub 分支保护。
 
 ## 整通自动质检
 
-普通规则、模型合同及工作流验证无需权重：`tests.recording_qa.test_assessment`、`test_assessment_workflow`、`test_speech_model`、`test_assessment_delivery`。波形摘要、离线资源和旧结果兼容用 `test_assessment_waveform`；共享波形壳变化另跑原 QA `test_p0`、筛选与 gaps 交付组，并在实际浏览器验证缩放、拖动、区间播放和手机布局。安装器契约用 `test_setup`，以假子进程覆盖选择、JSON、当前解释器、部分失败、重试和任务排除，不在普通测试中执行 pip 下载。变更影响共享证据加载、任务执行或复查时加原 QA、task、gaps 交付组；页面变更另做桌面／移动端实浏览器验证。
+普通规则、模型合同及工作流验证无需权重：`tests.recording_qa.test_assessment`、`test_assessment_workflow`、`test_speech_model`、`test_assessment_delivery`。波形摘要、离线资源和旧结果兼容用 `test_assessment_waveform`；共享波形壳变化另跑原 QA `test_p0`、筛选与 gaps 交付组，并在实际浏览器验证缩放、拖动、区间播放和桌面布局。安装器契约用 `test_setup`，以假子进程覆盖选择、JSON、当前解释器、部分失败、重试和任务排除，不在普通测试中执行 pip 下载。变更影响共享证据加载、任务执行或复查时加原 QA、task、gaps 交付组；页面变更另做桌面端实浏览器验证。
 
 安装器或依赖变化时，另建一次性虚拟环境，从构建 wheel 安装基础 CLI；在未装 ONNX Runtime／SciPy 的环境实际执行 `qa setup --component all --model-dir 临时目录`，核对 JSON、缓存重跑、交互选择和 doctor 推理。禁止在测试中改用户现有全局环境。离线 wheelhouse 准备和失败排查见[安装说明](automatic-qa-install.md)。安装成功不等于真实通话准确率通过。
 
@@ -196,7 +196,7 @@ PYTHONPATH="$PWD/src" python -m unittest tests.recording_qa.test_assessment_real
 python scripts/check_detection.py --package-root .local/review-acceptance/package --out .local/detect-acceptance
 ```
 
-该运行器检查包中运行文件与源码一致，生成受控录音，使用同一固定版本 Playwright 与 HTTP Range 服务完成桌面／手机 D01–D05：组合筛选和导出、波形／播放／单轨／音量、复核草稿→导出→安装包 CLI 导入→重开、漏检补标、无音频、恶意标签、身份／修订冲突。任何失败、跳过或重试通过均不算完成。需要本机回环端口和 Chromium 启动权限。已有浏览器缓存可用 `PLAYWRIGHT_BROWSERS_PATH` 指定，无需重复安装。
+该运行器检查包中运行文件与源码一致，生成受控录音，使用同一固定版本 Playwright 与 HTTP Range 服务完成桌面 D01–D05：组合筛选和导出、波形／播放／单轨／音量、复核草稿→导出→安装包 CLI 导入→重开、漏检补标、无音频、恶意标签、身份／修订冲突。任何失败、跳过或重试通过均不算完成。需要本机回环端口和 Chromium 启动权限。已有浏览器缓存可用 `PLAYWRIGHT_BROWSERS_PATH` 指定，无需重复安装。
 
 以上是配置执行和数据流程验证，尚未获得原专项脚本或真实业务录音，不证明脚本迁移一致性、真实误报／漏报率或生产容量。
 
@@ -204,13 +204,13 @@ python scripts/check_detection.py --package-root .local/review-acceptance/packag
 
 新增 `tests.detect.test_editor` 校验表单导出契约、嵌套条件、未知字段／引用及 JSON 重复字段；`tests.detect.test_editor_server` 使用本机随机端口验证库身份、Host／Origin／会话限制、不可变版本、重启持久化、限定录音输入、检测事务失败回滚和音频 Range。必要端口受限时按实际权限运行，不新增跳过。
 
-`check_detection.py` 的原检测／编辑器部分覆盖 D01–D05 加 E01–E06，桌面／手机共 22 项（工作区新增项见下节），复用 `check_review.py` 已构建的安装目录。运行器启动同一安装包的真实 `detect serve`，验证：从原 QA 入口进入编辑器；离线配置导出后经 CLI 校验并执行；图形化指标／AND 条件产生可检索标签；版本冲突、草稿恢复、未保存配置禁止执行；嵌套 JSON 无损往返和无效导入拒绝；新建／示例／导入／复制草稿在刷新、放弃、保存后的状态，以及无已保存版本和旧格式草稿的恢复。任一必需能力缺失、失败、跳过或重试通过都拒绝。服务及临时 HTTP 服务器在测试后退出，不改变用户已有实例。
+`check_detection.py` 的原检测／编辑器部分覆盖 D01–D05 加 E01–E06，桌面共 11 项（工作区新增项见下节），复用 `check_review.py` 已构建的安装目录。运行器启动同一安装包的真实 `detect serve`，验证：从原 QA 入口进入编辑器；离线配置导出后经 CLI 校验并执行；图形化指标／AND 条件产生可检索标签；版本冲突、草稿恢复、未保存配置禁止执行；嵌套 JSON 无损往返和无效导入拒绝；新建／示例／导入／复制草稿在刷新、放弃、保存后的状态，以及无已保存版本和旧格式草稿的恢复。任一必需能力缺失、失败、跳过或重试通过都拒绝。服务及临时 HTTP 服务器在测试后退出，不改变用户已有实例。
 
 ## 录音质检工作区
 
 `tests.detect.test_workspace` 验证目录重扫、已成功组合的增量跳过、新版本重跑、选定录音试跑、保存后重启、复核与标准同事务、误报原因／明确抽检、修订冲突、冻结后修订隔离、定位不匹配、缺失源录音／无窗口与版本退步。服务组额外验证新 API 的 Host／会话边界、在线数据刷新和报告令牌仅在本机响应中注入。
 
-`check_detection.py` 在原 D01–D05、E01–E06 外增加 W01–W04，桌面／手机共 30 项：
+`check_detection.py` 在原 D01–D05、E01–E06 外增加 W01–W04，桌面共 15 项：
 
 - W01：保存日常组合→批跑→实际播放→在线复核及错误拒绝→未命中正常抽检→重开→新增模式跳过。
 - W02：冻结固定集→两个版本比较→确认新版本出现漏检、未自动启用→明确选为日常版本→重新打开和下载明细。
@@ -221,6 +221,6 @@ python scripts/check_detection.py --package-root .local/review-acceptance/packag
 
 ## 多 Tab 工作台
 
-`check_detection.py` 同时从安装包 CLI 生成整通规则检查、间隙报告和工作台，移动输出目录后运行 H01–H04（桌面/手机共 8 项）：各 Tab 与本地资源、表单/播放/历史保留、复核导出→CLI 入库→新工作台重开、file 协议任务导出/导入、缺失入口/非空输出/目录包含/符号链接拒绝，以及 HTTP 加载失败重试。证据包含 `site/workbench-evidence.json` 的命令与复制文件 SHA-256、导出文件、截图和逐项 JSON。无单元测试新增，不运行模型/真实线路。
+`check_detection.py` 同时从安装包 CLI 生成整通规则检查、间隙报告和工作台，移动输出目录后运行 H01–H04（桌面共 4 项）：各 Tab 与本地资源、表单/播放/历史保留、复核导出→CLI 入库→新工作台重开、file 协议任务导出/导入、缺失入口/非空输出/目录包含/符号链接拒绝，以及 HTTP 加载失败重试。证据包含 `site/workbench-evidence.json` 的命令与复制文件 SHA-256、导出文件、截图和逐项 JSON。无单元测试新增，不运行模型/真实线路。
 
 W05 额外覆盖公开 schema 到实际服务恢复：先启动并保存工作区，核对 schema/快照中 inputs 可省略，再停止并省略 inputs 重启，浏览器确认录音目录和规则恢复。H01 同时覆盖记住非首标签后无 hash 重开、切换再后退/前进。schema 导出逻辑变动时，还需在支持的 Python 版本间比较完整 CLI 导出。

@@ -21,9 +21,3 @@ body.document{display:block;height:auto;min-height:100vh;overflow:auto;padding:3
 .header-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 #pause-background{color:inherit;cursor:pointer}
 #pause-background:hover{border-color:currentColor}
-
-@media (max-width:640px){
-  #tabs{gap:4px;padding-block:3px 6px;}
-  button[role=tab]{padding:8px 6px;min-height:38px;font-size:12px}
-  .context{display:none}
-}

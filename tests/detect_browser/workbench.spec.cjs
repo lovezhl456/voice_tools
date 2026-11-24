@@ -41,7 +41,6 @@ test('H01 relocated CLI export loads five tabs and retains input, playback and n
   await page.goForward();
   await expect(page.getByRole('tab', {selected:true})).toHaveText('跨主机任务');
   await expect(page.getByRole('tab')).toHaveCount(5);
-  expect(await page.locator('#tabs').evaluate(el => el.scrollWidth === el.clientWidth)).toBe(true);
   for (const label of ['检测与复核','整通质检','输出间隙','跨主机任务','使用说明']) {
     const frame = await select(page, label);
     await expect(frame.locator('h1')).toBeVisible();

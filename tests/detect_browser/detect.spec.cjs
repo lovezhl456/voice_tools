@@ -122,10 +122,6 @@ test('D02 duplex timeline, precise waveform and interval playback share the reco
 
 test('D03 correction draft survives reopening and imports into the installed CLI',async({page},info)=>{
   const errors=await open(page);
-  if (info.project.name === 'mobile') {
-    await page.getByRole('link',{name:'复核此标注',exact:true}).click();
-    await expect(page.locator('#reviewLabel')).toBeFocused();
-  }
   await expect(page.getByLabel('复核人')).toHaveCount(0);
   await expect(page.locator('#reviewStart')).toBeHidden();
   await page.locator('#reviewLabel').selectOption('');
@@ -138,6 +134,8 @@ test('D03 correction draft survives reopening and imports into the installed CLI
   expect(packet.reviews).toHaveLength(1);
   expect(packet.reviews[0]).toMatchObject({status:'corrected',label:'已核实问题',reviewer:'本机复核',comment:''});
   await page.reload(); await expect(page.locator('#progress')).toContainText('1 条复核草稿');
+  await expect(page.locator('#currentReviewState')).toHaveText('已存草稿');
+  await expect(page.locator('#replayRange')).toHaveText(/试听 .* 秒/);
   await page.locator('#reportTools summary').click();
   await page.locator('#importDraft').setInputFiles(file);
   const db=info.outputPath('library.sqlite3'); fs.copyFileSync(path.join(site,'library.sqlite3'),db);

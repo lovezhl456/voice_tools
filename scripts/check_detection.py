@@ -18,6 +18,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--package-root',type=Path,required=True,help='Installed wheel package directory from check_review.py')
     parser.add_argument('--out',type=Path,required=True)
+    parser.add_argument('--project', choices=('desktop', 'mobile'), default='desktop')
     args=parser.parse_args()
     output=args.out.resolve(); package=args.package_root.resolve()
     if not list(package.glob('voice_tools-*.dist-info/RECORD')):
@@ -37,7 +38,7 @@ def main():
     editor_process=None
     editor_log=None
     result={'status':'failed','python':sys.version, 'package_root':str(package),
-            'scope':'installed wheel, synthetic audio, desktop/mobile UI and CLI round trip'}
+            'project':args.project, 'scope':'installed wheel, synthetic audio, UI and CLI round trip'}
     def run_step(name,command):
         with (output/(name+'.log')).open('w') as stream:
             run=subprocess.run(command,cwd=ROOT,env=env,stdout=stream,stderr=subprocess.STDOUT)
@@ -65,7 +66,7 @@ def main():
         env['VT_EDITOR_URL']=startup['url']
         result['editor_url']=startup['url']
         run_step('browser',['node',str(ROOT/'tests/browser/node_modules/@playwright/test/cli.js'),'test',
-                            '--config',str(ROOT/'tests/detect_browser/playwright.config.cjs')])
+                            '--config',str(ROOT/'tests/detect_browser/playwright.config.cjs'),'--project',args.project])
         report=json.loads((output/'browser-results.json').read_text())
         result['stats']=report['stats']
         stats=report['stats']
@@ -79,14 +80,15 @@ def main():
                 visit(child)
         visit(report)
         coverage={key:sorted(values) for key,values in coverage.items()}
-        expected={name:['D01','D02','D03','D04','D05','E01','E02','E03','E04','E05','E06','H01','H02','H03','H04','W01','W02','W03','W04','W05'] for name in ('desktop','mobile')}
+        expected = ['D01','D02','D03','D04','D05','E01','E02','E03','E04','E05','E06',
+                    'H01','H02','H03','H04','W01','W02','W03','W04','W05']
         result['capabilities']=coverage
-        if coverage != expected:
-            raise RuntimeError('D01–D05, E01–E06, H01–H04 and W01–W05 desktop/mobile capability coverage is incomplete')
-        if stats['expected'] != 40 or any(stats[key] for key in ('unexpected','skipped','flaky')):
-            raise RuntimeError('Expected D01–D05, E01–E06, H01–H04 and W01–W05 on desktop/mobile with no failures, skips or retries')
+        if coverage != {args.project: expected}:
+            raise RuntimeError(f'Capability coverage is incomplete for {args.project}')
+        if stats['expected'] != len(expected) or any(stats[key] for key in ('unexpected','skipped','flaky')):
+            raise RuntimeError(f'Expected {len(expected)} {args.project} browser cases with no failures, skips or retries')
         result['status']='passed'
-        print('Passed 40 installed detection/editor/workspace/workbench browser cases: '+str(output))
+        print(f"Passed {stats['expected']} installed {args.project} detection/editor/workspace/workbench browser cases: {output}")
         return 0
     except (OSError,ValueError,RuntimeError) as error:
         result['error']=str(error); print(error,file=sys.stderr); return 1

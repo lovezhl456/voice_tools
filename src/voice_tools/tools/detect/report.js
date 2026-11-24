@@ -68,7 +68,7 @@
   function updateListeningRange(start, end) {
     waveform.syncRange(start, end);
     duplex.setRange(start, end);
-    $('replaySettingsLabel').textContent = '试听区间 ' + rangeLabel({start_s:start, end_s:end}) + ' · 音量';
+    $('replayRange').textContent = '试听 ' + rangeLabel({start_s:start, end_s:end});
   }
   const filename = (path) => path.split(/[\\/]/).pop();
   const packet = () => ({schema_version:'1.0', library_id:data.library_id, reviews:[...decisions.values()], manual:[...manual.values()]});
@@ -176,6 +176,11 @@
     $('activeFilters').textContent = active ? ' · ' + active : '';
     $('progress').hidden = Boolean(recordingGroups.size && !active && !decisions.size && !formDirty);
     $('discard').hidden = !formDirty;
+    const state = $('currentReviewState');
+    if (formDirty) state.textContent = '有未保存修改';
+    else if (decisions.has(current?.id)) state.textContent = '已存草稿';
+    else if (current && current.status !== 'pending') state.textContent = '已入库';
+    else state.textContent = '';
     $('clearFilters').hidden = !active;
     $('saveDrafts').hidden = !session || (!decisions.size && !manual.size);
     const progress = [`${decisions.size} 条复核草稿`];
@@ -368,7 +373,6 @@
     $('selectedTag').textContent = row?.label || '';
     $('annotationDetail').hidden = !row;
     $('reviewForm').hidden = !row || Boolean(row.draft);
-    $('jumpReview').hidden = $('reviewForm').hidden;
     if (row) {
       $('annotationName').textContent = `${row.label} · ${rangeLabel(row)}`;
       $('identity').textContent = row.draft
@@ -516,11 +520,6 @@
         persist('reviewFeedback');
       }
     }, 'reviewFeedback', $('reviewForm'));
-  };
-  $('jumpReview').onclick = (event) => {
-    event.preventDefault();
-    $('reviewForm').scrollIntoView({block:'start'});
-    $('reviewLabel').focus({preventScroll:true});
   };
   $('reviewLabel').onchange = syncCustomLabel;
   for (const id of ['reviewLabel','customReviewLabel','reviewStart','reviewEnd','comment']) $(id).oninput = () => { formDirty=true; showProgress(); };
