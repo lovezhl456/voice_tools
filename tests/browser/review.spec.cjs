@@ -278,8 +278,9 @@ test('R08 original opportunity and gap reviews keep their shared waveform contro
     await page.goto(url);
     await expectDrawing(page);
     await expect(page.getByRole('button', {name: focus, exact: true})).toBeVisible();
-    await page.getByRole('button', {name: '放大波形', exact: true}).click();
+    await page.getByRole('button', {name: '放大波形', exact: true}).press('Space');
     await expect(page.locator('#zoomValue')).toHaveText('×2');
+    expect(await player(page).evaluate(audio => audio.paused)).toBe(true);
     await adjustVolumeAndMute(page);
     await page.getByRole('button', {name: '播放试听', exact: true}).click();
     await expectPlaying(page);

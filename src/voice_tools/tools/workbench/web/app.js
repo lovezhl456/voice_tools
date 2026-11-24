@@ -2,6 +2,10 @@ const tools = JSON.parse(document.querySelector('#workbench-tabs').textContent);
 const tablist = document.querySelector('#tabs');
 const panels = document.querySelector('#panels');
 const views = new Map();
+const pauseBackground = document.querySelector('#pause-background');
+let backgroundMedia = [];
+const defaultTool = tools.find(tool => tool.status === 'imported') ||
+  tools.find(tool => tool.id === 'tasks') || tools[0];
 let activeId;
 const storageKey = `voice-workbench-tab:${location.pathname}`;
 let savedTab;
@@ -42,6 +46,43 @@ for (const tool of tools) {
   retry.addEventListener('click', () => loadPage(view));
 }
 
+function playingMedia(view) {
+  const audioAndVideo = view.frame?.contentDocument?.querySelectorAll('audio,video') || [];
+  return Array.from(audioAndVideo).filter(media => !media.paused && !media.ended);
+}
+
+function updateBackgroundPlayback() {
+  const playing = [...views.values()].filter(view => view.tool.id !== activeId)
+    .map(view => ({view, media: playingMedia(view)})).filter(item => item.media.length);
+  backgroundMedia = playing.flatMap(item => item.media);
+  pauseBackground.hidden = !backgroundMedia.length;
+  pauseBackground.textContent = playing.length === 1
+    ? '暂停' + playing[0].view.tool.label + '试听'
+    : '暂停后台试听';
+}
+
+pauseBackground.addEventListener('click', () => {
+  backgroundMedia.forEach(media => media.pause());
+  updateBackgroundPlayback();
+  views.get(activeId).tab.focus();
+});
+
+function trackPlayback(frame, view) {
+  // Local file iframes may be isolated by the browser.
+  const page = frame.contentDocument;
+  if (!page) return;
+  page.addEventListener('play', event => {
+    if (!event.target.matches?.('audio,video')) return;
+    for (const other of views.values()) {
+      if (other !== view) playingMedia(other).forEach(media => media.pause());
+    }
+    updateBackgroundPlayback();
+  }, true);
+  for (const event of ['pause', 'ended', 'emptied']) {
+    page.addEventListener(event, updateBackgroundPlayback, true);
+  }
+}
+
 async function loadPage(view) {
   if (view.loading) return;
   clearTimeout(view.timer);
@@ -68,7 +109,9 @@ async function loadPage(view) {
       view.status.hidden = true;
       view.loading = false;
       clearTimeout(view.timer);
-    }, {once:true});
+      trackPlayback(frame, view);
+      updateBackgroundPlayback();
+    });
     view.timer = setTimeout(() => {
       view.message.textContent = '页面加载较慢，可继续等待或重新加载。';
       view.retry.hidden = false;
@@ -86,11 +129,7 @@ async function loadPage(view) {
 }
 
 function selectTab(id, updateHistory = false) {
-  const selected = views.get(id) || views.get(tools[0].id);
-  // Stop audio when leaving a page, while retaining the playback position and form state.
-  if (activeId && activeId !== selected.tool.id) {
-    try { views.get(activeId).frame?.contentDocument.querySelectorAll('audio,video').forEach(media => media.pause()); } catch {}
-  }
+  const selected = views.get(id) || views.get(defaultTool.id);
   activeId = selected.tool.id;
   for (const view of views.values()) {
     const active = view === selected;
@@ -98,6 +137,7 @@ function selectTab(id, updateHistory = false) {
     view.tab.tabIndex = active ? 0 : -1;
     view.panel.hidden = !active;
   }
+  updateBackgroundPlayback();
   document.querySelector('#description').textContent = selected.tool.description;
   document.querySelector('#open-page').href = selected.tool.url;
   document.title = `${selected.tool.label} · voice_tools 工作台`;

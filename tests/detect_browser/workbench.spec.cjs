@@ -41,6 +41,7 @@ test('H01 relocated CLI export loads five tabs and retains input, playback and n
   await page.goForward();
   await expect(page.getByRole('tab', {selected:true})).toHaveText('跨主机任务');
   await expect(page.getByRole('tab')).toHaveCount(5);
+  expect(await page.locator('#tabs').evaluate(el => el.scrollWidth === el.clientWidth)).toBe(true);
   for (const label of ['检测与复核','整通质检','输出间隙','跨主机任务','使用说明']) {
     const frame = await select(page, label);
     await expect(frame.locator('h1')).toBeVisible();
@@ -53,7 +54,12 @@ test('H01 relocated CLI export loads five tabs and retains input, playback and n
   await expect.poll(async () => detection.locator('#player').evaluate(audio => audio.paused)).toBe(false);
   await select(page, '使用说明');
   const hidden = page.frameLocator('#panel-detection iframe');
-  expect(await hidden.locator('#player').evaluate(audio => audio.paused)).toBe(true);
+  const pauseBackground = page.getByRole('button',{name:'暂停检测与复核试听',exact:true});
+  await expect(pauseBackground).toBeVisible();
+  expect(await hidden.locator('#player').evaluate(audio => audio.paused)).toBe(false);
+  await pauseBackground.click();
+  await expect.poll(() => hidden.locator('#player').evaluate(audio => audio.paused)).toBe(true);
+  await expect(pauseBackground).toBeHidden();
   await select(page, '检测与复核');
   await expect(detection.locator('#fileSearch')).toHaveValue('quiet');
   await page.getByRole('tab', {name:'检测与复核',exact:true}).press('ArrowRight');
@@ -98,18 +104,34 @@ test('H02 review exported inside a tab imports through CLI and reopens in a new 
 
 test('H03 empty tabs are explicit and offline task export can be reimported', async ({page}, info) => {
   await page.goto(pathToFileURL(path.join(site,'empty-workbench/index.html')).href);
+  await expect(page.getByRole('tab',{selected:true})).toHaveText('跨主机任务');
   for (const label of ['检测与复核','整通质检','输出间隙']) {
     const frame = await select(page,label);
     await expect(frame.getByText('本次导出未提供这个页面的数据。')).toBeVisible();
   }
   let frame = await select(page,'跨主机任务');
+  await expect(frame.locator('#id')).toBeHidden();
+  await frame.getByText('高级设置',{exact:true}).click();
+  await expect(frame.locator('#id')).toBeVisible();
+  await frame.getByText('高级设置',{exact:true}).click();
   await frame.locator('#title').fill('离线多标签任务');
   await frame.locator('#title').blur();
   const file = info.outputPath('task.json');
   const task = await saveDownload(page, () => frame.getByRole('button',{name:'导出任务说明',exact:true}).click(), file);
   expect(task.title).toBe('离线多标签任务');
+  await frame.getByRole('button',{name:'选择模板',exact:true}).click();
+  await frame.locator('[data-template="quality"]').click();
+  await expect(frame.locator('#title')).toHaveValue('听感评分');
+  await frame.getByRole('button',{name:'撤销',exact:true}).click();
+  await expect(frame.locator('#title')).toHaveValue('离线多标签任务');
   await page.reload();
   frame = await select(page,'跨主机任务');
+  await frame.locator('#title').fill('导入之前的任务');
+  await frame.locator('#title').blur();
+  await frame.locator('#import-file').setInputFiles(file);
+  await expect(frame.locator('#title')).toHaveValue('离线多标签任务');
+  await frame.getByRole('button',{name:'撤销',exact:true}).click();
+  await expect(frame.locator('#title')).toHaveValue('导入之前的任务');
   await frame.locator('#import-file').setInputFiles(file);
   await expect(frame.locator('#title')).toHaveValue('离线多标签任务');
   await page.screenshot({path:info.outputPath('offline-task.png')});

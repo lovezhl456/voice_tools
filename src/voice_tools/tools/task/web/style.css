@@ -7,3 +7,25 @@
 .bench-timeline{margin:20px 0}.bench-track{display:grid;grid-template-columns:135px 1fr;gap:12px;align-items:center;margin:12px 0}.bench-bars{height:38px;position:relative;background:#eef2f6;border-radius:8px;overflow:hidden}.bench-span{position:absolute;top:5px;height:28px;min-width:3px;padding:0;border:0;border-radius:4px;background:#247c91}.bench-span.tx{background:#b56d35}.bench-table{overflow-x:auto}.bench-table table{width:100%;border-collapse:collapse}.bench-table td,.bench-table th{padding:12px;text-align:left;border-bottom:1px solid #e3e8ee}.bench-table button{text-align:left}@media(max-width:700px){.bench-track{grid-template-columns:1fr;gap:5px}.bench-table td,.bench-table th{padding:8px;font-size:13px}}
 
 .bench-markers{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.bench-markers button{font-size:12px}
+
+@media (prefers-color-scheme:dark) {
+  :root{color-scheme:dark;color:#e2eee9;background:#142528;--ink:#e2eee9;--muted:#a9bdb7;--teal:#9de2ce;--line:#3b5353;--paper:#1c3033;--amber:#ebbf77}
+  button,input,select,textarea,.step,.stat,dialog{background:var(--paper);color:var(--ink);border-color:var(--line)}
+  button:hover,.step.selected,tbody tr:hover{background:#294742}
+  .primary,.primary:hover{background:var(--teal);color:#102b27;border-color:var(--teal)}
+  .number,.pill,.empty,pre,.wave,.bench-bars,.score-bar{background:#223c3b;color:var(--muted);border-color:var(--line)}
+  .pill.completed,.pill.passed,.pill.ok,#notice:not(:empty),.info{background:#24443b;color:#b6e2cb}
+  .pill.failed,.pill.error{background:#4c2c2c;color:#ffc1b5}
+  .pill.partial,.pill.insufficient_evidence,.pill.findings,.pill.remote_running,.warning{background:#473a24;color:#f3cf94}
+  footer{color:var(--muted)}
+  .bench-table td,.bench-table th{border-color:var(--line)}
+}
+
+.task-identifiers{margin-top:10px}
+@media (max-width:700px){
+  .embedded .rail{padding:8px 12px}
+  .embedded .rail nav{margin-top:0}
+  .embedded .brand,.embedded #eyebrow,.embedded #subtitle{display:none}
+  .rail nav button{padding:6px 8px;font-size:12px}
+  header .actions{margin-top:8px}
+}

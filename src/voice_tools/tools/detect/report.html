@@ -1,11 +1,11 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>业务标签 · 录音复核</title><style>__STYLE__
-__WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href="/workspace">← 返回质检工作区</a> · 在线复核，结论直接保存到检测库 <button id="saveDrafts" type="button">将已有草稿保存到检测库</button></p>
+__WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href="/workspace">← 返回质检工作区</a> · 在线复核，结论直接保存到检测库 <button id="saveDrafts" type="button" hidden>将已有草稿保存到检测库</button></p>
 <div class="report-head"><header><h1>录音复核</h1><p id="summary" class="muted"></p></header>
 <details id="reportTools"><summary>筛选与文件<span id="activeFilters"></span></summary>
 <div class="tools-body">
 <section class="filters" aria-label="检索条件">
 <label>目录<select id="directoryFilter"></select></label><label>录音<select id="fileFilter"></select></label><label>文件／路径关键词<input id="fileSearch" type="search" placeholder="支持多个关键词"></label>
-<label>标签（逗号分隔）<input id="tags" placeholder="AI无声,AI低音量" list="tagOptions"><datalist id="tagOptions"></datalist></label><label>标签匹配<select id="tagMode"><option value="any">任一标签</option><option value="all">同批录音包含全部标签</option></select></label>
+<label>标签（逗号分隔）<input id="tags" placeholder="AI无声,AI低音量" list="tagOptions"><datalist id="tagOptions"></datalist></label><label id="tagModeField" hidden>标签匹配<select id="tagMode"><option value="any">任一标签</option><option value="all">同批录音包含全部标签</option></select></label>
 <label>批次<select id="batch"><option value="">全部批次</option></select></label><label>检测定义<select id="definition"><option value="">全部定义</option></select></label><label>配置版本<select id="version"><option value="">全部版本</option></select></label>
 <label>复核状态<select id="status"><option value="">全部状态</option><option value="pending">待复核</option><option value="confirmed">已确认</option><option value="false_positive">误报</option><option value="corrected">已修正</option></select></label>
 </section>
@@ -13,9 +13,9 @@ __WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href=
 <nav><a href="config.html">定义指标与标签</a> · <a href="results.json" download>下载完整快照</a></nav>
 <p class="muted" id="snapshotHelp">导出的复核文件可用 <code>voice-tools detect review-import 文件 --db 检测库</code> 导入。</p>
 </div></details></div>
-<p id="message" role="status" aria-live="polite"></p><p id="progress" class="muted"></p>
+<div id="reportFeedback"><p id="message" role="status"></p></div><p id="progress" class="muted"></p>
 <div class="workspace"><aside><h2>录音列表</h2><div id="queue"></div></aside><section id="detail" hidden>
-<header class="recording-heading"><div><h2 id="name"></h2><p id="recordingSummary" class="muted"></p><p id="recordingNote" class="muted" hidden></p></div><button id="addRecordingAnnotation" type="button">在这份录音上补标</button></header>
+<header class="recording-heading"><div><h2 id="name"></h2><p id="recordingSummary" class="muted"></p><p id="recordingNote" class="muted" hidden></p></div><div class="recording-actions"><a id="jumpReview" href="#reviewForm" hidden>复核此标注</a><button id="addRecordingAnnotation" type="button">在这份录音上补标</button></div></header>
 <section id="recordingAnnotations" aria-labelledby="recordingReplayHeading">
 <h3 id="recordingReplayHeading">录音回放</h3>
 <div class="replay-toolbar">
@@ -36,7 +36,7 @@ __WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href=
 </div>
 <audio id="player" preload="metadata" hidden></audio>
 <p id="audioHint" class="muted replay-hint" hidden></p>
-<div class="annotation-tools"><h3 id="recordingTimelineHeading">录音时间轴</h3><label>定位标注<select id="annotationSelect"></select></label></div>
+<div class="annotation-tools"><h3 id="recordingTimelineHeading">录音时间轴</h3><label id="annotationPicker">定位标注<select id="annotationSelect"></select></label></div>
 <div id="annotationTime" class="annotation-time muted" aria-label="时间刻度"></div>
 <div id="duplexTimeline" class="duplex-timeline" hidden>
 <div id="duplexChannels" class="duplex-channels"><span id="duplexLeft" class="duplex-channel">声道 0</span><span id="duplexRight" class="duplex-channel">声道 1</span></div>
@@ -78,6 +78,7 @@ __WAVEFORM_STYLE__</style></head><body><main><p id="liveToolbar" hidden><a href=
 </div>
 </details>
 </form>
+<div id="reviewFeedback"></div>
 <details id="annotationEvidence"><summary>检测依据</summary>
 <p id="identity" class="muted"></p><p id="reason"></p><pre id="evidence"></pre>
 </details>
@@ -87,6 +88,6 @@ __WAVEFORM_PANEL__
 </details>
 </section></div>
 <section id="auditPanel" class="card" hidden><h2>未命中抽检</h2><p>只列出检测成功且所选规则未命中的录音。选择后试听，再确认正常范围或在下方补充漏检；未检查录音不会自动视为正常。</p><label>抽检录音<select id="auditEvaluation"></select></label><button id="auditListen" type="button">试听这条未命中录音</button><p id="auditProgress"></p></section>
-<section class="card"><h2>补充漏检</h2><form id="manualForm"><div class="formGrid"><label class="wide">录音 · 批次 · 定义<select id="manualEvaluation" required></select></label><label>业务标签<input id="manualLabel" list="tagOptions" required maxlength="100"></label><label>起点（秒）<input id="manualStart" type="number" min="0" step="any" required></label><label>终点（秒）<input id="manualEnd" type="number" min="0" step="any" required></label><label>备注（可选）<input id="manualComment" maxlength="4000"></label></div><button id="listenManual" type="button">查看录音并试听</button><button class="primary" type="submit">补标到草稿</button></form><ul id="manualQueue"></ul><div id="normalControls" hidden><h3>确认已检查范围正常</h3><p>只确认所选标签在该范围内不存在。保存为正常样本时请注明原因。</p><label><input id="normalChecked" type="checkbox">我已试听并检查上述标签和时间范围</label><button id="saveNormal" type="button">保存正常范围到标准样本</button></div></section>
-<section class="card"><h2>批次与检测状态</h2><div id="batchSummary"></div><details><summary>查看检测定义与参数</summary><pre id="configs"></pre></details><p class="muted">版本对比：<code>voice-tools detect compare --db 检测库 --definition 定义ID --before 旧批次 --after 新批次</code>。对比保留未知、错误及人工结论冲突。</p></section>
+<details class="card" id="manualPanel"><summary>补充漏检<span id="manualCount"></span></summary><form id="manualForm"><div class="formGrid"><label class="wide">录音 · 批次 · 定义<select id="manualEvaluation" required></select></label><label>业务标签<input id="manualLabel" list="tagOptions" required maxlength="100"></label><label>起点（秒）<input id="manualStart" type="number" min="0" step="any" required></label><label>终点（秒）<input id="manualEnd" type="number" min="0" step="any" required></label><label>备注（可选）<input id="manualComment" maxlength="4000"></label></div><button id="listenManual" type="button">查看录音并试听</button><button class="primary" type="submit">补标到草稿</button></form><ul id="manualQueue" hidden></ul><button id="undoManualRemoval" type="button" hidden>撤销移除草稿</button><div id="normalControls" hidden><h3>确认已检查范围正常</h3><p>只确认所选标签在该范围内不存在。保存为正常样本时请注明原因。</p><label><input id="normalChecked" type="checkbox">我已试听并检查上述标签和时间范围</label><button id="saveNormal" type="button">保存正常范围到标准样本</button></div><div id="manualFeedback"></div></details>
+<details class="card"><summary>批次与检测状态</summary><div id="batchSummary"></div><details><summary>查看检测定义与参数</summary><pre id="configs"></pre></details><p class="muted">版本对比：<code>voice-tools detect compare --db 检测库 --definition 定义ID --before 旧批次 --after 新批次</code>。对比保留未知、错误及人工结论冲突。</p></details>
 </main><script id="liveSession" type="application/json">null</script><script type="application/json" id="reviewData">__DATA__</script><script>__WAVEFORM_VENDOR__</script><script>__WAVEFORM_SCRIPT__</script><script>__PLAYBACK_SCRIPT__</script><script>__FILTER__</script><script>__DUPLEX_SCRIPT__</script><script>__SCRIPT__</script></body></html>
