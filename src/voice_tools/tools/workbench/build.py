@@ -8,6 +8,7 @@ import tempfile
 
 from voice_tools import __version__
 from voice_tools.core.files import write_json
+from voice_tools.core.review.motion import embed_motion
 
 WEB = Path(__file__).parent / 'web'
 TABS = (
@@ -86,7 +87,7 @@ def build(output, inputs):
             shutil.copyfile(WEB / asset, staged / asset)
         data = json.dumps(tabs, ensure_ascii=False).replace('<', '\\u003c').replace('>', '\\u003e').replace('&', '\\u0026')
         template = (WEB / 'index.html').read_text(encoding='utf-8')
-        (staged / 'index.html').write_text(template.replace('__TABS__', data), encoding='utf-8')
+        (staged / 'index.html').write_text(embed_motion(template.replace('__TABS__', data)), encoding='utf-8')
         manifest = {'schema_version': '1.0', 'tool_version': __version__, 'tabs': tabs, 'network_accessed': False}
         write_json(staged / 'workbench.json', manifest)
         # Recheck after generation; do not overwrite a directory changed by another process.

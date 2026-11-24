@@ -90,7 +90,7 @@ main{padding:20px}
 .duplex-range{background:color-mix(in srgb,var(--accent) 9%,transparent)}
 .duplex-evidence{border-inline:1.5px dashed var(--selected-mark);background:color-mix(in srgb,var(--selected-mark) 6%,transparent)}
 #selectedTag{position:absolute;inset:3px auto auto 3px;max-width:calc(100% - 6px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 5px;border-radius:3px;background:var(--selected-mark);color:var(--paper);font-size:11px;font-weight:650;line-height:18px}
-.duplex-playhead{width:2px;background:var(--ink);transform:translateX(-1px)}
+.duplex-playhead{left:0;width:2px;background:var(--ink);will-change:translate}
 .annotation-timeline{position:relative;height:min(102px,calc(var(--lane-count,0)*20px + 3px));overflow:auto;background:var(--paper);border-top:1px solid var(--line)}
 .annotation-timeline button{
   position:absolute;top:calc(1px + var(--lane)*20px);left:clamp(0px,var(--start),calc(100% - 8px));

@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>录音质检工作区 · voice_tools</title><link rel="icon" href="data:,"><style>__STYLE__</style></head><body><main>
-<header><div><p class="eyebrow">VOICE TOOLS · 日常质检</p><h1>录音质检工作区</h1><p>用固定规则检查录音，在复核中积累样本，再验证下一版规则。</p></div><a href="/editor.html">编辑规则 / 复制新版本 →</a></header>
+<header data-motion-enter><div><p class="eyebrow">VOICE TOOLS · 日常质检</p><h1>录音质检工作区</h1><p>用固定规则检查录音，在复核中积累样本，再验证下一版规则。</p></div><a href="/editor.html">编辑规则 / 复制新版本 →</a></header>
 <nav class="steps"><a href="#daily">日常检测</a><a href="#batches">人工复核</a><a href="#samples">标准样本</a><a href="#iteration">规则迭代</a></nav>
 <p id="notice" role="status" aria-live="polite"></p>
 <section id="daily"><div class="section-title"><h2>目录与规则</h2></div><div class="grid"><label>工作区名称<input id="workspaceName" maxlength="200"></label><label>检测方式<select id="runMode"><option value="new">只检测新增 / 所选规则未成功检测的录音</option><option value="all">按所选规则全部重跑</option><option value="trial">小范围试跑</option></select></label><label id="trialSizeLabel" hidden>试跑数量（1–100）<input id="trialSize" type="number" min="1" max="100" value="10"></label></div>

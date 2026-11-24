@@ -2,6 +2,8 @@
 import hashlib
 import json
 from pathlib import Path
+
+from voice_tools.core.review.motion import embed_motion
 import threading
 import uuid
 
@@ -80,7 +82,7 @@ class Workbench:
 
     def html(self):
         session = json.dumps({'token': self.app.token}).replace('<', '\\u003c')
-        return ((ROOT / 'workspace.html').read_text(encoding='utf-8')
+        return embed_motion((ROOT / 'workspace.html').read_text(encoding='utf-8')
                 .replace('__STYLE__', (ROOT / 'editor.css').read_text(encoding='utf-8') + (ROOT / 'workspace.css').read_text(encoding='utf-8'))
                 .replace('__SCRIPT__', (ROOT / 'workspace.js').read_text(encoding='utf-8')).replace('__SESSION__', session))
 

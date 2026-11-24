@@ -9,7 +9,7 @@ function notice(text) {
   const status = $('#notice');
   const target = $('#modal').open ? $('#modal-feedback') : $('#page-feedback');
   if (status.parentNode !== target) target.append(status);
-  status.textContent = text;
+  VoiceMotion.feedback(status, text);
 }
 function download(value,name,type='application/json'){const a=document.createElement('a');const u=URL.createObjectURL(new Blob([typeof value==='string'?value:pretty(value)],{type}));a.href=u;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(u),1000);}
 function modal(html) {
@@ -71,7 +71,7 @@ function undoTaskChange() {
   render();
 }
 function author(){nav([['task','任务编排'],['benchmark','中文时序'],['inputs','输入素材'],['environments','执行环境'],['delivery','打包与交付']]);$('#heading').textContent={task:'任务编排',benchmark:'中文电话时序',inputs:'输入素材',environments:'执行环境',delivery:'打包与交付'}[page];$('#actions').innerHTML='<button data-act="templates">选择模板</button><button data-act="import">导入任务</button>' + (history.length ? '<button data-act="undo">撤销</button>' : '') + '<button data-act="export" class="primary">导出任务说明</button>';let html='';
- if(page==='task')html=`<section class="panel">${field('title','任务名称',task.title)}<details class="task-identifiers"><summary>高级设置</summary>${field('id','任务 ID',task.id)}</details></section><div class="editor-grid"><section class="panel"><div class="split-title"><h2>顺序步骤 <span class="pill">${task.steps.length}</span></h2></div><p class="help">按顺序启动。批量并发使用 SIP 队列；前序输出可作为后续输入。</p>${task.steps.map((s,i)=>`<article tabindex="0" role="button" aria-label="选择步骤 ${i+1} ${E(s.id)}" data-step="${i}" aria-pressed="${selected===i}" class="step ${selected===i?'selected':''}"><span class="number">${i+1}</span><div class="step-copy"><b>${E(s.title||s.id)}</b><p>${E(s.tool)} · ${E(s.action)}</p></div><div class="step-controls"><button data-act="up" data-index="${i}" aria-label="上移步骤 ${i+1}" ${i?'':'disabled'}>↑</button><button data-act="down" data-index="${i}" aria-label="下移步骤 ${i+1}" ${i<task.steps.length-1?'':'disabled'}>↓</button></div></article>`).join('')}<div class="step-add"><select id="add-command" aria-label="新增工具步骤">${Object.keys(D.catalog).map(k=>`<option>${E(k)}</option>`).join('')}</select><button data-act="add">添加</button></div></section><section class="panel">${parameterPanel()}</section></div>`;
+ if(page==='task')html=`<section class="panel">${field('title','任务名称',task.title)}<details class="task-identifiers"><summary>高级设置</summary>${field('id','任务 ID',task.id)}</details></section><div class="editor-grid"><section class="panel"><div class="split-title"><h2>顺序步骤 <span class="pill">${task.steps.length}</span></h2></div><p class="help">按顺序启动。批量并发使用 SIP 队列；前序输出可作为后续输入。</p>${task.steps.map((s,i)=>`<article tabindex="0" role="button" aria-label="选择步骤 ${i+1} ${E(s.id)}" data-step="${i}" data-motion-key="${E(s.id)}" aria-pressed="${selected===i}" class="step ${selected===i?'selected':''}"><span class="number">${i+1}</span><div class="step-copy"><b>${E(s.title||s.id)}</b><p>${E(s.tool)} · ${E(s.action)}</p></div><div class="step-controls"><button data-act="up" data-index="${i}" aria-label="上移步骤 ${i+1}" ${i?'':'disabled'}>↑</button><button data-act="down" data-index="${i}" aria-label="下移步骤 ${i+1}" ${i<task.steps.length-1?'':'disabled'}>↓</button></div></article>`).join('')}<div class="step-add"><select id="add-command" aria-label="新增工具步骤">${Object.keys(D.catalog).map(k=>`<option>${E(k)}</option>`).join('')}</select><button data-act="add">添加</button></div></section><section class="panel">${parameterPanel()}</section></div>`;
  if(page==='inputs')html=`<section class="panel"><h2>输入清单</h2><p class="help">路径相对于打包根目录。打包器自动收集用例引用的 WAV、media.json、事件和 ViSQOL 配对素材。</p><div class="form-grid">${Object.entries(task.inputs).map(([k,v])=>`<div class="field"><label>${E(k)}</label><input data-input="${E(k)}" value="${E(v)}"></div>`).join('')}</div><button style="margin-top:18px" data-act="add-input">添加输入</button><details><summary>检查本地文件清单</summary><p class="help">选择素材根目录，只核对名称；不上传或自动复制文件。CLI 会再次核对全部引用和摘要。</p><input id="folder" type="file" webkitdirectory multiple><div id="input-check"></div></details></section><section class="panel"><h2>已有 SIP 断言</h2><p>在 SIP 用例工作台中配置应答码、接收 RTP、有效音频、DTMF 与音调；任务打包会保留这些字段。</p><p class="help">素材角色来自实际录制配置。接收 RX 与本地发送源不能冒充同步双轨录音。</p></section>`;
  if(page==='environments')html=`<section class="panel"><h2>环境留在执行机</h2><p>任务只引用环境名称。SIP 地址、端口、SSH/HOMER 配置和模型路径由执行端提供；密码使用执行端环境变量。</p><table><thead><tr><th>步骤</th><th>环境</th><th>网络要求</th></tr></thead><tbody>${task.steps.map(s=>`<tr><td>${E(s.id)}</td><td>${E(s.environment||'默认／无')}</td><td>${['sip','capture','homer'].includes(s.tool)?'按操作需要业务网络':'离线分析或显式查询'}</td></tr>`).join('')}</tbody></table><div class="warning">Mac Docker 的原始包回放交给 Linux。普通 SIP 网络需 Docker Desktop 4.34+ 并启用 host networking；离线分析不受此限制。</div><button data-act="profile">下载执行机配置模板</button></section>`;
  if(page==='delivery')html=`<section class="panel"><h2>一次准备，每次只传任务和结果</h2><ol class="checklist"><li>导出 task.json，将素材放入所声明的相对路径。</li><li>本机打包，校验素材与版本。任务包不包含模型或凭据。</li><li>把 .vtask.zip 复制到执行机，检查环境后运行。</li><li>收集 .vresult.zip，带回本机生成离线复查页。</li></ol><pre>./vt task pack task.json --root ./workspace --out task.vtask.zip
@@ -112,11 +112,19 @@ function detail(){const s=D.steps[selected];if(!s)return '<div class="empty">没
  return `<div class="toolbar"><button data-page="overview">← 批次总览</button><select id="step-select" aria-label="选择步骤">${D.steps.map((x,i)=>`<option value="${i}" ${i===selected?'selected':''}>${E(x.id)} · ${E(x.tool)}</option>`).join('')}</select></div><div class="tabs">${[['summary','执行与断言'],['audio','录音复查'],['timing','时序评测'],['latency','录音延迟'],['scores','评分与统计'],['qa','人工标签'],['evidence','质检与协议'],['files','证据文件']].map(([k,l])=>`<button data-tab="${k}" class="${tab===k?'selected':''}">${l}</button>`).join('')}</div>${body}`;
 }
 function result(){nav([['overview','批次总览'],['detail','证据复查'],['provenance','执行来源']]);$('#heading').textContent=page==='overview'?'结果复查':page==='detail'?'单步证据':'执行来源';$('#subtitle').textContent='从执行结果追溯到参数、录音和原始产物。';$('#eyebrow').textContent='OFFLINE EVIDENCE REVIEW';$('#actions').innerHTML='<button data-act="export-notes">导出复核笔记</button>';$('#workspace').innerHTML=page==='overview'?overview():page==='detail'?detail():`<section class="panel"><h2>运行与环境</h2><pre>${E(pretty(D.receipt))}</pre><p class="help">这是已结束运行的离线回执。模型分数、采集缺口和接收录音不自动确定故障责任。</p></section>`;if(page==='detail'&&tab==='audio')drawAudio(D.steps[selected].audio[0]);if(page==='detail'&&tab==='latency'){const step=D.steps[selected];window.VoiceLatency.mount($('#latency-review'),{summary:step.latency_summary,rows:step.latency||[],truncated:step.records_truncated,exports:Object.fromEntries(step.files.filter(f=>['run.json','files.jsonl','turns.csv'].includes(f.name.split('/').pop())).map(f=>[f.name,f.path]))});}}
-function render(){stopAudio();if(audioContext){audioContext.close();audioContext=null;}if(D.mode==='author')author();else result();}
+function render() {
+  stopAudio();
+  if (audioContext) { audioContext.close(); audioContext = null; }
+  if (D.mode === 'author') author(); else result();
+}
+function changeView() {
+  render();
+  VoiceMotion.reveal($('#workspace').firstElementChild);
+}
 document.addEventListener('click',e=>{const b=e.target.closest('button,[data-step]');if(!b)return;try{
- if(b.dataset.page){if(page!==b.dataset.page){page=b.dataset.page;render();}return;}
- if(b.dataset.tab){if(tab!==b.dataset.tab){tab=b.dataset.tab;offset=0;render();}return;}
- if(b.dataset.open!==undefined){selected=+b.dataset.open;page='detail';tab='summary';offset=0;render();return;}
+ if(b.dataset.page){if(page!==b.dataset.page){page=b.dataset.page;changeView();}return;}
+ if(b.dataset.tab){if(tab!==b.dataset.tab){tab=b.dataset.tab;offset=0;changeView();}return;}
+ if(b.dataset.open!==undefined){selected=+b.dataset.open;page='detail';tab='summary';offset=0;changeView();return;}
  if(b.dataset.step!==undefined&&!e.target.closest('button')){selected=+b.dataset.step;render();return;}
  if(b.dataset.template){
    $('#modal').close();
@@ -131,7 +139,13 @@ document.addEventListener('click',e=>{const b=e.target.closest('button,[data-ste
  else if(a==='undo')undoTaskChange();
  else if(a==='add'){const [tool,action]=$('#add-command').value.split('.');change(()=>{task.steps.push({id:'step-'+Date.now().toString(36),tool,action,params:{}});selected=task.steps.length-1;});}
  else if(a==='remove')change(()=>{task.steps.splice(selected,1);selected=Math.max(0,selected-1);}, '已删除步骤，可撤销。');
- else if(a==='up'||a==='down'){const i=+b.dataset.index,j=i+(a==='up'?-1:1);change(()=>{[task.steps[i],task.steps[j]]=[task.steps[j],task.steps[i]];selected=j;});}
+ else if (a === 'up' || a === 'down') {
+   const from = Number(b.dataset.index), to = from + (a === 'up' ? -1 : 1);
+   VoiceMotion.reorder($('#workspace'), '[data-motion-key]', () => change(() => {
+     [task.steps[from], task.steps[to]] = [task.steps[to], task.steps[from]];
+     selected = to;
+   }));
+ }
  else if(a==='apply-json'){const params=JSON.parse($('#params-json').value);change(()=>{task.steps[selected].params=params;});}
  else if(a==='add-input')modal('<h2>添加输入</h2><label>名称</label><input id="input-name" value="audio2"><label>相对路径</label><input id="input-path" value="assets/another.wav"><button data-act="confirm-input">添加</button>');
  else if(a==='confirm-input'){

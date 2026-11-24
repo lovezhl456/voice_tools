@@ -23,7 +23,7 @@
   const player = $('player');
   const fileFilter = createReviewFileFilter(data.records, (record) => record.sample_id, refreshFilters);
   function message(text) {
-    $('message').textContent = text;
+    VoiceMotion.feedback($('message'), text);
   }
   const waveform = createReviewWaveform(
     player,

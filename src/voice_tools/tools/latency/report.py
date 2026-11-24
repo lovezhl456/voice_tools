@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import shutil
 
+from voice_tools.core.review.page import ASSETS
+
 WEB = Path(__file__).parent / "web"
 
 
@@ -13,6 +15,8 @@ def copy_assets(output):
 
 def render(output, run, rows):
     copy_assets(output)
+    for name in ("motion.css", "motion.js"):
+        shutil.copyfile(ASSETS / name, Path(output) / name)
     payload = json.dumps({"summary": run, "rows": rows, "exports": {"run.json": "run.json", "files.jsonl": "files.jsonl", "turns.csv": "turns.csv"}}, ensure_ascii=False, allow_nan=False)
     payload = payload.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
     html = (WEB / "index.html").read_text().replace("/*__DATA__*/", "window.LATENCY_DATA=" + payload + ";")

@@ -6,7 +6,7 @@
   const names = {dead_air:'长停顿',micro_dropout:'短断音',clustered_short_gaps:'密集短断音',terminal_interruption:'预期输出中断',manual_gap:'人工补标',inspect:'录音复查'};
   const statuses = {CANDIDATE:'待复核候选',EXCLUDED:'已按规则排除',CENSORED:'观察不足'};
   let current = null, dirty = false, formDirty = false;
-  const message = text => { $('message').textContent = text; };
+  const message = text => VoiceMotion.feedback($('message'), text);
   const key = row => `${row.fingerprint}:${row.gap_id}`;
   const player = $('player');
   const fileFilter = createReviewFileFilter(data.records, record => record.result.fingerprint, refreshFilters);

@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import re
 
+from .motion import embed_motion
+
 ASSETS = Path(__file__).parent
 
 
@@ -19,7 +21,7 @@ def embed_playback_assets(template):
         "__PLAYBACK_SCRIPT__": "playback.js",
     }.items():
         template = template.replace(marker, (ASSETS / name).read_text(encoding="utf-8"))
-    return template
+    return embed_motion(template)
 
 
 def render_page(path, data, script, form=None, replacements=None):

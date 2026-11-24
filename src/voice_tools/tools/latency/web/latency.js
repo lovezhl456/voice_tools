@@ -60,14 +60,20 @@
       const page = pairs.slice(turnPage * 50, turnPage * 50 + 50);
       const max = Math.max(1, ...page.map(p => p.latency_s));
       const chart = page.map((p,i)=>`<circle cx="${20 + (i + .5) / Math.max(1, page.length) * 960}" cy="${145 - p.latency_s / max * 125}" r="5" fill="${p.direction === 'human_to_ai' ? '#177d88' : '#bb752c'}"><title>${escape(p.direction)} ${seconds(p.latency_s)}</title></circle>`).join('');
-      root.querySelector('.lat-turns').innerHTML = `<h2>逐轮延迟 · ${pairs.length} 轮</h2><p class="lat-help">图表和表格显示当前 50 轮；统计使用全部轮次。蓝色 Human → AI，橙色 AI → Human。纵轴 0–${seconds(max)}。</p><svg role="img" aria-label="当前页逐轮延迟" viewBox="0 0 1000 170"><line x1="20" x2="990" y1="145" y2="145" stroke="#a9bdc5"/>${chart}</svg><div class="lat-scroll"><table><thead><tr><th>方向</th><th>源片段结束</th><th>应答开始</th><th>延迟</th><th>试听</th></tr></thead><tbody>${page.map(p=>`<tr><td>${escape(p.direction)}</td><td>${seconds(p.source_end_s)}</td><td>${seconds(p.response_start_s)}</td><td>${seconds(p.latency_s)}</td><td><button data-seek="${Math.max(0, p.source_end_s - .3)}">跳转试听</button></td></tr>`).join('')}</tbody></table></div><div class="lat-pager"><button data-turns="-1" ${turnPage ? '' : 'disabled'}>上一页轮次</button><span>第 ${turnPage + 1} 页</span><button data-turns="1" ${(turnPage + 1) * 50 < pairs.length ? '' : 'disabled'}>下一页轮次</button></div>`;
+      const section = root.querySelector('.lat-turns');
+      section.innerHTML = `<h2>逐轮延迟 · ${pairs.length} 轮</h2><p class="lat-help">图表和表格显示当前 50 轮；统计使用全部轮次。蓝色 Human → AI，橙色 AI → Human。纵轴 0–${seconds(max)}。</p><svg role="img" aria-label="当前页逐轮延迟" viewBox="0 0 1000 170"><line x1="20" x2="990" y1="145" y2="145" stroke="#a9bdc5"/>${chart}</svg><div class="lat-scroll"><table><thead><tr><th>方向</th><th>源片段结束</th><th>应答开始</th><th>延迟</th><th>试听</th></tr></thead><tbody>${page.map(p=>`<tr><td>${escape(p.direction)}</td><td>${seconds(p.source_end_s)}</td><td>${seconds(p.response_start_s)}</td><td>${seconds(p.latency_s)}</td><td><button data-seek="${Math.max(0, p.source_end_s - .3)}">跳转试听</button></td></tr>`).join('')}</tbody></table></div><div class="lat-pager"><button data-turns="-1" ${turnPage ? '' : 'disabled'}>上一页轮次</button><span>第 ${turnPage + 1} 页</span><button data-turns="1" ${(turnPage + 1) * 50 < pairs.length ? '' : 'disabled'}>下一页轮次</button></div>`;
+      window.VoiceMotion?.reveal(section.querySelector('svg'));
     }
     async function loadFile(index) {
       const id = ++generation, row = rows[index];
       root.querySelector('audio')?.pause();
       const container = root.querySelector('.lat-recording');
-      container.innerHTML = '<section class="lat-panel">读取结构化录音数据…</section>';
-      if (!row.detail) { container.innerHTML = `<section class="lat-panel lat-warning">${escape(row.error?.message || '该录音没有详细测量结果')}</section>`; return; }
+      const showStatus = (text, failed = false) => {
+        container.innerHTML = `<section role="status" class="lat-panel${failed ? ' lat-warning' : ''}">${escape(text)}</section>`;
+        window.VoiceMotion?.reveal(container.firstElementChild, 'feedback');
+      };
+      if (!row.detail) { showStatus(row.error?.message || '该录音没有详细测量结果', true); return; }
+      showStatus('读取结构化录音数据…');
       try {
         const response = await fetch(localURL(row.detail));
         if (!response.ok) throw Error('详细数据读取失败：HTTP ' + response.status);
@@ -79,7 +85,8 @@
         const tracks = report.waveform?.tracks || [];
         container.innerHTML = `<section class="lat-panel"><h2 class="lat-name">${escape((row.input || '').split('/').pop())}</h2>${metrics({execution_status:report.execution_status,measurement_status:measured.status,coverage:measured.coverage,statistics:measured.statistics})}${measured.reasons.length ? `<p class="lat-warning">证据限制：${escape(measured.reasons.map(label).join(' / '))}</p>` : ''}<p class="lat-help">录音起点 = 0 s · AI 位于 ${escape(report.system_channel)} · 波形每轨最多 1600 格，仅用于定位，不参与统计。</p>${tracks.map((track,i)=>wave(track,report.audio.duration_s,(i ? '右声道' : '左声道') + ((i === 0 ? 'left':'right') === report.system_channel ? ' · AI' : ' · Human'))).join('')}${row.playback ? `<audio controls preload="metadata" src="${escape(localURL(row.playback))}"></audio>` : '<p class="lat-warning">报告未包含试听音频。独立报告需要 --include-audio；任务复查使用任务中已收集的录音。</p>'}<div class="lat-player-status" role="status"></div><a href="${escape(localURL(row.detail))}" download>下载完整录音 JSON（含全部片段去向）</a></section><section class="lat-panel lat-turns"></section><section class="lat-panel"><h2>配对去向</h2><p class="lat-help">合格人声片段的 outgoing 作为 Human → AI 分母去向；incoming 独立记录该片段在反方向的应答角色。</p><div class="lat-tools">${Object.entries(measured.coverage.dispositions || {}).map(([key,count])=>`<span>${escape(label(key))}：${escape(count)}</span>`).join('')}</div><details><summary>完整参数、身份及来源</summary><pre>${escape(JSON.stringify({recording_id:report.recording_id,parameters:report.parameters,parameter_sources:report.parameter_sources,fixed_parameters:report.fixed_parameters,provenance:report.provenance,resources:report.resources},null,2))}</pre></details></section>`;
         turns();
-      } catch (error) { if (id === generation) container.innerHTML = `<section class="lat-panel lat-warning">${escape(error.message)}</section>`; }
+        window.VoiceMotion?.reveal(container.querySelector('.lat-name'), 'feedback');
+      } catch (error) { if (id === generation) showStatus(error.message, true); }
     }
     async function seek(value) {
       const player = root.querySelector('audio'), status = root.querySelector('.lat-player-status');

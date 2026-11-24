@@ -8,6 +8,8 @@ import os
 from urllib.parse import quote
 
 from voice_tools.core.files import new_output, read_json
+from voice_tools.core.review.motion import embed_motion
+from voice_tools.core.review.page import ASSETS
 from .bundle import unpack
 from .catalog import catalog
 from .contract import ID
@@ -24,8 +26,10 @@ def page(output, name, data):
         shutil.copyfile(WEB / asset, output / asset)
     from voice_tools.tools.latency.report import copy_assets
     copy_assets(output)
+    shutil.copyfile(ASSETS / 'motion.js', output / 'motion.js')
     html = (WEB / 'index.html').read_text()
-    (output / 'index.html').write_text(html.replace('/*__DATA__*/', 'window.VT_DATA=' + embedded({'mode': name, **data}) + ';'))
+    html = html.replace('/*__DATA__*/', 'window.VT_DATA=' + embedded({'mode': name, **data}) + ';')
+    (output / 'index.html').write_text(embed_motion(html, interactive=False), encoding='utf-8')
 
 
 def workbench(output):

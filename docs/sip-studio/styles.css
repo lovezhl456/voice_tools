@@ -5,7 +5,7 @@ button,input,select,textarea{font:inherit}
 button,a,input,select,textarea{touch-action:manipulation}
 button,a{-webkit-tap-highlight-color:transparent}
 button{cursor:pointer}
-button{background:white;border:1px solid var(--line);border-radius:8px;padding:9px 13px;color:var(--ink);transition:background .15s,box-shadow .15s}
+button{background:white;border:1px solid var(--line);border-radius:8px;padding:9px 13px;color:var(--ink)}
 button:hover{background:#f5f4fc;border-color:#c7beef}
 button:disabled{opacity:.43;cursor:not-allowed}
 button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #9a89eb;outline-offset:2px}
@@ -156,8 +156,8 @@ dialog::backdrop{background:#242b4566;backdrop-filter:blur(3px)}
 .case-row small{display:block;margin-top:7px;color:var(--muted);font-size:11px}
 .case-row .actions{flex-wrap:nowrap}
 .search{margin:0 0 10px}
-#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#262c43;color:white;padding:12px 22px;border-radius:9px;box-shadow:0 5px 30px #2225;font-size:12px;z-index:30;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;line-height:1.8}
-#toast.show{opacity:1}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#262c43;color:white;padding:12px 22px;border-radius:9px;box-shadow:0 5px 30px #2225;font-size:12px;z-index:30;opacity:0;pointer-events:none;translate:0 3px;transition:opacity var(--motion-leave) var(--motion-exit),translate var(--motion-leave) var(--motion-exit);max-width:90vw;line-height:1.8}
+#toast.show{opacity:1;translate:0 0;transition-duration:var(--motion-feedback);transition-timing-function:var(--motion-ease)}
 .error-list{color:#ac4960;font-size:12px;line-height:1.9;padding-left:18px}
 .warning-list{font-size:11px;color:#8a7248;line-height:1.9;padding-left:18px}
 .note{background:#fff8e8;border:1px solid #efdfb7;padding:12px;border-radius:8px;font-size:11px;color:#8a7148;line-height:1.8}
