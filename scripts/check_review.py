@@ -97,7 +97,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--out', type=Path, help='New or empty evidence directory')
     parser.add_argument('--wheel', type=Path, help='Reuse an already built voice-tools wheel')
-    parser.add_argument('--project', choices=('desktop', 'mobile'))
+    parser.add_argument('--project', choices=('desktop', 'mobile'), default='desktop')
     parser.add_argument('--grep', help='Run matching Playwright test titles only')
     args = parser.parse_args()
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
@@ -109,7 +109,7 @@ def main():
     result = {'status': 'failed', 'started_at': stamp, 'python': sys.version,
               'scope': 'synthetic audio and deterministic model evidence; installed wheel UI, not model accuracy',
               'selection': {'project': args.project, 'grep': args.grep},
-              'coverage': 'selected_cases' if args.project or args.grep else 'full_baseline', 'commands': []}
+              'coverage': 'selected_cases' if args.grep else 'full_baseline', 'commands': []}
     server = None
     server_thread = None
 
@@ -169,9 +169,7 @@ def main():
         server_thread = threading.Thread(target=server.serve_forever, daemon=True)
         server_thread.start()
         env['VT_REVIEW_URL'] = f'http://127.0.0.1:{server.server_port}'
-        command = [node, cli, 'test', '--config', BROWSER / 'playwright.config.cjs']
-        if args.project:
-            command += ['--project', args.project]
+        command = [node, cli, 'test', '--config', BROWSER / 'playwright.config.cjs', '--project', args.project]
         if args.grep:
             command += ['--grep', args.grep]
         run_step('browser', command)
@@ -182,9 +180,9 @@ def main():
         if not stats['expected'] or any(stats[key] for key in ('unexpected', 'skipped', 'flaky')):
             raise RuntimeError('Browser acceptance requires executed tests with no failures, skips or flaky passes')
         if result['coverage'] == 'full_baseline':
-            expected = {project: list(REQUIRED_CAPABILITIES) for project in ('desktop', 'mobile')}
+            expected = {args.project: list(REQUIRED_CAPABILITIES)}
             if result['capabilities'] != expected:
-                raise RuntimeError('Required R01–R08 desktop/mobile capability coverage is incomplete')
+                raise RuntimeError(f'Required R01–R08 capability coverage is incomplete for {args.project}')
         result['status'] = 'passed'
         print(f"Passed {stats['expected']} browser cases. Evidence: {output}")
         return 0

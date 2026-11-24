@@ -23,7 +23,7 @@
   const player = $('player');
   const fileFilter = createReviewFileFilter(data.records, (record) => record.sample_id, refreshFilters);
   function message(text) {
-    $('message').textContent = text;
+    VoiceMotion.feedback($('message'), text);
   }
   const waveform = createReviewWaveform(
     player,
@@ -430,7 +430,7 @@
   };
   document.addEventListener('keydown', (event) => {
     if (/INPUT|SELECT|TEXTAREA/.test(event.target.tagName)) return;
-    if (event.code === 'Space') {
+    if (event.code === 'Space' && !event.target.closest('button,summary,a[href],[role=button]')) {
       event.preventDefault();
       playback.toggle();
     } else if (event.key === 'ArrowRight') {

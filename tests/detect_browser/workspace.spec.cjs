@@ -37,7 +37,8 @@ async function runAndReview(page){
   await page.getByRole('button',{name:'开始质检',exact:true}).click();
   await page.getByRole('link',{name:'打开本次录音复核',exact:true}).click();
   await expect(page.locator('#liveToolbar')).toBeVisible();
-  await expect(page.locator('#queue button')).toHaveCount(1);
+  await expect(page.locator('#queue button')).toHaveCount(2);
+  await expect(page.locator('#annotationTimeline button')).toHaveCount(1);
 }
 
 test('W01 daily rules, online review, false-positive reason, audit and reopening persist',async({page},info)=>{
@@ -48,26 +49,26 @@ test('W01 daily rules, online review, false-positive reason, audit and reopening
   await expect(page.locator('#notice')).toContainText('已保存');await page.reload();
   await expect(page.locator('#definitions input[value="level@1"]')).toBeChecked();
   await runAndReview(page);
-  await page.locator('#reviewStatus').selectOption('false_positive');await page.locator('#reviewer').fill('人工复核');
-  await page.getByRole('button',{name:'保存到检测库',exact:true}).click();
+  await page.locator('#reviewOptions summary').click();
+  await page.getByRole('button',{name:'标为误报',exact:true}).click();
   await expect(page.locator('#message')).toContainText('误报原因');
-  await page.locator('#reviewStatus').selectOption('confirmed');await page.locator('#comment').fill('确认输出音量低');
+  await page.locator('#comment').fill('确认输出音量低');
   await page.route('**/api/workspace/reviews',route=>route.fulfill({status:409,contentType:'application/json',
     body:JSON.stringify({ok:false,code:'workspace_busy',error:'检测正在进行，请完成后重试；未保存内容仍保留在页面中。'})}));
   await page.getByRole('button',{name:'保存到检测库',exact:true}).click();
   await expect(page.locator('#message')).toContainText('未保存内容仍保留');
   await expect(page.locator('#comment')).toHaveValue('确认输出音量低');
-  await expect(page.locator('#reviewStatus')).toHaveValue('confirmed');
+  await expect(page.locator('#annotationTimeline button').first()).toHaveAttribute('data-status','pending');
   await page.unroute('**/api/workspace/reviews');
   await page.getByRole('button',{name:'保存到检测库',exact:true}).click();
   await expect(page.locator('#message')).toContainText('已保存到检测库');await page.reload();
-  await expect(page.locator('#reviewStatus')).toHaveValue('confirmed');
+  await expect(page.locator('#annotationTimeline button').first()).toHaveAttribute('data-status','confirmed');
   await page.getByRole('button',{name:'试听这条未命中录音',exact:true}).click();
-  await expect(page.locator('#waveform canvas').first()).toBeVisible();
+  await expect(page.locator('#duplexCanvas')).toBeVisible();
   await page.locator('#player').evaluate(async audio=>{await audio.play();});
   await expect.poll(()=>page.locator('#player').evaluate(audio=>audio.currentTime)).toBeGreaterThan(0);
   await page.locator('#player').evaluate(audio=>audio.pause());
-  await page.locator('#manualReviewer').fill('人工抽检');await page.locator('#manualComment').fill('此范围音量正常');
+  await page.locator('#manualComment').fill('此范围音量正常');
   await page.getByRole('button',{name:'保存正常范围到标准样本',exact:true}).click();
   await expect(page.locator('#message')).toContainText('试听并明确');await page.locator('#normalChecked').check();
   await page.getByRole('button',{name:'保存正常范围到标准样本',exact:true}).click();
@@ -95,7 +96,13 @@ test('W02 fixed samples reveal a regression and explicit daily selection survive
   await page.getByRole('button',{name:'将此新版本选为日常规则',exact:true}).click();
   await expect(page.locator('#notice')).toContainText('已明确选用');await page.reload();
   await expect(page.locator('#definitions input[value="level@2"]')).toBeChecked();
-  await page.getByRole('button',{name:'查看逐录音片段与保存对比',exact:true}).click();
+  await page.locator('#comparisons summary').filter({hasText:'查看逐录音片段与保存对比'}).click();
+  const details = page.locator('#comparisons summary');
+  await expect(page.getByRole('link',{name:'下载本次对比 JSON',exact:true})).toBeVisible();
+  await details.click();
+  await expect(page.getByRole('link',{name:'下载本次对比 JSON',exact:true})).toBeHidden();
+  await details.click();
+  await expect(page.locator('#comparisons pre')).toHaveCount(1);
   const download=page.waitForEvent('download');await page.getByRole('link',{name:'下载本次对比 JSON',exact:true}).click();
   const file=info.outputPath('comparison.json');await(await download).saveAs(file);
   expect(JSON.parse(fs.readFileSync(file)).totals.after.misses).toBe(1);
@@ -106,14 +113,15 @@ test('W02 fixed samples reveal a regression and explicit daily selection survive
 test('W03 trial selection, manual miss and sample revision keep frozen evidence unchanged',async({page},info)=>{
   const {errors}=await start(page,info);
   await page.locator('#definitions input[value="level@2"]').check();
+  await expect(page.locator('#trialFiles')).toBeHidden();
   await page.getByRole('combobox',{name:'检测方式',exact:true}).selectOption('trial');
   await page.getByText('查看录音 / 勾选试跑范围',{exact:true}).click();
   await page.locator('#inputs label').filter({hasText:'quiet.wav'}).getByRole('checkbox').check();
+  await expect(page.locator('#trialSizeLabel')).toBeHidden();
   await page.getByRole('button',{name:'开始质检',exact:true}).click();
   await page.getByRole('link',{name:'打开本次录音复核',exact:true}).click();
   await expect(page.locator('#summary')).toContainText('1 通录音');
   await page.getByRole('button',{name:'试听这条未命中录音',exact:true}).click();
-  await page.locator('#manualReviewer').fill('复核');await page.locator('#manualComment').fill('阈值过低导致漏检');
   await page.getByRole('button',{name:'保存漏检到检测库',exact:true}).click();
   await expect(page.locator('#message')).toContainText('已保存到检测库');
   await page.getByRole('link',{name:'返回质检工作区'}).click();
@@ -125,7 +133,7 @@ test('W03 trial selection, manual miss and sample revision keep frozen evidence 
   await expect(page.locator('#sampleList')).toContainText('0–4 秒');
   await page.locator('#before').selectOption('level@1');await page.locator('#after').selectOption('level@2');
   await page.getByRole('button',{name:'运行新旧版本对比',exact:true}).click();await expect(page.locator('#comparisons')).toContainText('对比完成');
-  await page.getByRole('button',{name:'查看逐录音片段与保存对比',exact:true}).click();
+  await page.locator('#comparisons summary').filter({hasText:'查看逐录音片段与保存对比'}).click();
   await expect(page.locator('#comparisons pre')).toContainText('"end_s": 8');expect(errors).toEqual([]);
 });
 
@@ -147,7 +155,9 @@ test('W04 valid long-ID offline drafts import online and survive reopening',asyn
   await expect(page.locator('#manualQueue li')).toHaveCount(2);
   await page.getByRole('button',{name:'将已有草稿保存到检测库',exact:true}).click();
   await expect(page.locator('#message')).toContainText('已保存到检测库');
-  await page.reload();await expect(page.locator('#queue button')).toHaveCount(2);
+  await page.reload();
+  await expect(page.locator('#queue button')).toHaveCount(2);
+  await expect(page.locator('#annotationTimeline button')).toHaveCount(2);
   await page.getByRole('link',{name:'返回质检工作区'}).click();
   await expect(page.locator('#sampleList .row')).toHaveCount(2);
   expect(errors).toEqual([]);

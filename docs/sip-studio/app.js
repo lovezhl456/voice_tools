@@ -207,7 +207,7 @@
       v = check();
     if (!step()) selected = c.steps[0]?.id;
     return `
-<div class="editor-heading"><div><div class="breadcrumb">我的用例 / ${esc(c.tags.split(',')[0] || '未分类')}</div><div class="title-line"><h1>${esc(c.title)}</h1>${badge('草稿')}</div><div class="meta-line">${c.steps.length} 个步骤 <span> · </span> ${esc(e.name)} <span> · </span> SIP / UDP <span> · </span> ${esc(e.config.codec)}</div></div><div class="actions"><button data-act="cases">▤ 用例库</button><button data-act="settings">⚙ 用例设置</button><button data-act="assertions">◉ 接收证据断言 (${(c.assertions || []).length})</button><button data-act="export">↗ 导出用例</button><button data-act="preview" class="primary">▷ 离线预演</button><button disabled title="本原型尚未接入本地 CLI 执行服务">真实拨测 · 未连接</button></div></div>
+<div class="editor-heading"><div><div class="breadcrumb">我的用例 / ${esc(c.tags.split(',')[0] || '未分类')}</div><div class="title-line"><h1>${esc(c.title)}</h1>${badge('草稿')}</div><div class="meta-line">${c.steps.length} 个步骤 <span> · </span> ${esc(e.name)} <span> · </span> SIP / UDP <span> · </span> ${esc(e.config.codec)}</div></div><div class="actions"><button data-act="cases">▤ 用例库</button><button data-act="settings">⚙ 用例设置</button><button data-act="assertions">◉ 接收证据断言 (${(c.assertions || []).length})</button><button data-act="export">↗ 导出用例</button><button data-act="preview" class="primary" aria-expanded="${Boolean(preview)}" aria-controls="offline-preview">${preview ? '收起预演' : '▷ 离线预演'}</button></div></div>
 <div class="editor"><aside class="library"><div class="eyebrow">BUILD YOUR SCENARIO</div><h2>步骤插件</h2><p class="help">拖到步骤之间，或点击添加。</p><div class="plugin-list">${Object.entries(
       C.definitions
     )
@@ -218,8 +218,8 @@
       )
       .join(
         ''
-      )}<button class="plugin" data-act="add" data-action="hangup" ${c.steps.some((s) => s.action === 'hangup') ? 'disabled' : ''}>${icon('hangup')}<span><strong>挂断</strong><small>固定在用例末尾</small></span></button></div><div class="future"><div class="eyebrow">后续扩展</div><span>◇ 条件分支 <small> · 规划中</small></span></div><a class="design-link" href="design.html">调研依据与产品设计 ↗</a></aside>
-<section class="canvas" aria-label="步骤编排画布"><div class="canvas-head"><span>顺序执行 / SEQUENCE</span><div class="actions"><button data-act="undo" aria-label="撤销" ${history.length ? '' : 'disabled'}>↶</button><button data-act="redo" aria-label="重做" ${redo.length ? '' : 'disabled'}>↷</button></div></div><div class="flow"><div class="call-start"><span class="start-dot"></span><div><strong>呼叫接通后开始</strong><small>${esc(e.config.target_uri)}</small></div></div>${c.steps.map((s, i) => `<div class="drop-zone" data-drop="${i}"><span>放在这里</span></div><article class="step ${s.id === selected ? 'selected' : ''}" draggable="${s.action !== 'hangup'}" data-step="${s.id}" tabindex="0" role="button" aria-label="步骤 ${i + 1} ${esc(s.label)}" aria-pressed="${s.id === selected}"><span class="grip" aria-hidden="true">⠿</span>${icon(s.action)}<div class="step-main"><div class="step-title"><span class="num">${String(i + 1).padStart(2, '0')}</span><strong>${esc(s.label)}</strong></div><div class="step-summary">${esc(describe(s))}</div></div><span class="step-time">${s.action === 'hangup' ? '结束' : seconds(duration(s))}</span><div class="step-tools"><button data-act="up" data-id="${s.id}" aria-label="上移步骤 ${i + 1}" ${i === 0 || s.action === 'hangup' ? 'disabled' : ''}>↑</button><button data-act="down" data-id="${s.id}" aria-label="下移步骤 ${i + 1}" ${i === c.steps.length - 1 || c.steps[i + 1]?.action === 'hangup' || s.action === 'hangup' ? 'disabled' : ''}>↓</button></div></article>`).join('')}${c.steps.at(-1)?.action === 'hangup' ? '' : `<div class="drop-zone" data-drop="${c.steps.length}"><span>放在这里</span></div>`}<div class="record-lane"><span class="record-light"></span><span>通话级 RX 录音 · ${e.config.record_early ? '包含 early media' : '接通后自动开始'}<br>播放和等待期间持续录制，由 CLI 执行器保存。</span></div></div></section>
+      )}<button class="plugin" data-act="add" data-action="hangup" ${c.steps.some((s) => s.action === 'hangup') ? 'disabled' : ''}>${icon('hangup')}<span><strong>挂断</strong><small>固定在用例末尾</small></span></button></div><a class="design-link" href="design.html">调研依据与产品设计 ↗</a></aside>
+<section class="canvas" aria-label="步骤编排画布"><div class="canvas-head"><span>顺序执行 / SEQUENCE</span><div class="actions"><button data-act="undo" aria-label="撤销" ${history.length ? '' : 'disabled'}>↶</button><button data-act="redo" aria-label="重做" ${redo.length ? '' : 'disabled'}>↷</button></div></div><div class="flow"><div class="call-start"><span class="start-dot"></span><div><strong>呼叫接通后开始</strong><small>${esc(e.config.target_uri)}</small></div></div>${c.steps.map((s, i) => `<div class="drop-zone" data-drop="${i}"><span>放在这里</span></div><article class="step ${s.id === selected ? 'selected' : ''}" draggable="${s.action !== 'hangup'}" data-step="${s.id}" data-motion-key="${esc(s.id)}" tabindex="0" role="button" aria-label="步骤 ${i + 1} ${esc(s.label)}" aria-pressed="${s.id === selected}"><span class="grip" aria-hidden="true">⠿</span>${icon(s.action)}<div class="step-main"><div class="step-title"><span class="num">${String(i + 1).padStart(2, '0')}</span><strong>${esc(s.label)}</strong></div><div class="step-summary">${esc(describe(s))}</div></div><span class="step-time">${s.action === 'hangup' ? '结束' : seconds(duration(s))}</span><div class="step-tools"><button data-act="up" data-id="${s.id}" aria-label="上移步骤 ${i + 1}" ${i === 0 || s.action === 'hangup' ? 'disabled' : ''}>↑</button><button data-act="down" data-id="${s.id}" aria-label="下移步骤 ${i + 1}" ${i === c.steps.length - 1 || c.steps[i + 1]?.action === 'hangup' || s.action === 'hangup' ? 'disabled' : ''}>↓</button></div></article>`).join('')}${c.steps.at(-1)?.action === 'hangup' ? '' : `<div class="drop-zone" data-drop="${c.steps.length}"><span>放在这里</span></div>`}<div class="record-lane"><span class="record-light"></span><span>通话级 RX 录音 · ${e.config.record_early ? '包含 early media' : '接通后自动开始'}<br>播放和等待期间持续录制，由 CLI 执行器保存。</span></div></div></section>
 <aside class="inspector" aria-label="步骤参数">${inspector()}</aside></div>
 <div class="footer-bar"><div class="budget">${v.unknownDuration ? '已知动作时长' : '预计动作时长'}<strong>${seconds(v.knownDuration)} / ${e.config.max_call_s} s</strong><div class="meter"><i style="width:${Math.max(0, Math.min(100, (v.knownDuration / e.config.max_call_s) * 100))}%"></i></div></div><div class="validation ${v.errors.length ? 'bad' : ''}"><span>${v.errors.length ? '! ' + esc(v.errors[0]) : v.warnings.length ? '○ 素材待 CLI 校验' : '✓ 字段检查通过'}</span><button data-act="export">查看 JSON</button></div></div>${preview ? previewHtml(preview) : ''}`;
   }
@@ -238,7 +238,7 @@
     }</form><div class="info-box">${s.action === 'dtmf' ? '每个按键后均计入间隔。媒体时序预演不代表远端已收到按键。' : s.action === 'play_media' ? '先用 pcap-inspect 选择单方向、单 SSRC，再用 pcap-import 转换。此处引用 media.json，不直接发送原始 PCAP。' : s.action === 'play' ? '仅支持 8 kHz、单声道 PCM16 WAV。可以在素材库选择本地文件，检查格式并试听。' : s.action === 'hangup' ? '挂断固定为最后一步。CLI 会完成收尾；RX 录音和执行日志保存在输出目录。' : '等待期间保持通话和接收录音。本步骤没有识别欢迎语结束的能力。'}</div><div class="inspector-actions"><button data-act="duplicate-step" ${s.action === 'hangup' ? 'disabled' : ''}>复制步骤</button><button data-act="delete-step" class="danger">删除步骤</button></div><p class="help panel-label">小屏幕可用步骤上的 ↑ ↓ 调整顺序；选中步骤后也可按 Alt + ↑ / ↓。</p>`;
   }
   function previewHtml(p) {
-    return `<section class="preview" aria-label="离线预演结果"><h3>离线预演 ${badge('没有发起呼叫')}</h3><p>仅排列动作时间。接通等待不在此时间轴内；未知素材时长会中断精确计时。未生成录音，未评估 IVR 业务结果。</p><div class="preview-track">${p.steps.map((s) => `<div class="preview-segment"><b>${esc(s.label)}</b><span>${s.start === null ? '起点待确认' : seconds(s.start)} → ${s.end === null ? '终点待确认' : seconds(s.end)}</span></div>`).join('')}</div></section>`;
+    return `<section class="preview" id="offline-preview" aria-label="离线预演结果"><h3>离线预演 ${badge('没有发起呼叫')}</h3><p>仅排列动作时间。接通等待不在此时间轴内；未知素材时长会中断精确计时。未生成录音，未评估 IVR 业务结果。</p><div class="preview-track">${p.steps.map((s) => `<div class="preview-segment"><b>${esc(s.label)}</b><span>${s.start === null ? '起点待确认' : seconds(s.start)} → ${s.end === null ? '终点待确认' : seconds(s.end)}</span></div>`).join('')}</div></section>`;
   }
   function assetsPage() {
     return `<section class="page"><div class="page-heading"><div><div class="breadcrumb">工作区 / 素材管理</div><h1>通话素材</h1><p>选择本机文件检查与试听，执行时仍从 scenario.json 的相对路径读取。</p></div><div class="actions"><button data-act="pcap-help">PCAP 转换说明</button><button class="primary" data-act="asset-add">＋ 添加 WAV / media.json</button></div></div><div class="note">素材文件只在本次页面会话中可试听；浏览器保存名称、相对路径和时长。刷新后请重新选择同一路径文件，执行前用 CLI 校验磁盘文件。</div><div class="cards" style="margin-top:20px">${state.assets.length ? state.assets.map((a) => `<article class="card">${badge(a.kind === 'wav' ? 'WAV / PCM16' : 'PCAP MEDIA', a.kind === 'wav' ? '' : 'green')}<h3>${esc(a.name)}</h3><p>${esc(a.path)}<br>${seconds(a.duration)} · ${a.kind === 'wav' ? '8 kHz / 单声道' : a.eventCount + ' 个 DTMF 事件 / 哈希待 CLI 验证'}</p>${a.kind === 'wav' ? `<div class="waveform" aria-label="由所选文件采样生成的幅度包络">${a.peaks.map((p) => `<i style="height:${Math.max(2, Math.min(100, Number(p) * 100))}%"></i>`).join('')}</div>${objects.has(a.path) ? `<audio controls preload="metadata" src="${esc(objects.get(a.path))}" aria-label="试听 ${esc(a.name)}"></audio>` : '<p class="small">重新选择源文件后可试听。</p>'}` : ''}<div class="actions"><button data-act="asset-use" data-id="${a.id}">添加到当前用例</button><button data-act="asset-remove" data-id="${a.id}" class="subtle danger">移除索引</button></div></article>`).join('') : `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">≋</div><h2>从一段声音开始</h2><p>添加测试录音，或选择 CLI 已转换的 media.json。这里不提供虚构波形、音频或测试结果。</p><button data-act="asset-add">选择本地文件</button></div>`}</div></section>`;
@@ -247,7 +247,7 @@
     return `<section class="page"><div class="page-heading"><div><div class="breadcrumb">工作区 / 环境管理</div><h1>拨测环境</h1><p>复用目标、账号与网络参数。认证只存环境变量名，密码由 CLI 在执行时读取。</p></div><button class="primary" data-act="env-new">＋ 新建环境</button></div><div class="cards">${state.envs.map((e) => `<article class="card">${badge(e.config.codec + ' / UDP', 'green')}<h3>${esc(e.name)}</h3><p>${esc(e.config.target_uri)}<br>接通超时 ${e.config.connect_timeout_s} s · 最长通话 ${e.config.max_call_s} s<br>${state.cases.filter((c) => c.envId === e.id).length} 个用例引用此环境</p><div class="actions"><button data-act="env-edit" data-id="${e.id}">编辑环境</button><button data-act="env-use" data-id="${e.id}">用于当前用例</button></div></article>`).join('')}</div><p class="help">环境参数只会随导出的用例生效；当前页面不连接 SIP 网关。</p></section>`;
   }
   function runsPage() {
-    return `<section class="page"><div class="page-heading"><div><div class="breadcrumb">工作区 / 运行记录</div><h1>运行记录</h1><p>真实拨测 ${badge('尚未接入')} · 离线预演记录仅保留在本次页面会话。</p></div><button data-page="editor">返回用例</button></div><div class="empty"><div class="empty-icon">◷</div><h2>还没有真实拨测记录</h2><p>后续连接本地 CLI 服务后，这里将展示 SIP 状态、步骤事件、RX 录音与业务断言。执行完成、媒体验证和业务通过会分别显示。</p><div class="checks" style="justify-content:center"><span>执行：未运行</span><span>媒体：未验证</span><span>业务：未评估</span></div></div><h2 style="margin-top:30px">本次会话的离线预演</h2>${state.runs.length ? state.runs.map((r) => `<div class="run-row"><div><strong>${esc(r.title)}</strong><small>${esc(r.date)} · ${r.steps.length} 个步骤 · 未发起呼叫</small></div><button data-act="preview-detail" data-id="${r.id}">查看预演</button></div>`).join('') : '<p class="help">在用例编辑器点击「离线预演」后，记录会出现在这里。</p>'}</section>`;
+    return `<section class="page"><div class="page-heading"><div><div class="breadcrumb">工作区 / 运行记录</div><h1>运行记录</h1><p>本次页面会话的离线预演。实际拨测请导出用例后在终端执行。</p></div><button data-page="editor">返回用例</button></div>${state.runs.length ? state.runs.map((r) => `<div class="run-row"><div><strong>${esc(r.title)}</strong><small>${esc(r.date)} · ${r.steps.length} 个步骤 · 未发起呼叫</small></div><button data-act="preview-detail" data-id="${r.id}">查看预演</button></div>`).join('') : '<p class="help">在用例编辑器点击「离线预演」后，记录会出现在这里。</p>'}</section>`;
   }
   function modal(title, body, foot = '') {
     $('#modal-content').innerHTML =
@@ -326,12 +326,21 @@ voice-tools --json sip run scenario.json --dry-run --out outputs/plan-001</pre><
   }
   function move(id, delta) {
     const i = item().steps.findIndex((s) => s.id === id);
-    mutate(() => {
-      item().steps = C.moveStep(item().steps, id, i + delta);
+    reorderStep(id, i + delta);
+  }
+  function reorderStep(id, index) {
+    VoiceMotion.reorder($('#workspace'), '[data-motion-key]', () => mutate(() => {
+      item().steps = C.moveStep(item().steps, id, index);
       selected = id;
-    });
+    }));
   }
   function offlinePreview() {
+    if (preview) {
+      preview = null;
+      render();
+      $('[data-act="preview"]').focus();
+      return;
+    }
     const v = check();
     if (v.errors.length) {
       toast(v.errors[0]);
@@ -349,7 +358,9 @@ voice-tools --json sip run scenario.json --dry-run --out outputs/plan-001</pre><
     state.runs.unshift(C.clone(preview));
     state.runs = state.runs.slice(0, 30);
     render();
-    $('.preview')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    const panel = $('.preview');
+    VoiceMotion.reveal(panel);
+    VoiceMotion.scrollTo(panel);
   }
   function pcapHelp() {
     modal(
@@ -417,8 +428,11 @@ voice-tools --json sip pcap-import capture.pcap \\\n  --stream '从 inspect 输�
   document.addEventListener('click', (e) => {
     const pageButton = e.target.closest('[data-page]');
     if (pageButton) {
-      page = pageButton.dataset.page;
-      render();
+      if (page !== pageButton.dataset.page) {
+        page = pageButton.dataset.page;
+        render();
+        VoiceMotion.reveal($('#workspace').firstElementChild);
+      }
       return;
     }
     const b = e.target.closest('[data-act]');
@@ -529,7 +543,7 @@ voice-tools --json sip pcap-import capture.pcap \\\n  --stream '从 inspect 输�
     if (s) {
       selected = s.dataset.step;
       render();
-      if (innerWidth < 620) $('.inspector').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      if (innerWidth < 620) VoiceMotion.scrollTo($('.inspector'), 'start');
     }
   });
   function saveEnv() {
@@ -695,10 +709,7 @@ voice-tools --json sip pcap-import capture.pcap \\\n  --stream '从 inspect 输�
     if (d.action) add(d.action, to);
     else {
       const from = item().steps.findIndex((s) => s.id === d.id);
-      mutate(() => {
-        item().steps = C.moveStep(item().steps, d.id, to > from ? to - 1 : to);
-        selected = d.id;
-      });
+      reorderStep(d.id, to > from ? to - 1 : to);
     }
   });
   document.addEventListener('dragend', () => {

@@ -6,7 +6,7 @@
   const names = {dead_air:'长停顿',micro_dropout:'短断音',clustered_short_gaps:'密集短断音',terminal_interruption:'预期输出中断',manual_gap:'人工补标',inspect:'录音复查'};
   const statuses = {CANDIDATE:'待复核候选',EXCLUDED:'已按规则排除',CENSORED:'观察不足'};
   let current = null, dirty = false, formDirty = false;
-  const message = text => { $('message').textContent = text; };
+  const message = text => VoiceMotion.feedback($('message'), text);
   const key = row => `${row.fingerprint}:${row.gap_id}`;
   const player = $('player');
   const fileFilter = createReviewFileFilter(data.records, record => record.result.fingerprint, refreshFilters);
@@ -174,22 +174,26 @@
     }catch(err){message(err.message);}finally{$('import').value='';}
   };
   async function clip() {
-    if(!current?.record.playback_sources?.both)throw Error('未附带音频，请指定 --include-audio');
-    const response=await fetch(current.record.playback_sources.both);if(!response.ok)throw Error('音频读取失败');
+    const entry = current;
+    const source = entry?.record.playback_sources?.both;
+    if (!source) throw Error('未附带音频，请指定 --include-audio');
+    const [start, end] = playback.bounds();
+    const response = await fetch(source);
+    if (!response.ok) throw Error('音频读取失败');
     const bytes=await response.arrayBuffer(),view=new DataView(bytes);
     let offset=12,fmt=null,body=null;
     while(offset+8<=bytes.byteLength){const name=String.fromCharCode(...new Uint8Array(bytes,offset,4)),size=view.getUint32(offset+4,true);if(offset+8+size>bytes.byteLength)throw Error('WAV 数据截断');if(name==='fmt ')fmt=offset+8;if(name==='data')body=[offset+8,size];offset+=8+size+(size%2);}
     if(fmt===null||!body||view.getUint16(fmt,true)!==1||view.getUint16(fmt+14,true)!==16)throw Error('片段导出需要 PCM16 WAV');
-    const channels=view.getUint16(fmt+2,true),rate=view.getUint32(fmt+4,true),[start,end]=playback.bounds();
+    const channels=view.getUint16(fmt+2,true),rate=view.getUint32(fmt+4,true);
     const a=Math.round(start*rate),b=Math.min(Math.round(end*rate),body[1]/(channels*2)),size=(b-a)*channels*2;
     const out=new ArrayBuffer(44+size),v=new DataView(out),u=new Uint8Array(out);
     for(const [at,s] of [[0,'RIFF'],[8,'WAVEfmt '],[36,'data']])for(let i=0;i<s.length;i++)u[at+i]=s.charCodeAt(i);
     v.setUint32(4,36+size,true);v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,channels,true);v.setUint32(24,rate,true);v.setUint32(28,rate*channels*2,true);v.setUint16(32,channels*2,true);v.setUint16(34,16,true);v.setUint32(40,size,true);
     u.set(new Uint8Array(bytes,body[0]+a*channels*2,size),44);
-    return {wav:out,metadata:{audio_sha256:current.record.audio_sha256,fingerprint:current.row.fingerprint,gap_id:current.row.gap_id,original_start_s:a/rate,original_end_s:b/rate,sample_rate:rate,channels}};
+    return {wav:out,metadata:{audio_sha256:entry.record.audio_sha256,fingerprint:entry.row.fingerprint,gap_id:entry.row.gap_id,original_start_s:a/rate,original_end_s:b/rate,sample_rate:rate,channels}};
   }
   for(const id of ['clip','clipMeta'])$(id).onclick=async e=>{e.preventDefault();try{const c=await clip();download(id==='clip'?c.wav:JSON.stringify(c.metadata,null,2),id==='clip'?'gap.wav':'gap.json',id==='clip'?'audio/wav':'application/json');}catch(err){message(err.message);}};
-  document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.code==='Space'){e.preventDefault();playback.toggle();}if(['ArrowLeft','ArrowRight'].includes(e.key)){const list=filtered(),i=list.indexOf(current),next=list[i+(e.key==='ArrowRight'?1:-1)];if(next)select(next);}});
+  document.addEventListener('keydown',e=>{if(/INPUT|SELECT|TEXTAREA/.test(e.target.tagName))return;if(e.code==='Space'&&!e.target.closest('button,summary,a[href],[role=button]')){e.preventDefault();playback.toggle();}if(['ArrowLeft','ArrowRight'].includes(e.key)){const list=filtered(),i=list.indexOf(current),next=list[i+(e.key==='ArrowRight'?1:-1)];if(next)select(next);}});
   window.addEventListener('beforeunload',e=>{if(dirty||formDirty){e.preventDefault();e.returnValue='';}});
   refresh();if(entries.length)select(entries[0]);else message('没有可复核录音，请检查报告中的输入错误。');
 })();

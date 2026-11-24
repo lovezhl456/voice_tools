@@ -15,6 +15,11 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 def main():
+    studio = ROOT / 'docs/sip-studio'
+    motion = ROOT / 'src/voice_tools/core/review'
+    for name in ('motion.css', 'motion.js'):
+        if (studio / name).read_bytes() != (motion / name).read_bytes():
+            raise SystemExit(f'Studio motion asset differs from the shared source: {name}')
     node = shutil.which('node')
     if not node:
         raise SystemExit('Node.js is required for the Studio compiler compatibility check')

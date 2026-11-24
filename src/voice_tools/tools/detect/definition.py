@@ -72,7 +72,9 @@ def condition(value, metrics, depth=0, budget=None):
 def validate(raw):
     config = copy.deepcopy(raw)
     fields(config, ('schema_version', 'id', 'version', 'name', 'metrics', 'rules'),
-           ('description', 'scope', 'window'))
+           ('description', 'scope', 'window', 'channel_layout'))
+    if 'channel_layout' in config and config['channel_layout'] not in ('user-assistant', 'assistant-user'):
+        raise ValueError('channel_layout 必须为 user-assistant 或 assistant-user')
     if config['schema_version'] != SCHEMA_VERSION:
         raise ValueError('只支持 detection definition schema_version 1.0')
     for key in ('id', 'version'):

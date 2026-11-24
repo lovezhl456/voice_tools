@@ -7,7 +7,7 @@
   const byId = new Map(data.records.map((record) => [record.assessment_id, record]));
   let current = null, visible = [], formDirty = false, dirty = false;
   const filter = createReviewFileFilter(data.records, (record) => record.assessment_id, refresh);
-  const message = (text) => { $('message').textContent = text; };
+  const message = (text) => VoiceMotion.feedback($('message'), text);
   const waveform = createReviewWaveform($('player'), (start, end) => playback.setRange(start, end), message,
     {focusSelection: true});
   const playback = createReviewPlayback($('player'), {

@@ -2,7 +2,24 @@ const tools = JSON.parse(document.querySelector('#workbench-tabs').textContent);
 const tablist = document.querySelector('#tabs');
 const panels = document.querySelector('#panels');
 const views = new Map();
+const pauseBackground = document.querySelector('#pause-background');
+let backgroundMedia = [];
+const defaultTool = tools.find(tool => tool.status === 'imported') ||
+  tools.find(tool => tool.id === 'tasks') || tools[0];
 let activeId;
+const indicator = document.createElement('span');
+indicator.className = 'tab-indicator';
+indicator.setAttribute('aria-hidden', 'true');
+tablist.append(indicator);
+const tabSizes = new ResizeObserver(() => placeIndicator(true));
+
+function placeIndicator(immediate) {
+  const tab = views.get(activeId)?.tab;
+  if (!tab) return;
+  indicator.classList.toggle('position-immediately', immediate);
+  indicator.style.translate = tab.offsetLeft + 'px 0';
+  indicator.style.width = tab.offsetWidth + 'px';
+}
 const storageKey = `voice-workbench-tab:${location.pathname}`;
 let savedTab;
 try { savedTab = localStorage.getItem(storageKey); } catch {}
@@ -38,8 +55,46 @@ for (const tool of tools) {
   tablist.append(tab);
   const view = {tool, tab, panel, status, message, retry, frame:null, loading:false, timer:null};
   views.set(tool.id, view);
+  tabSizes.observe(tab);
   tab.addEventListener('click', () => selectTab(tool.id, true));
   retry.addEventListener('click', () => loadPage(view));
+}
+
+function playingMedia(view) {
+  const audioAndVideo = view.frame?.contentDocument?.querySelectorAll('audio,video') || [];
+  return Array.from(audioAndVideo).filter(media => !media.paused && !media.ended);
+}
+
+function updateBackgroundPlayback() {
+  const playing = [...views.values()].filter(view => view.tool.id !== activeId)
+    .map(view => ({view, media: playingMedia(view)})).filter(item => item.media.length);
+  backgroundMedia = playing.flatMap(item => item.media);
+  pauseBackground.hidden = !backgroundMedia.length;
+  pauseBackground.textContent = playing.length === 1
+    ? '暂停' + playing[0].view.tool.label + '试听'
+    : '暂停后台试听';
+}
+
+pauseBackground.addEventListener('click', () => {
+  backgroundMedia.forEach(media => media.pause());
+  updateBackgroundPlayback();
+  views.get(activeId).tab.focus();
+});
+
+function trackPlayback(frame, view) {
+  // Local file iframes may be isolated by the browser.
+  const page = frame.contentDocument;
+  if (!page) return;
+  page.addEventListener('play', event => {
+    if (!event.target.matches?.('audio,video')) return;
+    for (const other of views.values()) {
+      if (other !== view) playingMedia(other).forEach(media => media.pause());
+    }
+    updateBackgroundPlayback();
+  }, true);
+  for (const event of ['pause', 'ended', 'emptied']) {
+    page.addEventListener(event, updateBackgroundPlayback, true);
+  }
 }
 
 async function loadPage(view) {
@@ -49,7 +104,7 @@ async function loadPage(view) {
   view.frame = null;
   view.loading = true;
   view.status.hidden = false;
-  view.message.textContent = '正在加载页面…';
+  VoiceMotion.feedback(view.message, '正在加载页面…');
   view.retry.hidden = true;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
@@ -65,19 +120,24 @@ async function loadPage(view) {
     // Keep loaded frames mounted so forms, subpages and scroll positions survive tab changes.
     frame.addEventListener('load', () => {
       if (view.frame !== frame) return;
+      const arriving = !view.status.hidden && activeId === view.tool.id;
       view.status.hidden = true;
       view.loading = false;
+      if (arriving) VoiceMotion.reveal(frame);
       clearTimeout(view.timer);
-    }, {once:true});
+      trackPlayback(frame, view);
+      updateBackgroundPlayback();
+    });
     view.timer = setTimeout(() => {
-      view.message.textContent = '页面加载较慢，可继续等待或重新加载。';
+      VoiceMotion.feedback(view.message, '页面加载较慢，可继续等待或重新加载。');
       view.retry.hidden = false;
       view.loading = false;
     }, 15000);
     view.frame = frame;
     view.panel.prepend(frame);
   } catch (error) {
-    view.message.textContent = error.name === 'AbortError' ? '页面连接超时，请重试。' : '这个页面暂时无法打开，请重试。';
+    VoiceMotion.feedback(view.message, error.name === 'AbortError'
+      ? '页面连接超时，请重试。' : '这个页面暂时无法打开，请重试。');
     view.retry.hidden = false;
     view.loading = false;
   } finally {
@@ -86,11 +146,10 @@ async function loadPage(view) {
 }
 
 function selectTab(id, updateHistory = false) {
-  const selected = views.get(id) || views.get(tools[0].id);
-  // Stop audio when leaving a page, while retaining the playback position and form state.
-  if (activeId && activeId !== selected.tool.id) {
-    try { views.get(activeId).frame?.contentDocument.querySelectorAll('audio,video').forEach(media => media.pause()); } catch {}
-  }
+  const selected = views.get(id) || views.get(defaultTool.id);
+  const previous = views.get(activeId)?.frame;
+  const changed = activeId !== selected.tool.id;
+  const first = !activeId;
   activeId = selected.tool.id;
   for (const view of views.values()) {
     const active = view === selected;
@@ -98,6 +157,12 @@ function selectTab(id, updateHistory = false) {
     view.tab.tabIndex = active ? 0 : -1;
     view.panel.hidden = !active;
   }
+  if (changed) {
+    placeIndicator(first);
+    if (previous) VoiceMotion.stop(previous);
+    if (selected.frame && selected.status.hidden) VoiceMotion.reveal(selected.frame);
+  }
+  updateBackgroundPlayback();
   document.querySelector('#description').textContent = selected.tool.description;
   document.querySelector('#open-page').href = selected.tool.url;
   document.title = `${selected.tool.label} · voice_tools 工作台`;

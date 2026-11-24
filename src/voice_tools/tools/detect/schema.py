@@ -37,6 +37,7 @@ def schema():
     result = obj({
         'schema_version': {'const': '1.0'}, 'id': identity, 'version': identity, 'name': text,
         'description': {'type': 'string', 'minLength': 1, 'maxLength': 4000},
+        'channel_layout': {'enum': ['user-assistant', 'assistant-user']},
         'scope': obj({'start_s': number(), 'end_s': {'anyOf': [number(), {'type': 'null'}]},
                       'skip_first_s': number(), 'skip_last_s': number(),
                       'exclude': {'type': 'array', 'maxItems': 100, 'items': obj({'start_s': number(), 'end_s': number()}, ['start_s', 'end_s'])}}),

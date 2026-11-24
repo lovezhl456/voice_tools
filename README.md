@@ -1,10 +1,10 @@
 # voice_tools · 语音工具导航
 
-**日常录音质检：** [本地工作区](docs/detection-workspace.md)支持固定目录与规则组合、批跑后直接复核入库、未命中抽检，以及固定样本集上的规则版本比较。
+voice_tools 处理录音质检和通话排障。各工具通过 `voice-tools <工具> <操作>` 运行。
 
-新增：`voice-tools detect` 支持[自定义指标与规则、业务标签检索和人工复核](docs/detection-rules.md)。通过[配置界面](docs/detection-editor.md)创建指标和标签；`detect serve` 可在本机页面保存版本并执行检测。JSON／CLI 格式继续兼容，原专项脚本可后续迁移。
-
-面向语音业务的工具集，统一安装，通过 `voice-tools <工具> <操作>` 使用。各工具独立维护功能、配置、输出和测试；从下面选择当前要解决的问题。
+- 日常检测从[录音质检工作区](docs/detection-workspace.md)开始。选择规则后批跑，可直接试听、复核入库和抽检。
+- 手头已有本地报告时，用 `voice-tools workbench build --help` 查看怎样将报告汇总到[语音工作台](docs/tabbed-workbench.md)。
+- 排查停顿、抓包、SIP 或音质时，可按下表选命令。
 
 [版本记录与迭代规则](CHANGELOG.md)：统一查看历史版本编排、开发分支命名和下一版本计划。
 
@@ -16,6 +16,7 @@
 
 | 工具 | 适用场景 | 命令入口 | 使用文档 |
 |---|---|---|---|
+| **按规则检测与复核** | 自定义检测指标，批量发现异常，按录音试听和补标 | `voice-tools detect serve` | [日常工作区](docs/detection-workspace.md) · [规则编辑](docs/detection-editor.md) |
 | **整通自动质检** | 工程规则与本地语音模型联合判定，按整通汇总，人工只处理例外与抽检 | `voice-tools qa assess` | [安装与使用](docs/automatic-qa.md) · [验收](docs/automatic-qa-validation.md) |
 | **回声积压** | 对齐原声和实际返听，量化旧音、停转发与其他流同期到包 | `voice-tools gaps echo` | [回声拨测与 RTP](docs/output-gaps.md#回声拨测的旧音与双腿-rtp) |
 | **输出中途间隙** | 独立检测长停顿、短断音、聚集和有预期的中断，关联 RTP/NISQA 并试听标注 | `voice-tools gaps analyze / review-check` | [使用](docs/output-gaps.md) · [合同](docs/output-gaps-contract.md) · [验收](docs/output-gaps-validation.md) |
@@ -26,6 +27,7 @@
 | **双声道录音质检** | 批量筛查用户发言后 AI 无声或延迟输出的候选片段，生成试听报告与人工复核表 | `voice-tools qa` | [录音质检指南](docs/recording-qa.md) · [事件示例](examples/call.events.json) |
 | **HOMER 7 CLI** | 按号码、Call-ID、时间等查询 SIP，追踪通话、导出报文并检查 UDP 风险线索 | `voice-tools homer` | [HOMER 完整手册](docs/homer.md) · [AI 调用约定](docs/homer/ai-usage.md) |
 | **复核与版本评估** | 波形/单轨试听/标注，冻结时间轴，比较固定黄金集上的两个版本 | `voice-tools qa freeze / promote / evaluate / compare` | [人工手册](docs/manual.md) · [Agent 协议](docs/ai-usage.md) |
+| **跨主机任务** | 编排分析或拨测步骤，在另一台机器执行，取回证据复查 | `voice-tools task workbench / pack / review` | [任务手册](docs/task-delivery.md) |
 | **多 Tab HTML 工作台** | 汇集检测、整通质检、输出间隙与任务页，生成可搬移的统一入口 | `voice-tools workbench build` | [工作台用法](docs/tabbed-workbench.md) |
 | **会话抓包** | SSH 通过 FreeSWITCH UUID 查询媒体端点，限时 dumpcap 抓包并校验 SCP 取回 | `voice-tools capture` | [抓包与报告指南](docs/capture-report.md) |
 | **按号码抓包** | 按主叫/被叫限时采集，服务器按 Call-ID 拆分 SIP/RTP 并打包下载 | `voice-tools capture by-number` | [号码抓包与恢复](docs/capture-by-number.md) |

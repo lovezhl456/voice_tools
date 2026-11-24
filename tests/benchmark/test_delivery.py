@@ -62,10 +62,15 @@ class TimingDeliveryTests(unittest.TestCase):
         self.assertNotIn('/*__DATA__*/', html)
         page = Page(html)
         sources = [script['attrs']['src'] for script in page.scripts if 'src' in script['attrs']]
-        self.assertEqual(sources, ['benchmark.js', 'latency.js', 'app.js'])
+        self.assertEqual(sources, ['motion.js', 'benchmark.js', 'latency.js', 'app.js'])
         self.assertEqual(page.stylesheets, ['style.css', 'latency.css'])
         for name in sources + page.stylesheets:
-            directory = latency_report.WEB if name in ('latency.js', 'latency.css') else review.WEB
+            if name == 'motion.js':
+                directory = review.ASSETS
+            elif name in ('latency.js', 'latency.css'):
+                directory = latency_report.WEB
+            else:
+                directory = review.WEB
             self.assertEqual((output / name).read_bytes(), (directory / name).read_bytes())
         statements = [script['text'] for script in page.scripts if 'src' not in script['attrs']]
         self.assertEqual(len(statements), 1)

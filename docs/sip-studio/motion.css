@@ -1,0 +1,100 @@
+:root {
+  --motion-ease: cubic-bezier(.2, .72, .24, 1);
+  --motion-exit: cubic-bezier(.4, 0, 1, 1);
+  --motion-press: 65ms;
+  --motion-feedback: 120ms;
+  --motion-enter: 180ms;
+  --motion-leave: 105ms;
+}
+
+:where(button, a.open-page, .fileButton):not(:disabled) {
+  transition: scale var(--motion-feedback) var(--motion-ease),
+    background-color var(--motion-feedback) var(--motion-ease),
+    border-color var(--motion-feedback) var(--motion-ease),
+    color var(--motion-feedback) var(--motion-ease);
+}
+
+:where(button, a.open-page, .fileButton):not(:disabled):active {
+  scale: .982;
+  transition-duration: var(--motion-press);
+}
+
+:where([aria-current], [aria-pressed], [aria-selected], .selected, .active) {
+  transition: background-color var(--motion-feedback) var(--motion-ease),
+    border-color var(--motion-feedback) var(--motion-ease),
+    color var(--motion-feedback) var(--motion-ease);
+}
+
+.play-symbol { display: inline-block; min-width: 1em; text-align: center; }
+
+[data-motion-enter] {
+  animation: voice-enter var(--motion-enter) var(--motion-ease) backwards;
+}
+
+@keyframes voice-enter {
+  from { opacity: .65; translate: 0 4px; }
+}
+
+@supports selector(details::details-content) {
+  details::details-content {
+    opacity: 0;
+    transition: opacity var(--motion-leave) var(--motion-exit),
+      content-visibility var(--motion-leave) allow-discrete;
+  }
+
+  details:not([open])::details-content { pointer-events: none; }
+
+  details[open]::details-content {
+    opacity: 1;
+    transition-duration: var(--motion-enter);
+    transition-timing-function: var(--motion-ease);
+  }
+}
+
+@supports (transition-behavior: allow-discrete) and (overlay: auto) {
+  dialog {
+    opacity: 0;
+    translate: 0 4px;
+    transition: opacity var(--motion-leave) var(--motion-exit),
+      translate var(--motion-leave) var(--motion-exit),
+      display var(--motion-leave) allow-discrete,
+      overlay var(--motion-leave) allow-discrete;
+  }
+
+  dialog:not([open]), dialog:not([open])::backdrop { pointer-events: none; }
+
+  dialog[open] {
+    opacity: 1;
+    translate: 0 0;
+    transition-duration: var(--motion-enter);
+    transition-timing-function: var(--motion-ease);
+  }
+
+  dialog::backdrop {
+    opacity: 0;
+    transition: opacity var(--motion-leave) var(--motion-exit),
+      display var(--motion-leave) allow-discrete,
+      overlay var(--motion-leave) allow-discrete;
+  }
+
+  dialog[open]::backdrop {
+    opacity: 1;
+    transition-duration: var(--motion-enter);
+  }
+
+  @starting-style {
+    dialog[open] { opacity: 0; translate: 0 4px; }
+    dialog[open]::backdrop { opacity: 0; }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-press: 0ms;
+    --motion-feedback: 0ms;
+    --motion-enter: 0ms;
+    --motion-leave: 0ms;
+  }
+
+  :where(button, a.open-page, .fileButton):not(:disabled):active { scale: none; }
+}

@@ -62,10 +62,11 @@ test('E02 visual metric and AND rules save to library and run into searchable la
   await page.getByRole('button',{name:'运行检测并生成报告',exact:true}).click();
   await expect(page.locator('#runResult')).toContainText('3 通录音，1 条标签，0 项错误');
   await page.getByRole('link',{name:'打开本次检测与标签复核报告',exact:true}).click();
+  await page.locator('#reportTools summary').click();
   await page.getByRole('combobox',{name:'标签（逗号分隔）',exact:true}).fill('界面安静候选');
   await page.getByRole('combobox',{name:'检测定义',exact:true}).selectOption(id);
   expect(await page.locator('#queue button').count()).toBeGreaterThanOrEqual(1);
-  await expect(page.locator('#waveform canvas').first()).toBeVisible();
+  await expect(page.locator('#duplexCanvas')).toBeVisible();
   await page.getByRole('link',{name:'定义指标与标签',exact:true}).click();
   await page.getByRole('combobox',{name:'选择已保存配置',exact:true}).selectOption(id+'@1');
   await expect(page.getByLabel('输出业务标签',{exact:true})).toHaveValue('界面安静候选');
