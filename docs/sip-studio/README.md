@@ -89,4 +89,6 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 
 从仓库根目录、选定测试虚拟环境执行。这些命令不发 SIP；源码来源、依赖和整体选测规则见[测试指南](../testing.md)。UI 变更另需在桌面浏览器验证拖拽、侧栏编辑、导入导出、刷新恢复和素材。
 
+Studio 可从单独目录离线运行，并随目录保存共享动效文件。修改 `src/voice_tools/core/review/motion.css` 或 `motion.js` 时，把对应文件同步到 `docs/sip-studio/`，更新入口引用的版本参数。兼容检查会校验两处内容。
+
 导入 Studio 草稿与恢复本浏览器存档时，可选运行参数会按 CLI 默认值补齐；不自动追加导入文件里没有的挂断步骤。
