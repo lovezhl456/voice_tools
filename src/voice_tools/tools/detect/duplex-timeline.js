@@ -58,7 +58,8 @@
     ctx.restore();
   }
 
-  window.createRecordingDuplexTimeline = (player, seek) => {
+  window.createRecordingDuplexTimeline = (player, seek, onView) => {
+    const maxZoom = onView ? 120 : MAX_ZOOM;
     const $ = (id) => document.getElementById(id);
     const timeline = $("duplexTimeline");
     const plot = $("duplexWave");
@@ -137,7 +138,7 @@
       zoom = nextZoom;
       viewStart = Math.max(0, Math.min(duration - viewSpan(), at - viewSpan() / 2));
       $("duplexZoomOut").disabled = !summary || zoom === 1;
-      $("duplexZoomIn").disabled = !summary || zoom === MAX_ZOOM;
+      $("duplexZoomIn").disabled = !summary || zoom >= maxZoom;
       $("duplexFit").disabled = !summary;
       $("duplexFit").textContent = zoom === 1 ? "全长" : "×" + zoom;
       const digits = viewSpan() < 4 ? 2 : 1;
@@ -151,6 +152,7 @@
       layoutRange(range, auditionRange);
       layoutRange(evidence, evidenceRange);
       draw();
+      if (onView) onView(viewStart, viewEnd());
     }
 
     function setPosition(time) {
@@ -173,7 +175,7 @@
       syncPlayhead();
     }
     $("duplexZoomOut").onclick = () => changeZoom(Math.max(1, zoom / 2));
-    $("duplexZoomIn").onclick = () => changeZoom(Math.min(MAX_ZOOM, zoom * 2));
+    $("duplexZoomIn").onclick = () => changeZoom(Math.min(maxZoom, zoom * 2));
     $("duplexFit").onclick = () => changeZoom(1);
     new ResizeObserver(([entry]) => {
       plotWidth = entry.contentRect.width;
@@ -213,6 +215,9 @@
       },
       layoutAnnotations,
       setPosition,
+      showWindow(start, end) {
+        if (summary && end > start) setView(Math.max(1, duration / (end - start)), (start + end) / 2);
+      },
       setRange(start, end) {
         auditionRange = {start, end};
         layoutRange(range, auditionRange);

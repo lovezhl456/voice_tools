@@ -97,7 +97,7 @@ def measurement(raw):
                            for direction in ("human_to_ai", "ai_to_human")}}
 
 
-def analyze_file(path, folder, engine, parameters, sources, channel, timeout, include_audio, provenance):
+def measure_path(path, engine, parameters, channel, timeout):
     meta = inspect_wav(path)
     identity = sha256(path)
     with tempfile.TemporaryDirectory(prefix="latency-protocol-") as temporary:
@@ -110,6 +110,11 @@ def analyze_file(path, folder, engine, parameters, sources, channel, timeout, in
         raise ValueError("引擎响应协议不匹配")
     if sha256(path) != identity:
         raise ValueError("录音在分析过程中发生变化，结果未被接受")
+    return meta, identity, raw
+
+
+def analyze_file(path, folder, engine, parameters, sources, channel, timeout, include_audio, provenance):
+    meta, identity, raw = measure_path(path, engine, parameters, channel, timeout)
     detail = {"kind": "latency_recording", "schema_version": SCHEMA_VERSION, "tool_version": __version__,
               "recording_id": identity, "input": str(path), "audio": {**meta, "sha256": identity, "pcm_sha256": raw["pcm_sha256"]},
               "system_channel": channel, "human_channel": "right" if channel == "left" else "left",

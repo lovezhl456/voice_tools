@@ -71,8 +71,12 @@ def library_id(db):
     return db.execute("SELECT value FROM meta WHERE key='library_id'").fetchone()[0]
 
 
-def save_definition(db, config):
-    config = validate(config)
+def save_definition(db, config, *, timeline=False):
+    if timeline:
+        from .timeline_rules import validate as validate_timeline
+        config = validate_timeline(config)
+    else:
+        config = validate(config)
     digest = fingerprint(config)
     previous = db.execute('SELECT hash FROM definitions WHERE id=? AND version=?',
                           (config['id'], config['version'])).fetchone()
@@ -84,17 +88,23 @@ def save_definition(db, config):
 
 
 def definitions(db):
-    return [dict(row) for row in db.execute('SELECT hash,id,version,name FROM definitions ORDER BY id,version')]
+    rows = db.execute('SELECT hash,id,version,name,config FROM definitions ORDER BY id,version')
+    return [{key: row[key] for key in ('hash', 'id', 'version', 'name')} for row in rows
+            if json.loads(row['config'])['schema_version'] == '1.0' and row['id'] != 'workbench-manual']
 
 
-def select_definition(db, reference):
+def select_definition(db, reference, *, timeline=False):
     parts = reference.split('@')
     if len(parts) != 2:
         raise ValueError('检测定义必须为 id@version，不能隐式选择最新版本')
     row = db.execute('SELECT config FROM definitions WHERE id=? AND version=?', parts).fetchone()
     if row is None:
         raise ValueError(f'检测定义不存在：{reference}')
-    return validate(json.loads(row['config']))
+    document = json.loads(row['config'])
+    if timeline:
+        from .timeline_rules import validate as validate_timeline
+        return validate_timeline(document)
+    return validate(document)
 
 
 def batch_details(db):
@@ -145,9 +155,10 @@ def decode_finding(db, row):
     return item
 
 
-def query(db, tags=(), tag_mode='any', recording=None, batch=None, definition=None, version=None, status=None):
+def query(db, tags=(), tag_mode='any', recording=None, batch=None, definition=None, version=None, status=None, *, exact_recording=None):
     clauses, args = [], []
-    for column, value in (('f.batch_id', batch), ('d.id', definition), ('d.version', version)):
+    for column, value in (('f.batch_id', batch), ('d.id', definition), ('d.version', version),
+                          ('f.recording_id', exact_recording)):
         if value is not None:
             clauses.append(column + '=?')
             args.append(value)

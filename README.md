@@ -2,7 +2,7 @@
 
 voice_tools 处理录音质检和通话排障。各工具通过 `voice-tools <工具> <操作>` 运行。
 
-- 日常检测从[录音质检工作区](docs/detection-workspace.md)开始。选择规则后批跑，可直接试听、复核入库和抽检。
+- 日常质检从[录音质检工作台](docs/recording-workbench.md)开始。关联原录音目录，选择全局规则，标注、复核和多选导出。
 - 手头已有本地报告时，用 `voice-tools workbench build --help` 查看怎样将报告汇总到[语音工作台](docs/tabbed-workbench.md)。
 - 排查停顿、抓包、SIP 或音质时，可按下表选命令。
 

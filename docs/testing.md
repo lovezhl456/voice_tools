@@ -83,6 +83,15 @@ env -u VOICE_TOOLS_SIP_LOOPBACK -u VOICE_TOOLS_NISQA_MODEL_DIR -u VOICE_TOOLS_NI
 
 这三个命令不启用真实模型、latency 真实引擎或 SIP 原生回环，但会运行本机模拟 HTTP 服务、离线系统工具及受控子进程。Python discovery 会通过 `tests.latency.test_web` 调用现有 Node 渲染测试，不需在全量流程中再单独运行一次。Python 通过不能替代 Studio Node 或 CLI 兼容结果。测试数随版本变化，不能用旧版本数量作通过门槛。
 
+新版录音质检工作台使用相同 wheel 运行独立浏览器流程。需要可用的本机逐轮延迟引擎。
+
+```sh
+env -u OPENAI_API_KEY VOICE_TOOLS_LATENCY_DIR="$PWD/.local/latency" \
+  node tests/browser/recording-workbench.cjs .artifacts/recording-workbench "$PWD/.venv/bin/python" "$PWD/.artifacts/review-check/package"
+```
+
+检查关联原文件夹、跨录音多选、同一区间双规则、独立复核与重新打开、50 处密集标记、ZIP 音频摘要和多轮 AI 规则草稿。AI 响应使用替身，逐轮时序使用本机真实引擎。保留结果、截图、输入和 `verification.json`。
+
 ## 独立专项
 
 SIP 与 benchmark 共用原生回环开关，运行时一并选择，所有呼叫限制在本机：
