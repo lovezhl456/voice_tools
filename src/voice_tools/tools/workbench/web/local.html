@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>语音工作台 · voice_tools</title>
+<style>
+:root{color-scheme:light dark;font:16px/1.6 system-ui}
+main{max-width:38rem;margin:10vh auto;padding:24px}
+nav{display:flex;flex-wrap:wrap;gap:16px}
+</style>
+</head>
+<body>
+<main>
+<h1>语音工作台</h1>
+<nav aria-label="工作台入口">
+<a href="http://127.0.0.1:8766/recordings/">录音质检工作台</a>
+<a href="../voice-tasks/">批量拨测工作台</a>
+<a href="legacy.html#detection">历史报告</a>
+</nav>
+<p>如果录音质检工作台未打开，请检查本机检测服务。</p>
+</main>
+<script>
+"use strict";
+const legacy = ["#detection", "#autoqa", "#gaps", "#tasks", "#guide"];
+if (legacy.includes(location.hash)) location.replace("legacy.html" + location.hash);
+else if (["127.0.0.1", "localhost"].includes(location.hostname)) {
+  location.replace("http://127.0.0.1:8766/recordings/");
+}
+</script>
+</body>
+</html>

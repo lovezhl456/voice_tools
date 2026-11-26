@@ -58,7 +58,8 @@
     ctx.restore();
   }
 
-  window.createRecordingDuplexTimeline = (player, seek) => {
+  window.createRecordingDuplexTimeline = (player, seek, onView) => {
+    const maxZoom = onView ? 120 : MAX_ZOOM;
     const $ = (id) => document.getElementById(id);
     const timeline = $("duplexTimeline");
     const plot = $("duplexWave");
@@ -137,7 +138,7 @@
       zoom = nextZoom;
       viewStart = Math.max(0, Math.min(duration - viewSpan(), at - viewSpan() / 2));
       $("duplexZoomOut").disabled = !summary || zoom === 1;
-      $("duplexZoomIn").disabled = !summary || zoom === MAX_ZOOM;
+      $("duplexZoomIn").disabled = !summary || zoom >= maxZoom;
       $("duplexFit").disabled = !summary;
       $("duplexFit").textContent = zoom === 1 ? "全长" : "×" + zoom;
       const digits = viewSpan() < 4 ? 2 : 1;
@@ -151,12 +152,14 @@
       layoutRange(range, auditionRange);
       layoutRange(evidence, evidenceRange);
       draw();
+      if (onView) onView(viewStart, viewEnd());
     }
 
     function setPosition(time) {
       if (!summary || !plotWidth || cursor.hidden) return;
       const at = Math.min(duration, time);
-      if (at < viewStart || at > viewEnd()) setView(zoom, at);
+      // Media seeks round to the browser timebase; a rounded boundary still belongs to this view.
+      if (at < viewStart - 0.001 || at > viewEnd() + 0.001) setView(zoom, at);
       cursor.style.translate = ((at - viewStart) / viewSpan() * plotWidth - 1) + "px 0";
     }
 
@@ -173,7 +176,7 @@
       syncPlayhead();
     }
     $("duplexZoomOut").onclick = () => changeZoom(Math.max(1, zoom / 2));
-    $("duplexZoomIn").onclick = () => changeZoom(Math.min(MAX_ZOOM, zoom * 2));
+    $("duplexZoomIn").onclick = () => changeZoom(Math.min(maxZoom, zoom * 2));
     $("duplexFit").onclick = () => changeZoom(1);
     new ResizeObserver(([entry]) => {
       plotWidth = entry.contentRect.width;
@@ -213,13 +216,16 @@
       },
       layoutAnnotations,
       setPosition,
+      showWindow(start, end) {
+        if (summary && end > start) setView(Math.max(1, duration / (end - start)), (start + end) / 2);
+      },
       setRange(start, end) {
         auditionRange = {start, end};
         layoutRange(range, auditionRange);
       },
       setEvidence(start, end, visible) {
         evidenceRange = visible ? {start, end} : null;
-        if (start < viewStart || start > viewEnd()) setView(zoom, start);
+        if (visible && (start < viewStart - 0.001 || start > viewEnd() + 0.001)) setView(zoom, start);
         else layoutRange(evidence, evidenceRange);
       },
     };

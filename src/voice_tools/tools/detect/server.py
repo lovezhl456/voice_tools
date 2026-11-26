@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import secrets
 import shutil
+import sys
 import threading
 from urllib.parse import unquote, urlsplit
 
@@ -25,7 +26,7 @@ class EditorApplication:
         self.database = Path(database).resolve()
         self.output = Path(output).resolve()
         from .workbench import Workbench, restore_inputs
-        if not inputs:
+        if not inputs and self.database.is_file():
             inputs = restore_inputs(self.database, self.output)
         sources = [Path(path).resolve() for path in inputs]
         for source in sources:
@@ -36,7 +37,7 @@ class EditorApplication:
         marker = self.output / '.library.json'
         if self.database in (self.output, marker) or self.database == reports or reports in self.database.parents:
             raise ValueError('检测库不能使用服务输出目录、标记文件或公开报告目录的位置')
-        self.inputs = discover(sources)
+        self.inputs = discover(sources) if sources else []
         self.token = secrets.token_urlsafe(32)
         # Jobs and short online saves share this gate before acquiring SQLite write locks.
         self.run_lock = threading.Lock()
@@ -61,9 +62,11 @@ class EditorApplication:
         (self.output / 'reports').mkdir(exist_ok=True)
         self.workbench = Workbench(self, sources)
         self.workbench.scan()
+        from .recording_workspace import RecordingWorkspace
+        self.recordings = RecordingWorkspace(self, sources)
 
     def definitions(self, db):
-        return [store.select_definition(db, row['id'] + '@' + row['version']) for row in store.definitions(db)]
+        return [config for config in self.recordings.definitions(db) if config['schema_version'] == '1.0']
 
     def library(self):
         with store.connect(self.database) as db:
@@ -195,6 +198,18 @@ class EditorHandler(SimpleHTTPRequestHandler):
                 fields(request, ('config',), name='配置请求')
                 config = validate(request['config'])
                 result = {'config': config} if route == '/api/validate' else self.app.save(config)
+            elif route.startswith('/api/recordings/'):
+                result = self.app.recordings.dispatch(route, request)
+                if route == '/api/recordings/export':
+                    with result as archive:
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'application/zip')
+                        self.send_header('Content-Disposition', 'attachment; filename="recordings-review.zip"')
+                        self.send_header('Content-Length', str(archive.seek(0, 2)))
+                        self.end_headers()
+                        archive.seek(0)
+                        shutil.copyfileobj(archive, self.wfile)
+                    return
             elif route.startswith('/api/workspace/'):
                 result = self.app.workbench.dispatch(route, request)
             elif route == '/api/run':
@@ -244,6 +259,19 @@ class EditorHandler(SimpleHTTPRequestHandler):
     def send_head(self):
         self.remaining = None
         route = unquote(urlsplit(self.path).path)
+        if route.startswith('/recordings/'):
+            resource = self.app.recordings.resource(route)
+            if resource is None:
+                self.send_error(404)
+                return None
+            if isinstance(resource, bytes):
+                import io
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.send_header('Content-Length', str(len(resource)))
+                self.end_headers()
+                return io.BytesIO(resource)
+            return self.send_file_range(resource)
         if route in ('/', '/editor.html', '/workspace'):
             import io
             payload = (self.app.workbench.html() if route == '/workspace' else self.app.html()).encode('utf-8')
@@ -276,7 +304,14 @@ class EditorHandler(SimpleHTTPRequestHandler):
             self.send_header('Content-Length', str(len(payload)))
             self.end_headers()
             return io.BytesIO(payload)
-        stream = path.open('rb')
+        return self.send_file_range(path)
+
+    def send_file_range(self, path):
+        try:
+            stream = path.open('rb')
+        except OSError:
+            self.send_error(404)
+            return None
         size = path.stat().st_size
         start, end = 0, size - 1
         header = self.headers.get('Range')
@@ -318,9 +353,20 @@ class EditorHandler(SimpleHTTPRequestHandler):
             remaining -= len(block)
 
 
+class EditorServer(ThreadingHTTPServer):
+    def handle_error(self, request, client_address):
+        if not isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError)):
+            super().handle_error(request, client_address)
+
+    def server_close(self):
+        super().server_close()
+        if hasattr(self, 'application'):
+            self.application.recordings.close()
+
+
 def create_server(database, inputs, output, port=0):
     application = EditorApplication(database, inputs, output)
-    server = ThreadingHTTPServer(('127.0.0.1', port), EditorHandler)
+    server = EditorServer(('127.0.0.1', port), EditorHandler)
     server.application = application
     return server
 
@@ -330,9 +376,9 @@ def serve(args):
         url = f'http://127.0.0.1:{server.server_port}/'
         if args.json_output:
             print(json.dumps({'ok': True, 'status': 'listening', 'url': url, 'workspace_url': url + 'workspace',
-                              'recordings': len(server.application.inputs)}), flush=True)
+                              'recording_workbench_url': url + 'recordings/', 'recordings': len(server.application.inputs)}), flush=True)
         else:
-            print('录音质检工作区：' + url + 'workspace ；按 Ctrl+C 停止服务。', flush=True)
+            print('录音质检工作台：' + url + 'recordings/ ；按 Ctrl+C 停止服务。', flush=True)
         try:
             server.serve_forever()
         except KeyboardInterrupt:

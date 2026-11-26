@@ -22,10 +22,10 @@ def workspace_id(output):
 def restore_inputs(database, output):
     with store.connect(database) as db:
         if not db.execute("SELECT 1 FROM sqlite_master WHERE name='workspaces'").fetchone():
-            raise ValueError('首次启动请指定录音目录')
+            return []
         saved = workspace.settings(db, workspace_id(output))
         if not saved:
-            raise ValueError('没有已保存的工作区，请指定录音目录')
+            return []
         return [Path(path) for path in saved['roots']]
 
 
@@ -46,7 +46,7 @@ class Workbench:
                 workspace.save_settings(db, self.id, value, saved['revision'] if saved else 0)
 
     def scan(self):
-        paths = discover(self.roots)
+        paths = discover(self.roots) if self.roots else []
         output = self.app.output
         for path in paths:
             if path == output or output in path.parents:
