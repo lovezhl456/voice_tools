@@ -123,9 +123,13 @@ raise SystemExit(main())
       await page.getByRole("button", {name: "关闭窗口"}).click();
     }
     async function record() {
+      const before = await page.locator("#job").getAttribute("data-job-id");
       await page.getByRole("button", {name: "标注当前录音"}).click();
       await page.getByRole("button", {name: "开始标注"}).click();
-      await page.locator("#job").filter({hasText: /标注完成|部分完成/}).waitFor();
+      await page.waitForFunction(previous => {
+        const job = document.querySelector("#job");
+        return job.dataset.jobId !== previous && /标注完成|部分完成/.test(job.textContent);
+      }, before);
     }
     await choose(["双轨安静"]);
     await page.getByRole("button", {name: "a.wav", exact: true}).click();
@@ -178,6 +182,77 @@ raise SystemExit(main())
     await page.getByRole("button", {name: "存入全局规则库"}).click();
     await page.getByRole("status").filter({hasText: "已保存。"}).waitFor();
     await page.getByRole("button", {name: "关闭窗口"}).click();
+    async function associate(folder, channel) {
+      await page.getByRole("button", {name: "关联", exact: true}).click();
+      await page.getByLabel("本机文件夹绝对路径").fill(folder);
+      await page.getByLabel("AI 所在声道").selectOption(channel);
+      await page.getByRole("button", {name: "关联并扫描"}).click();
+      await page.getByRole("dialog").waitFor({state: "hidden"});
+    }
+    await page.getByRole("button", {name: "a.wav", exact: true}).click();
+    await page.getByRole("checkbox", {name: "确认 双轨安静 00:02.00"}).waitFor();
+    const originalRows = await page.locator("#marks tr").count();
+    await choose(["双轨安静", "输出停顿"]);
+    await record();
+    assert.equal(await page.locator("#marks tr").count(), originalRows);
+    assert.ok(await page.getByRole("checkbox", {name: "确认 双轨安静 00:02.00"}).isChecked());
+
+    await associate(inputs, "0");
+    await page.locator("#mapping-notice").filter({hasText: "输出停顿"}).waitFor();
+    assert.equal(await page.locator("#marks tr").filter({hasText: "输出停顿"}).count(), 0);
+    await page.getByRole("checkbox", {name: "导出 a.wav"}).check();
+    for (const history of [false, true]) {
+      await page.getByRole("button", {name: "导出所选录音（1）"}).click();
+      await page.getByRole("checkbox", {name: "仅数据", exact: true}).check();
+      if (history) await page.getByRole("checkbox", {name: "包含历史批次"}).check();
+      const download = page.waitForEvent("download");
+      await page.getByRole("button", {name: "下载 ZIP"}).click();
+      await (await download).saveAs(path.join(root, history ? "history.zip" : "current.zip"));
+    }
+    await associate(inputs, "1");
+    await page.getByRole("checkbox", {name: "确认 输出停顿 00:02.00"}).waitFor();
+    await page.getByRole("button", {name: "导入规则", exact: true}).click();
+    await page.getByLabel("选择规则 JSON").setInputFiles(path.join(root, "quiet.json"));
+    await page.getByLabel("规则版本").fill("2");
+    await page.getByRole("button", {name: "存入全局规则库"}).click();
+    await page.getByRole("status").filter({hasText: "@2 已保存。"}).waitFor();
+    const ruleDownload = page.waitForEvent("download");
+    await page.getByRole("button", {name: "导出规则 JSON"}).click();
+    const savedRule = await ruleDownload;
+    assert.equal(savedRule.suggestedFilename(), "quiet-2.json");
+    await savedRule.saveAs(path.join(root, "saved-rule.json"));
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, "saved-rule.json"))).version, "2");
+    await page.getByRole("button", {name: "关闭窗口"}).click();
+
+    const short = {schema_version: "1.0", id: "windows", name: "短窗", version: "1",
+      window: {kind: "sliding", length_s: 0.1, step_s: 0.1},
+      metrics: {level: {kind: "rms_dbfs", channel: 0}},
+      rules: ["甲", "乙"].map((label, i) => ({id: "short-" + i, label, when: {metric: "level", op: "lt", value: -40}}))};
+    await page.getByRole("button", {name: "导入规则", exact: true}).click();
+    await page.getByLabel("选择规则 JSON").setInputFiles({name: "short.json", mimeType: "application/json", buffer: Buffer.from(JSON.stringify(short))});
+    await page.getByRole("button", {name: "存入全局规则库"}).click();
+    await page.getByRole("status").filter({hasText: "已保存。"}).waitFor();
+    await page.getByRole("button", {name: "关闭窗口"}).click();
+    await page.getByRole("button", {name: "选择本次规则"}).click();
+    await page.getByRole("checkbox", {name: "本次启用 短窗 1"}).check();
+    await page.getByRole("button", {name: "关闭窗口"}).click();
+    await record();
+    await page.locator("#distribution").filter({hasText: "全程分布"}).waitFor();
+    assert.ok(await page.getByRole("button", {name: /^甲 · .*处$/}).isVisible());
+    assert.ok(await page.getByRole("button", {name: /^乙 · .*处$/}).isVisible());
+    await page.getByRole("button", {name: /^甲 00:01/}).first().click();
+    const lane = page.locator(".lane").filter({has: page.getByRole("button", {name: /^甲 ·/})});
+    assert.ok(await lane.locator(".lane-plot button").count() > 0);
+    await page.waitForFunction(() => !document.querySelector("#player").seeking);
+    assert.equal(await page.locator("#annotationTime span").first().textContent(), "00:01.30");
+    await lane.locator(".lane-name").click();
+    assert.equal(await lane.locator(".lane-plot button").count(), 0);
+    await page.setViewportSize({width: 390, height: 844});
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth));
+    const emptyFolder = path.join(root, "empty");
+    await fs.mkdir(emptyFolder);
+    await associate(emptyFolder, "");
+    assert.ok(await page.locator("#job").isHidden());
     const verify = spawnSync(python, ["-c", `
 import csv, hashlib, io, json, sys
 from zipfile import ZipFile
@@ -193,6 +268,17 @@ with ZipFile(sys.argv[1]) as archive:
     row, = csv.DictReader(io.StringIO(archive.read("annotations.csv").decode("utf-8-sig")))
     assert row["status"] == "confirmed" and row["sha256"] == sys.argv[2]
     assert any(filename.startswith("rules/") for filename in archive.namelist())
+
+for filename, history in [('current.zip', False), ('history.zip', True)]:
+    from pathlib import Path
+    with ZipFile(Path(sys.argv[1]).with_name(filename)) as archive:
+        data = json.loads(archive.read('recordings.json'))
+        assert data['selected_ai_channel'] == 0 and data['ai_channel'] == 1
+        rows = json.loads(archive.read('annotations.json'))['findings']
+        assert all(row['mapping_recorded'] and row['ai_channel'] == 1 for row in rows)
+        assert any(row['definition_id'] == 'pause' for row in rows) == history
+        if not history:
+            assert len(rows) == 3 and sum(row['status'] == 'confirmed' for row in rows) == 1
 `, path.join(root, "review.zip"), digestA, digestB], {encoding: "utf8"});
     assert.equal(verify.status, 0, verify.stderr);
     assert.deepEqual(errors, []);

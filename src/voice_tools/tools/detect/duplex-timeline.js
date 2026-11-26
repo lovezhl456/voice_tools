@@ -158,7 +158,8 @@
     function setPosition(time) {
       if (!summary || !plotWidth || cursor.hidden) return;
       const at = Math.min(duration, time);
-      if (at < viewStart || at > viewEnd()) setView(zoom, at);
+      // Media seeks round to the browser timebase; a rounded boundary still belongs to this view.
+      if (at < viewStart - 0.001 || at > viewEnd() + 0.001) setView(zoom, at);
       cursor.style.translate = ((at - viewStart) / viewSpan() * plotWidth - 1) + "px 0";
     }
 
@@ -224,7 +225,7 @@
       },
       setEvidence(start, end, visible) {
         evidenceRange = visible ? {start, end} : null;
-        if (start < viewStart || start > viewEnd()) setView(zoom, start);
+        if (visible && (start < viewStart - 0.001 || start > viewEnd() + 0.001)) setView(zoom, start);
         else layoutRange(evidence, evidenceRange);
       },
     };

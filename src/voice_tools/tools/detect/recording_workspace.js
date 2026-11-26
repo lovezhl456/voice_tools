@@ -4,10 +4,13 @@ const $ = id => document.getElementById(id);
 const token = document.querySelector('meta[name="voice-tools-session"]').content;
 const player = $("player");
 const modal = $("dialog");
-const lightMarks = ["#994a2b", "#2c6c73", "#714c9e", "#457334", "#9b3d69"];
-const darkMarks = ["#e29c7b", "#91c9ce", "#c6a8ec", "#b5d79d", "#e4a0bd"];
 const darkMode = matchMedia("(prefers-color-scheme: dark)");
-const ruleColor = index => (darkMode.matches ? darkMarks : lightMarks)[index % lightMarks.length];
+function ruleColor(key) {
+  let hash = 0;
+  for (const char of key) hash = (Math.imul(hash, 31) + char.codePointAt(0)) >>> 0;
+  return "hsl(" + hash % 360 + (darkMode.matches ? " 52% 75%)" : " 56% 34%)");
+}
+const hiddenLanes = new Set();
 const statuses = {
   pending: "待核", confirmed: "已确认", false_positive: "误报", corrected: "已修正",
   ok: "完成", no_windows: "无法判断", partial_evidence: "部分无法判断", error: "失败",
@@ -80,13 +83,13 @@ function attempt(fn, inDialog = false) {
 }
 
 const ruleRef = rule => rule.id + "@" + rule.version;
-const hitRef = item => item.definition_id + "@" + item.version;
+const hitRef = item => JSON.stringify([item.definition_id, item.version, item.rule_id ?? item.label]);
 const byTime = (a, b) => a.start_s - b.start_s || a.end_s - b.end_s;
 const minuteText = time => String(Math.floor(time / 60)).padStart(2, "0") + ":" +
   String(Math.floor(time % 60)).padStart(2, "0");
 const timeText = time => minuteText(time) + "." + String(Math.floor(time * 100 + 1e-6) % 100).padStart(2, "0");
 const visibleFiles = () => data.files.filter(row => row.id.toLowerCase().includes($("file-search").value.toLowerCase()));
-const running = () => data.jobs.some(job => job.state === "running");
+const running = () => data.busy || data.jobs.some(job => job.state === "running");
 const chosenRules = () => data.rules.filter(rule => enabled.has(ruleRef(rule)));
 
 function updateActions() {
@@ -100,7 +103,8 @@ function updateActions() {
 }
 
 function renderFiles() {
-  $("folder-name").textContent = data.folder || "尚未关联";
+  $("folder-name").textContent = data.folder?.split("/").filter(Boolean).pop() || data.folder || "尚未关联";
+  $("folder-name").title = data.folder;
   $("files").replaceChildren(...visibleFiles().map(file => {
     const item = node("div", null, {className: "file" + (active === file.id ? " active" : "")});
     const check = checkbox("导出 " + file.id);
@@ -111,25 +115,32 @@ function renderFiles() {
       else checkedFiles.delete(file.id);
       updateActions();
     };
-    const title = button(file.id, () => openFile(file.id));
+    const parts = file.id.split("/");
+    const parent = parts.at(-2);
+    const display = parent?.startsWith("probe-") ? parent.slice(6, 14) + " / " + parts.at(-1) : file.id;
+    const title = button(display, () => openFile(file.id));
+    title.title = file.id;
+    title.setAttribute("aria-label", file.id);
     if (active === file.id) title.setAttribute("aria-current", "true");
     const summary = file.findings ? file.findings + " 处标注" :
       {missing: "源文件不可用", not_run: "未运行", history: "有历史记录", completed: "有检测记录"}[file.status];
-    item.append(check, title, node("small", summary, {className: "muted"}));
+    item.append(check, title, node("small", (file.duration != null ? timeText(file.duration) + " · " : "") + summary, {className: "muted"}));
     return item;
   }));
-  $("enabled").replaceChildren(...chosenRules().map(rule => node("span", rule.name + " · " + rule.version, {className: "chip"})));
+  $("enabled").replaceChildren(...chosenRules().map(rule => node("span", rule.name + " · v" + rule.version, {className: "chip"})));
   updateActions();
 }
 
 function renderJob() {
   const job = data.jobs[0];
   $("job").hidden = !job;
+  $("job").dataset.jobId = job?.id || "";
   if (!job) return;
   const state = {running: "标注进行中", completed: "标注完成", partial: "部分完成", interrupted: "任务中断"}[job.state];
+  const notes = job.evidence_notes || [];
   const errors = Object.entries(job.errors).map(([file, message]) => file + " · " + message);
   $("job").replaceChildren(node("span", state + " · " + job.done + "/" + job.total + " 通" +
-    (job.error ? "\n" + job.error : "") + (errors.length ? "\n" + errors.join("\n") : "")));
+    (notes.length ? "\n" + notes.join("；") : "") + (job.error ? "\n" + job.error : "") + (errors.length ? "\n" + errors.join("\n") : "")));
   if (job.state !== "running" && job.state !== "completed" && job.root === data.folder) {
     const files = job.files.filter((file, idx) => idx >= job.done || Object.hasOwn(job.errors, file));
     if (files.length) $("job").append(" ", button("重试未完成录音", attempt(() => launch(files, job.rules))));
@@ -141,13 +152,14 @@ async function refresh(scan = false) {
   loadingState = true;
   try {
     const priorJob = data.jobs[0];
+    const wasBusy = running();
     data = await post("state", {scan});
     renderFiles();
     renderJob();
     clearTimeout(poll);
     if (running()) poll = setTimeout(() => refresh().catch(error => report(error.message, true)), 650);
     else if (active && data.jobs[0] &&
-        (priorJob?.state === "running" || priorJob?.id !== data.jobs[0].id)) await openFile(active, true);
+        (wasBusy || priorJob?.id !== data.jobs[0].id)) await openFile(active, true);
   } finally {
     loadingState = false;
   }
@@ -162,7 +174,7 @@ const timeline = window.createRecordingDuplexTimeline(player, time => {
     const seconds = start + (end - start) * index / (all.length - 1);
     tick.textContent = end - start >= 60 ? minuteText(seconds) : timeText(seconds);
   });
-  renderLanes();
+  renderMarks();
 });
 
 function setMedia(url, resumeAt = 0, resume = false) {
@@ -221,9 +233,36 @@ async function openFile(file, preserve = false) {
 }
 
 function renderEvaluations() {
+  const current = new Set(recording.evaluations.filter(row => row.current).map(row => row.config_hash));
+  const stale = recording.evaluations.filter(row => !row.applicable && !current.has(row.config_hash));
+  const notice = $("mapping-notice");
+  notice.hidden = !stale.length;
+  notice.textContent = stale.length ? "当前声道映射需重新标注：" + [...new Set(stale.map(row => row.name))].join("、") : "";
   $("evaluations").hidden = !recording.evaluations.length;
   $("evaluation-list").replaceChildren(...recording.evaluations.map(row => node("li",
-    row.name + " · " + row.version + " · " + (statuses[row.status] || row.status) + (row.note ? " · " + row.note : ""))));
+    row.name + " · v" + row.version + " · " + (row.current ? "当前" : "历史") + " · " +
+    (statuses[row.status] || row.status) + " · " + mappingText(row) + " · 批次 " + row.batch_id.slice(0, 8) +
+    (row.note ? " · " + row.note : ""))));
+}
+
+function mappingText(row) {
+  if (!row.mapping_recorded) return "检测声道未记录";
+  return row.ai_channel == null ? "检测时 AI 声道未知" : "检测时 AI 在" + (row.ai_channel === 0 ? "左" : "右") + "声道";
+}
+
+function overviewStep() {
+  if (recording.findings.length <= 24 || recording.duration <= 0) return 0;
+  if (recording.duration > 60) return Math.max(60, 60 * Math.ceil(recording.duration / 3600));
+  return recording.duration / 10;
+}
+
+function zoomTo(left, right) {
+  hit = null;
+  listenEnd = null;
+  player.currentTime = left;
+  timeline.showWindow(left, right);
+  timeline.setEvidence(left, right, false);
+  renderMarks();
 }
 
 function groupedFindings() {
@@ -236,52 +275,72 @@ function groupedFindings() {
   return groups;
 }
 
+function renderOverview(groups, step, start, end) {
+  const overview = $("distribution");
+  overview.replaceChildren();
+  if (!step) return;
+  const bins = Math.ceil(recording.duration / step - 1e-9);
+  const grid = node("div", null, {className: "minute-grid"});
+  grid.style.setProperty("--minutes", bins);
+  grid.append(node("strong", "全程分布"));
+  for (let minute = 0; minute < bins; minute++) grid.append(node("small", (step < 1 ? timeText : minuteText)(minute * step), {className: "muted"}));
+  groups.forEach((items, key) => {
+    const counts = Array(bins).fill(0);
+    items.forEach(item => counts[Math.min(bins - 1, Math.floor(item.start_s / step))]++);
+    const name = node("span", items[0].automatic.label, {className: "label", title: items[0].automatic.label});
+    name.style.color = ruleColor(key);
+    grid.append(name);
+    counts.forEach((count, minute) => {
+      const left = minute * step;
+      const right = Math.min(recording.duration, left + step);
+      const show = button(String(count), () => zoomTo(left, right), Math.abs(start - left) < 0.001 && end <= right + 0.001);
+      show.setAttribute("aria-label", items[0].automatic.label + " " + (step < 1 ? timeText : minuteText)(left) + "，" + count + " 处");
+      grid.append(show);
+    });
+  });
+  overview.append(grid);
+}
+
 function renderLanes() {
   if (!recording || view[1] <= view[0]) {
     $("lanes").replaceChildren();
     return;
   }
   const [start, end] = view;
-  const groups = groupedFindings(), dense = recording.findings.length > 24 && recording.duration > 60;
-  const overview = $("distribution");
-  overview.replaceChildren();
-  if (dense) {
-    const bins = Math.ceil(recording.duration / 60);
-    const grid = node("div", null, {className: "minute-grid"});
-    grid.style.setProperty("--minutes", bins);
-    grid.append(node("strong", "全程分布"));
-    for (let minute = 0; minute < bins; minute++) grid.append(node("small", minuteText(minute * 60), {className: "muted"}));
-    [...groups.values()].forEach((items, index) => {
-      const counts = Array(bins).fill(0);
-      items.forEach(item => counts[Math.min(bins - 1, Math.floor(item.start_s / 60))]++);
-      const name = node("span", items[0].name, {className: "label", title: items[0].name});
-      name.style.color = ruleColor(index);
-      grid.append(name);
-      counts.forEach((count, minute) => {
-        const left = minute * 60;
-        const right = Math.min(recording.duration, left + 60);
-        const show = button(String(count), () => {
-          player.currentTime = left;
-          timeline.showWindow(left, right);
-          renderMarks();
-        }, end - start <= 60.001 && start >= left && start < right);
-        show.setAttribute("aria-label", items[0].name + " " + minuteText(left) + "，" + count + " 处");
-        grid.append(show);
-      });
-    });
-    overview.append(grid);
-  }
-
-  const lanes = [...groups.values()].map((items, index) => {
+  const groups = groupedFindings(), step = overviewStep();
+  renderOverview(groups, step, start, end);
+  const lanes = [...groups].map(([key, items]) => {
     const lane = node("div", null, {className: "lane"});
-    lane.style.setProperty("--mark", ruleColor(index));
-    const name = node("span", items[0].name + " · " + items[0].version,
-      {className: "lane-name", title: hitRef(items[0])});
+    lane.style.setProperty("--mark", ruleColor(key));
+    const title = items[0].automatic.label;
+    const name = button(title + " · " + items.length + " 处", () => {
+      if (hiddenLanes.has(key)) hiddenLanes.delete(key);
+      else hiddenLanes.add(key);
+      renderLanes();
+    });
+    name.className = "lane-name";
+    name.title = title + " · v" + items[0].version + "（点击展开或收起轨道）";
+    name.setAttribute("aria-expanded", !hiddenLanes.has(key));
     const plot = node("div", null, {className: "lane-plot"});
-    if (dense && end - start > 60.001) {
-      plot.append(node("small", "选择上方一分钟查看 " + items.length + " 处标记", {className: "muted"}));
+    const visible = items.filter(item => item.end_s > start && item.start_s < end);
+    if (hiddenLanes.has(key)) {
+      plot.append(node("small", "已收起", {className: "muted"}));
+    } else if (step && end - start > step + 0.001) {
+      plot.append(node("small", "选择上方时段查看标记", {className: "muted"}));
+    } else if (visible.length > 24 && end - start > 0.1) {
+      for (let i = 0; i < 8; i++) {
+        const left = start + (end - start) * i / 8;
+        const right = start + (end - start) * (i + 1) / 8;
+        const count = visible.filter(item => item.start_s < right && item.end_s > left).length;
+        const bucket = button(String(count), () => zoomTo(left, right));
+        bucket.title = timeText(left) + "–" + timeText(right) + " · " + count + " 处";
+        bucket.style.left = (12.5 * i) + "%";
+        bucket.style.width = "12.5%";
+        bucket.className = "density-bucket";
+        plot.append(bucket);
+      }
     } else {
-      items.filter(item => item.end_s > start && item.start_s < end).forEach(item => {
+      visible.forEach(item => {
         const mark = button("", () => selectHit(item, false));
         mark.title = item.label + " · " + timeText(item.start_s) + "–" + timeText(item.end_s);
         mark.setAttribute("aria-label", mark.title);
@@ -299,7 +358,7 @@ function renderLanes() {
 
 function renderMarks() {
   if (!recording) return;
-  const local = recording.duration > 60 && recording.findings.length > 24 && view[1] - view[0] <= 60.001;
+  const local = overviewStep() && view[1] - view[0] < recording.duration - 0.001;
   const rows = recording.findings.filter(item => (!local || item.end_s > view[0] && item.start_s < view[1]) &&
     (!$("pending-only").checked || item.status === "pending"));
   $("mark-count").textContent = "· " + rows.length + " / " + recording.findings.length + " 处";
@@ -327,7 +386,7 @@ function renderMarks() {
       state.append(check, " " + statuses[item.status]);
       const actions = node("td");
       actions.append(button("试听前后", () => selectHit(item, true)), button("复核详情", () => selectHit(item, false)));
-      row.append(node("td", item.label + " · " + item.version),
+      row.append(node("td", item.label + " · v" + item.version),
         node("td", timeText(item.start_s) + "–" + timeText(item.end_s) + " / " +
           (item.end_s - item.start_s).toFixed(2) + " 秒"), state, actions);
       return row;
@@ -341,14 +400,16 @@ function selectHit(item, play) {
   hit = item;
   listenEnd = play ? Math.min(recording.duration, item.end_s + 1) : null;
   const start = play ? Math.max(0, item.start_s - 1) : item.start_s;
-  if (recording.findings.length > 24 && recording.duration > 60 && (view[1] - view[0] > 60 || start < view[0] || start > view[1])) {
-    const minute = Math.floor(start / 60) * 60;
-    timeline.showWindow(minute, Math.min(recording.duration, minute + 60));
+  const step = overviewStep();
+  if (step && (view[1] - view[0] > step + 0.001 || item.start_s < view[0] || item.start_s >= view[1])) {
+    const left = Math.floor(item.start_s / step) * step;
+    timeline.showWindow(left, Math.min(recording.duration, left + step));
   }
   player.currentTime = start;
   timeline.setEvidence(item.start_s, item.end_s, true);
   renderMarks();
   $("marks").querySelector("tr.active")?.scrollIntoView({block: "nearest"});
+  if (!play) $("review-pane").scrollIntoView({block: "nearest"});
   if (play) player.play().catch(error => report(error.message, true));
 }
 
@@ -357,8 +418,9 @@ function renderReview() {
   pane.hidden = !hit;
   if (!hit) return;
   const item = hit;
-  pane.replaceChildren(node("strong", item.label),
-    node("span", (item.reason || "") + (item.comment ? " · " + item.comment : ""), {className: "muted"}),
+  const group = groupedFindings().get(hitRef(item));
+  pane.replaceChildren(node("strong", item.label + " · 第 " + (group.findIndex(row => row.id === item.id) + 1) + "/" + group.length + " 处"),
+    node("span", mappingText(item) + " · " + (item.reason || "") + (item.comment ? " · " + item.comment : ""), {className: "muted"}),
     button("备注或修正", () => reviewDialog(item)),
     button("记为误报", () => reviewDialog(item, true)),
     button("撤回复核", attempt(() => saveReview(item, "pending"))));
@@ -375,8 +437,8 @@ async function saveReview(item, status, updated = {}) {
   }
   const result = await post("review", payload);
   if (recording !== loaded) return;
-  recording.findings = recording.findings.map(row => row.id === item.id ? result.finding : row).sort(byTime);
-  hit = result.finding;
+  recording.findings = recording.findings.map(row => row.id === item.id ? {...row, ...result.finding} : row).sort(byTime);
+  hit = {...item, ...result.finding};
   timeline.setEvidence(hit.start_s, hit.end_s, true);
   renderMarks();
   report("复核已保存到本机。");
@@ -492,11 +554,14 @@ function previewRule(rule, isDraft = true) {
     const result = await post("save", {config: {...rule, version: version.value.trim()}});
     await refresh();
     const saved = result.config;
+    previewRule(saved, false);
     $("dialog-status").textContent = saved.name + " · " + ruleRef(saved) + " 已保存。";
     save.disabled = true;
   }, true), true);
-  const downloadRule = button("导出规则 JSON", () => download(
-    new Blob([JSON.stringify(rule, null, 2)], {type: "application/json"}), rule.id + "-" + rule.version + ".json"));
+  const downloadRule = button("导出规则 JSON", attempt(async () => {
+    const config = isDraft ? (await post("validate", {config_text: JSON.stringify({...rule, version: version.value.trim()})})).config : rule;
+    download(new Blob([JSON.stringify(config, null, 2)], {type: "application/json"}), config.id + "-" + config.version + ".json");
+  }, true));
   if (isDraft) {
     dialog(rule.name, summary, label("规则版本", version), save, downloadRule);
   } else {
@@ -590,6 +655,9 @@ $("folder-open").onclick = () => {
         player.load();
         active = recording = hit = null;
         checkedFiles.clear();
+        hiddenLanes.clear();
+        $("file-search").value = "";
+        report("");
         $("recording").hidden = true;
         $("empty").textContent = "从左栏选择一通录音。";
         $("empty").hidden = false;
@@ -632,13 +700,14 @@ player.ontimeupdate = () => {
 $("export-open").onclick = () => {
   const dataOnly = checkbox("仅数据");
   const confirmed = checkbox("仅已确认标注");
+  const history = checkbox("包含历史批次");
   const files = [...checkedFiles];
   const hidden = files.length - visibleFiles().filter(item => checkedFiles.has(item.id)).length;
   dialog("导出所选录音", node("p", "已勾选 " + files.length + " 通" + (hidden ? " · " + hidden + " 通在当前筛选外" : "")),
-    label("仅数据（省略原录音）", dataOnly), label("仅已确认标注", confirmed),
+    label("仅数据（省略原录音）", dataOnly), label("仅已确认标注", confirmed), label("包含历史批次（逐次导出）", history),
     button("下载 ZIP", attempt(async () => {
       $("dialog-status").textContent = "正在核对所选录音并生成 ZIP…";
-      const blob = await post("export", {files, data_only: dataOnly.checked, confirmed_only: confirmed.checked}, true);
+      const blob = await post("export", {files, data_only: dataOnly.checked, confirmed_only: confirmed.checked, history: history.checked}, true);
       download(blob, "recordings-review.zip");
       modal.close();
     }, true), true));

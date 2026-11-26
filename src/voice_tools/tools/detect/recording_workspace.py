@@ -17,7 +17,7 @@ from voice_tools.audio.formats import decode, probe
 from voice_tools.audio.health import waveform
 from voice_tools.audio.io import read_wav, write_wav
 from voice_tools.core.files import sha256
-from . import engine, store, timeline_rules
+from . import engine, recording_history, store, timeline_rules
 from .definition import canonical, fingerprint, parse_document
 
 FORMATS = {'.wav', '.flac', '.mp3', '.m4a', '.ogg'}
@@ -67,6 +67,10 @@ class RecordingWorkspace:
                    (digest TEXT PRIMARY KEY, time_origin TEXT NOT NULL)''')
         db.execute('''CREATE TABLE IF NOT EXISTS recording_workbench_jobs
                    (id TEXT PRIMARY KEY, state TEXT, payload TEXT)''')
+
+        db.execute('''CREATE TABLE IF NOT EXISTS recording_workbench_batch_channels
+                   (batch_id TEXT PRIMARY KEY REFERENCES batches(id), ai_channel INTEGER)''')
+        db.execute('CREATE INDEX IF NOT EXISTS evaluation_recording ON evaluations(recording_id,config_hash)')
 
     def config(self, db):
         saved = db.execute('SELECT root,ai_channel FROM recording_workbench_config WHERE id=1').fetchone()
@@ -126,10 +130,11 @@ class RecordingWorkspace:
                        (canonical(stamp), digest, str(root), relative))
         return path, stamp, digest
 
-    def entries(self, db, root):
+    def entries(self, db, root, channel):
         rows = db.execute('SELECT relative,stamp,digest FROM recording_workbench_files WHERE root=? ORDER BY relative',
                           (str(root),)).fetchall()
-        counts = dict(db.execute('SELECT recording_id,COUNT(*) FROM findings GROUP BY recording_id'))
+        counts = {}
+        durations = dict(db.execute('SELECT id,duration_s FROM recordings'))
         processed = {r[0] for r in db.execute('SELECT DISTINCT recording_id FROM evaluations')}
         known = {}
         for row in db.execute('SELECT id,sources FROM recordings'):
@@ -146,13 +151,15 @@ class RecordingWorkspace:
                 exists = fresh = False
             digest = row['digest'] if fresh else None
             if digest:
+                if digest not in counts:
+                    counts[digest] = len(recording_history.current_ids(db, digest, channel))
                 status = 'completed' if digest in processed else 'not_run'
             elif fresh and str(path) in known:
                 status = 'history'
             else:
                 status = 'not_run' if exists else 'missing'
             result.append(dict(id=relative, size=json.loads(row['stamp'])[2], status=status,
-                               findings=counts.get(digest, 0)))
+                               findings=counts.get(digest, 0), duration=durations.get(digest)))
         return result
 
     def state(self, request):
@@ -162,9 +169,11 @@ class RecordingWorkspace:
                 self.scan(db, root)
             jobs = [dict(json.loads(row['payload']), id=row['id'],
                          state='interrupted' if row['state'] == 'running' and row['id'] != self.job else row['state'])
-                    for row in db.execute('SELECT * FROM recording_workbench_jobs ORDER BY rowid DESC LIMIT 10')]
+                    for row in db.execute('''SELECT * FROM recording_workbench_jobs
+                                          WHERE json_extract(payload,'$.root')=? ORDER BY rowid DESC LIMIT 10''',
+                                          (str(root),))]
             return dict(folder=str(root) if root else '', ai_channel=channel,
-                        files=self.entries(db, root), rules=self.definitions(db), jobs=jobs,
+                        busy=self.job is not None, files=self.entries(db, root, channel), rules=self.definitions(db), jobs=jobs,
                         model=os.getenv('VOICE_TOOLS_OPENAI_MODEL', 'gpt-4o-mini'),
                         key_on_server=bool(os.getenv('OPENAI_API_KEY')))
 
@@ -245,11 +254,16 @@ class RecordingWorkspace:
                     pass
         return None
 
-    def evaluations(self, db, digest):
-        sql = '''SELECT e.*, d.id AS rule, d.version, d.name FROM evaluations e
-                 JOIN definitions d ON d.hash=e.config_hash WHERE e.recording_id=?
-                 ORDER BY e.batch_id,d.name'''
-        return [dict(r) for r in db.execute(sql, (digest,))]
+    def findings(self, db, digest, channel, *, history=False):
+        selected = None if history else recording_history.current_ids(db, digest, channel)
+        snapshots = dict(db.execute('''SELECT m.batch_id,m.ai_channel FROM recording_workbench_batch_channels m
+                                    JOIN evaluations e USING(batch_id) WHERE e.recording_id=?''', (digest,)))
+        result = []
+        for row in store.query(db, exact_recording=digest):
+            if selected is None or row['id'] in selected:
+                batch = row['batch_id']
+                result.append(dict(public_finding(row), ai_channel=snapshots.get(batch), mapping_recorded=batch in snapshots))
+        return result
 
     def open(self, request):
         with store.connect(self.app.database) as db:
@@ -272,9 +286,10 @@ class RecordingWorkspace:
                     candidate.replace(mono)
             playable = mono
         with store.connect(self.app.database) as db:
+            db.execute('BEGIN')
             summary = self.register(db, path, digest, audio, time_origin)
-            findings = [public_finding(row) for row in store.query(db, exact_recording=digest)]
-            evaluations = self.evaluations(db, digest)
+            findings = self.findings(db, digest, channel)
+            evaluations = recording_history.evaluations(db, digest, channel)
         return dict(id=digest, duration=audio.duration_s, channels=audio.samples.shape[1], ai_channel=channel,
                     time_origin=time_origin, waveform=summary, url=self.media_url(path, stamp, playable),
                     findings=findings, evaluations=evaluations)
@@ -309,8 +324,9 @@ class RecordingWorkspace:
                 raise ValueError('所选录音不在当前目录清单')
             files = list(dict.fromkeys(files))
             ident = uuid.uuid4().hex
-            task = dict(total=len(files), done=0, files=files, errors={}, root=str(root), rules=refs)
+            task = dict(total=len(files), done=0, files=files, errors={}, evidence_notes=[], root=str(root), rules=refs)
             db.execute('INSERT INTO batches VALUES (?,?,?,?,?)', (ident, store.now(), 'running', __version__, 'recording-1'))
+            db.execute('INSERT INTO recording_workbench_batch_channels VALUES (?,?)', (ident, channel))
             db.execute('INSERT INTO recording_workbench_jobs VALUES (?,?,?)', (ident, 'running', canonical(task)))
         with self.lock:
             if self.job is not None:
@@ -338,6 +354,10 @@ class RecordingWorkspace:
                                 self.record_evaluation(db, ident, digest, config, evaluation)
                                 if evaluation['status'] != 'ok':
                                     status = 'partial'
+                                if evaluation['note'] and evaluation['status'] != 'ok':
+                                    note = config['name'] + ' · ' + evaluation['note']
+                                    if note not in task['evidence_notes']:
+                                        task['evidence_notes'].append(note)
                                 if evaluation['status'] == 'error':
                                     task['errors'][file] = evaluation['note']
                         seen.add(digest)
@@ -385,16 +405,17 @@ class RecordingWorkspace:
 
     def manual(self, request):
         with self.app.write_access(), store.connect(self.app.database) as db:
-            root, _ = self.config(db)
+            root, channel = self.config(db)
             _, _, digest = self.entry(db, root, request['file'])
             key = store.save_definition(db, MANUAL)
-            batch = 'recording-workbench-manual'
+            batch = 'recording-workbench-manual-' + str(channel)
             db.execute('INSERT OR IGNORE INTO batches VALUES (?,?,?,?,?)', (batch, store.now(), 'completed', __version__, 'manual'))
+            db.execute('INSERT OR IGNORE INTO recording_workbench_batch_channels VALUES (?,?)', (batch, channel))
             db.execute('INSERT OR IGNORE INTO evaluations VALUES (?,?,?,?,?,?)', (batch, digest, key, 'ok', 0, ''))
             packet = dict(id=uuid.uuid4().hex, batch_id=batch, recording_id=digest, config_hash=key,
                           label=request['label'], start_s=request['start_s'], end_s=request['end_s'],
                           reviewer='本机复核', comment=request.get('comment', ''))
-            return dict(finding=public_finding(store.add_manual(db, packet)))
+            return dict(finding=dict(public_finding(store.add_manual(db, packet)), ai_channel=channel, mapping_recorded=True))
 
     def export(self, request):
         files = request['files']
@@ -403,11 +424,12 @@ class RecordingWorkspace:
         archive = TemporaryFile()
         try:
             with closing(ZipFile(archive, 'w', allowZip64=True)) as bundle, store.connect(self.app.database) as db:
+                db.execute('BEGIN')
                 root, role = self.config(db)
                 manifest, findings, snapshots = [], [], {}
                 table = StringIO()
                 columns = ('file', 'sha256', 'label', 'definition_id', 'version', 'batch_id', 'start_s',
-                           'end_s', 'status', 'reviewer', 'reviewed_at', 'comment')
+                           'end_s', 'status', 'reviewer', 'reviewed_at', 'comment', 'ai_channel', 'mapping_recorded')
                 writer = csv.DictWriter(table, columns)
                 writer.writeheader()
                 for index, file in enumerate(files, 1):
@@ -437,7 +459,7 @@ class RecordingWorkspace:
                             row['path'] = member
                     if digest:
                         row['sha256'] = digest
-                        row['evaluations'] = self.evaluations(db, digest)
+                        row['evaluations'] = recording_history.evaluations(db, digest, role)
                         if row['status'] != 'source_missing' and row['evaluations']:
                             row['status'] = 'evaluated'
                         timing = db.execute('SELECT time_origin FROM recording_workbench_audio WHERE digest=?',
@@ -446,15 +468,20 @@ class RecordingWorkspace:
                         for evaluation in row['evaluations']:
                             key = evaluation['config_hash']
                             snapshots[key] = json.loads(db.execute('SELECT config FROM definitions WHERE hash=?', (key,)).fetchone()[0])
-                        for finding in store.query(db, exact_recording=digest):
+                        for finding in self.findings(db, digest, role, history=request.get('history', False)):
                             if request.get('confirmed_only') and finding['status'] not in ('confirmed', 'corrected'):
                                 continue
-                            item = dict(public_finding(finding), file=file, sha256=digest)
+                            item = dict(finding, file=file, sha256=digest)
                             findings.append(item)
                             writer.writerow({field: csv_text(item.get(field, '')) for field in columns})
                     manifest.append(row)
                 encode = lambda value: json.dumps(value, ensure_ascii=False, indent=2)
-                bundle.writestr('recordings.json', encode(dict(schema_version='1.0', ai_channel=role, recordings=manifest)))
+                # A single legacy manifest field can describe only a homogeneous set of evidence.
+                channels = {e['ai_channel'] for row in manifest for e in row['evaluations']}
+                manifest_channel = channels.pop() if len(channels) == 1 else None
+                metadata = dict(schema_version='1.0', ai_channel=manifest_channel, selected_ai_channel=role,
+                                scope='history' if request.get('history') else 'current', recordings=manifest)
+                bundle.writestr('recordings.json', encode(metadata))
                 bundle.writestr('annotations.json', encode(dict(schema_version='1.0', findings=findings)))
                 bundle.writestr('annotations.csv', table.getvalue().encode('utf-8-sig'))
                 for key, config in snapshots.items():
