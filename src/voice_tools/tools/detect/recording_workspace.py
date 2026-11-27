@@ -17,7 +17,7 @@ from voice_tools.audio.formats import decode, probe
 from voice_tools.audio.health import waveform
 from voice_tools.audio.io import read_wav, write_wav
 from voice_tools.core.files import sha256
-from . import engine, recording_history, store, timeline_rules
+from . import engine, recording_history, rule_drafting, store, timeline_rules
 from .definition import canonical, fingerprint, parse_document
 
 FORMATS = {'.wav', '.flac', '.mp3', '.m4a', '.ogg'}
@@ -174,7 +174,8 @@ class RecordingWorkspace:
                                           (str(root),))]
             return dict(folder=str(root) if root else '', ai_channel=channel,
                         busy=self.job is not None, files=self.entries(db, root, channel), rules=self.definitions(db), jobs=jobs,
-                        model=os.getenv('VOICE_TOOLS_OPENAI_MODEL', 'gpt-4o-mini'),
+                        models=rule_drafting.MODELS, default_prompt=rule_drafting.DEFAULT_PROMPT,
+                        custom_model=rule_drafting.CUSTOM_MODEL, model=os.getenv('VOICE_TOOLS_OPENAI_MODEL', 'gpt-4o-mini'),
                         key_on_server=bool(os.getenv('OPENAI_API_KEY')))
 
     def associate(self, request):
@@ -498,7 +499,7 @@ class RecordingWorkspace:
         handlers = {'state': self.state, 'associate': self.associate, 'open': self.open,
                     'validate': self.rule, 'save': lambda data: self.rule(data, save=True),
                     'review': self.review, 'manual': self.manual, 'export': self.export,
-                    'ai': self.draft, 'run': self.start}
+                    'ai': rule_drafting.draft, 'run': self.start}
         if action not in handlers:
             raise ValueError('未知录音工作台操作')
         try:
@@ -511,7 +512,3 @@ class RecordingWorkspace:
             return handlers[action](request)
         except (KeyError, TypeError) as error:
             raise ValueError('请求字段缺失或格式无效') from error
-
-    def draft(self, request):
-        from .rule_drafting import draft
-        return draft(request)

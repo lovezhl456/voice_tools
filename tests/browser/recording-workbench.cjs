@@ -51,7 +51,7 @@ async function main() {
   const dense = Array.from({length: 50}, (_, i) => [5 + i * 12, 6 + i * 12]);
   await audio(path.join(inputs, "dense.wav"), 720, [[0, 5]], dense);
   const state = path.join(root, "workspace");
-  const options = {env: {...process.env, PYTHONPATH: packageRoot}, stdio: ["ignore", "pipe", "pipe"]};
+  const options = {env: {...process.env, VOICE_TOOLS_OPENAI_MODEL: "gpt-4o-mini", PYTHONPATH: packageRoot}, stdio: ["ignore", "pipe", "pipe"]};
   const mockedOpenAI = `
 import io, json
 from voice_tools.tools.detect import rule_drafting
@@ -65,6 +65,16 @@ class OpenAIStub:
         assert payload["store"] is False and payload["text"]["format"]["strict"] is True
         assert all(set(message) == {"role", "content"} for message in payload["input"])
         second = len(payload["input"]) > 1
+        assert "能力目录" in payload["instructions"]
+        if payload["model"] == "custom-model-test":
+            assert payload["service_tier"] == "default" and "reasoning" not in payload
+        elif second:
+            assert payload["model"] == "gpt-4o-mini" and "reasoning" not in payload
+            assert payload["service_tier"] == "fast" and "每次给出独立区间" in payload["instructions"]
+        else:
+            assert payload["model"] == "gpt-6.2-sol" and payload["reasoning"] == {"effort": "high"}
+            assert payload["service_tier"] == "ultrafast" and payload["instructions"].startswith("逐次标出真实区间。")
+        assert all("逐次标出真实区间。" not in message["content"] for message in payload["input"])
         config = {"schema_version":"2.0","id":"ai-quiet","version":"1","name":"AI 生成静音规则","kind":"quiet","min_s":3}
         answer = {"explanation":"按双轨交集标记", "question":"" if second else "阈值用几秒？",
                   "rule_json":json.dumps(config) if second else ""}
@@ -170,17 +180,43 @@ raise SystemExit(main())
     await page.screenshot({path: path.join(root, "dense-dark.png")});
 
     await page.getByRole("button", {name: "与 AI 定规则"}).click();
-    await page.getByLabel("告诉 AI 要检查什么").fill("静音超过两秒");
+    await page.getByLabel("用户提示词").fill("静音超过两秒");
     await page.getByRole("button", {name: "生成或修改规则"}).click();
     await page.locator("#dialog-status").filter({hasText: "GPT API Key"}).waitFor();
     await page.getByLabel("GPT API Key").fill("fixture-test-key");
+    assert.ok(await page.getByLabel("推理强度").isDisabled());
+    assert.equal(await page.getByLabel("速度模式").locator("option").count(), 2);
+    assert.equal(await page.getByLabel("给模型的规则设计指导").isVisible(), false);
+    await page.getByText("系统提示词", {exact: true}).click();
+    const prompt = page.getByLabel("给模型的规则设计指导");
+    assert.match(await prompt.inputValue(), /每次给出独立区间/);
+    await prompt.fill("逐次标出真实区间。");
+    await page.getByLabel("模型", {exact: true}).selectOption("gpt-6.2-sol");
+    await page.getByLabel("推理强度").selectOption("high");
+    await page.getByLabel("速度模式").selectOption("ultrafast");
+    assert.equal(await page.getByLabel("用户提示词").inputValue(), "静音超过两秒");
     await page.getByRole("button", {name: "生成或修改规则"}).click();
     await page.locator("#dialog-body").filter({hasText: "阈值用几秒？"}).waitFor();
-    await page.getByLabel("告诉 AI 要检查什么").fill("改用三秒");
+    assert.equal(await prompt.inputValue(), "逐次标出真实区间。");
+    await page.getByRole("button", {name: "恢复默认提示词"}).click();
+    await page.getByLabel("模型", {exact: true}).selectOption("gpt-4o-mini");
+    assert.equal(await page.getByLabel("速度模式").inputValue(), "default");
+    await page.getByLabel("速度模式").selectOption("fast");
+    await page.getByLabel("用户提示词").fill("改用三秒");
     await page.getByRole("button", {name: "生成或修改规则"}).click();
     await page.getByRole("button", {name: "预览并保存草稿"}).click();
     await page.getByRole("button", {name: "存入全局规则库"}).click();
     await page.getByRole("status").filter({hasText: "已保存。"}).waitFor();
+    await page.getByRole("button", {name: "关闭窗口"}).click();
+    await page.getByRole("button", {name: "与 AI 定规则"}).click();
+    await page.getByRole("button", {name: "开始新讨论"}).click();
+    await page.getByLabel("模型", {exact: true}).selectOption("custom");
+    await page.getByLabel("自定义模型 ID").fill("custom-model-test");
+    assert.equal(await page.getByLabel("速度模式").inputValue(), "default");
+    assert.ok(await page.getByLabel("推理强度").isDisabled());
+    await page.getByLabel("用户提示词").fill("请按标准速度生成规则");
+    await page.getByRole("button", {name: "生成或修改规则"}).click();
+    await page.locator("#dialog-body").filter({hasText: "阈值用几秒？"}).waitFor();
     await page.getByRole("button", {name: "关闭窗口"}).click();
     async function associate(folder, channel) {
       await page.getByRole("button", {name: "关联", exact: true}).click();
