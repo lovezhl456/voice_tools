@@ -147,3 +147,12 @@ dialog::backdrop { background:rgb(10 22 35 / 54%) }
 .folder-list > button { text-align:left; border-color:transparent; overflow-wrap:anywhere }
 .folder-list > button::after { content:""; float:right; width:.45em; height:.45em; margin:.5em .25em; border:solid var(--muted); border-width:1px 1px 0 0; transform:rotate(45deg) }
 .folder-list > :is(span,p) { padding:8px }
+
+.wave-tools { display:flex; align-items:center; flex-wrap:wrap; gap:8px; min-height:26px; color:var(--muted); font-size:12px }
+#wavePan { margin-inline-start:auto }
+#wavePan button { padding:2px 7px; font-size:12px }
+#duplexWave { touch-action:pan-y; user-select:none }
+#waveSelection { position:absolute; inset-block:0; pointer-events:none; border-inline:1px solid var(--duplex-left); background:color-mix(in srgb,var(--duplex-left) 25%,transparent) }
+.duplex-timeline.wave-expanded { --lane-height:clamp(95px,16vh,155px); --duplex-height:var(--lane-height) }
+.duplex-timeline.wave-expanded.two-channels { --duplex-height:calc(var(--lane-height) * 2) }
+.wave-expanded .duplex-channels { grid-auto-rows:var(--lane-height) }

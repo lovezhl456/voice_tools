@@ -42,6 +42,47 @@ async function until(check, wait = 5000) {
   }
 }
 
+async function inspectWaveform(page) {
+  const wave = page.locator("#duplexWave.can-seek");
+  await wave.waitFor();
+  const before = await wave.boundingBox();
+  await page.getByRole("button", {name: "放大查看", exact: true}).click();
+  const area = await wave.boundingBox();
+  assert.ok(area.height > before.height * 1.5);
+  const point = ratio => area.x + area.width * ratio;
+  const y = area.y + area.height / 3;
+  const detailResponse = predicate => page.waitForResponse(response => {
+    if (!response.url().endsWith("/api/recordings/waveform") || response.status() !== 200) return false;
+    return predicate(response.request().postDataJSON());
+  });
+  const selected = detailResponse(req => req.end - req.start < 1);
+  await page.mouse.move(point(.26), y);
+  await page.mouse.down();
+  await page.mouse.move(point(.16), y, {steps: 5});
+  await page.mouse.up();
+  const detail = await (await selected).json();
+  assert.equal(detail.channels.length, 2);
+  assert.ok(detail.channels[0].every(([lo, hi]) => lo === 0 && hi === 0));
+  assert.ok(detail.channels[1].some(([lo, hi]) => lo === -8500 / 32768 && hi === 8500 / 32768));
+  assert.ok(await page.locator("#player").evaluate(el => el.paused && el.currentTime > 1 && el.currentTime < 1.5));
+  const next = detailResponse(req => req.start >= 2);
+  await page.getByRole("button", {name: "查看后一段波形"}).click();
+  await next;
+  await page.getByRole("button", {name: "查看前一段波形"}).click();
+  const fine = detailResponse(req => req.end - req.start <= .021);
+  const plus = page.getByRole("button", {name: "放大录音时间轴"});
+  for (let i = 0; i < 10 && await plus.isEnabled(); i++) await plus.click();
+  const samples = await (await fine).json();
+  assert.equal(samples.samples, true);
+  assert.equal(samples.bin_s, 1 / rate);
+  assert.ok(samples.channels[1].every(([lo, hi]) => lo === hi && Math.abs(lo) === 8500 / 32768));
+  await page.getByRole("button", {name: "全长", exact: true}).click();
+  assert.ok(await page.locator("#wavePan").isHidden());
+  await page.getByRole("button", {name: "收起大图"}).click();
+  await wave.click({position: {x: before.width / 2, y: before.height / 2}});
+  assert.ok(await page.locator("#player").evaluate(el => Math.abs(el.currentTime - 6.5) < .1));
+}
+
 async function main() {
   await fs.mkdir(root);
   const inputs = path.join(root, "inputs");
@@ -139,6 +180,7 @@ raise SystemExit(main())
     await page.getByRole("button", {name: "a.wav", exact: true}).click();
     await page.locator("#player").waitFor();
     assert.match(await page.locator("#marks").textContent(), /暂无标注/);
+    await inspectWaveform(page);
     await page.getByRole("checkbox", {name: "导出 a.wav"}).check();
     await page.getByRole("checkbox", {name: "导出 b.wav"}).check();
     await page.getByRole("button", {name: "b.wav", exact: true}).click();
