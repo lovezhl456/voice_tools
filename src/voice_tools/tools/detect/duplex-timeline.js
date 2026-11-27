@@ -58,8 +58,7 @@
     ctx.restore();
   }
 
-  window.createRecordingDuplexTimeline = (player, seek, onView) => {
-    const maxZoom = onView ? 120 : MAX_ZOOM;
+  window.createRecordingDuplexTimeline = (player, seek, onView, readDetail) => {
     const $ = (id) => document.getElementById(id);
     const timeline = $("duplexTimeline");
     const plot = $("duplexWave");
@@ -72,6 +71,8 @@
     const theme = matchMedia("(prefers-color-scheme: dark)");
     let summary = null, duration = 0, plotWidth = 0;
     let zoom = 1, viewStart = 0, auditionRange = null, evidenceRange = null;
+    const inspector = readDetail && window.createWaveformInspector(readDetail, draw);
+    const maxZoom = () => inspector ? Math.max(1, duration / .02) : MAX_ZOOM;
     const viewSpan = () => duration / zoom;
     const viewEnd = () => viewStart + viewSpan();
     const percent = (time) => (time - viewStart) / viewSpan() * 100 + "%";
@@ -84,6 +85,10 @@
       canvas.height = Math.round(height * ratio);
       ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
       const style = getComputedStyle(canvas);
+      if (inspector) {
+        inspector.paint(ctx, width, height, style, viewStart, viewEnd());
+        return;
+      }
       const gridColor = style.getPropertyValue("--line").trim();
       summary.channels.forEach((channel, index) => {
         const color = style.getPropertyValue(index === 0 ? "--duplex-left" : "--duplex-right").trim();
@@ -135,12 +140,17 @@
     }
 
     function setView(nextZoom, at) {
-      zoom = nextZoom;
+      zoom = inspector ? Math.min(maxZoom(), Math.max(1, nextZoom)) : nextZoom;
       viewStart = Math.max(0, Math.min(duration - viewSpan(), at - viewSpan() / 2));
       $("duplexZoomOut").disabled = !summary || zoom === 1;
-      $("duplexZoomIn").disabled = !summary || zoom >= maxZoom;
+      $("duplexZoomIn").disabled = !summary || zoom >= maxZoom();
       $("duplexFit").disabled = !summary;
-      $("duplexFit").textContent = zoom === 1 ? "全长" : "×" + zoom;
+      $("duplexFit").textContent = inspector || zoom === 1 ? "全长" : "×" + zoom;
+      if (inspector) {
+        $("wavePan").hidden = zoom === 1;
+        $("wavePrev").disabled = viewStart <= .000001;
+        $("waveNext").disabled = viewEnd() >= duration - .000001;
+      }
       const digits = viewSpan() < 4 ? 2 : 1;
       $("annotationTime").replaceChildren(...TICK_FRACTIONS.map((fraction) => {
         const tick = document.createElement("span");
@@ -176,7 +186,7 @@
       syncPlayhead();
     }
     $("duplexZoomOut").onclick = () => changeZoom(Math.max(1, zoom / 2));
-    $("duplexZoomIn").onclick = () => changeZoom(Math.min(maxZoom, zoom * 2));
+    $("duplexZoomIn").onclick = () => changeZoom(Math.min(maxZoom(), zoom * 2));
     $("duplexFit").onclick = () => changeZoom(1);
     new ResizeObserver(([entry]) => {
       plotWidth = entry.contentRect.width;
@@ -187,16 +197,51 @@
     for (const event of ["loadedmetadata", "emptied", "error", "seeking"]) {
       player.addEventListener(event, syncPlayhead);
     }
-    plot.addEventListener("click", (event) => {
-      if (!plot.classList.contains("can-seek")) return;
-      const {left, width} = canvas.getBoundingClientRect();
-      const fraction = Math.max(0, Math.min(1, (event.clientX - left) / width));
-      seek(viewStart + fraction * viewSpan());
-      syncPlayhead();
-    });
+    let cancelSelection;
+    if (inspector) {
+      const expand = $("waveExpand");
+      const setExpanded = value => {
+        timeline.classList.toggle("wave-expanded", value);
+        expand.setAttribute("aria-pressed", value);
+        expand.textContent = value ? "收起大图" : "放大查看";
+      };
+      const inspectWindow = (left, right) => {
+        player.pause();
+        seek(left);
+        setView(duration / (right - left), (left + right) / 2);
+        syncPlayhead();
+      };
+      expand.onclick = () => {
+        if (!summary) return;
+        const expanding = !timeline.classList.contains("wave-expanded");
+        setExpanded(expanding);
+        if (expanding && viewSpan() > 8) changeZoom(duration / 8);
+      };
+      const pan = direction => {
+        const span = viewSpan();
+        const start = Math.max(0, Math.min(duration - span, viewStart + direction * span));
+        inspectWindow(start, start + span);
+      };
+      $("wavePrev").onclick = () => pan(-1);
+      $("waveNext").onclick = () => pan(1);
+      cancelSelection = window.bindWaveformSelection(plot, player, () => [viewStart, viewEnd()], seek, (left, right) => {
+        setExpanded(true);
+        inspectWindow(left, right);
+      });
+    } else {
+      plot.addEventListener("click", (event) => {
+        if (!plot.classList.contains("can-seek")) return;
+        const {left, width} = canvas.getBoundingClientRect();
+        const fraction = Math.max(0, Math.min(1, (event.clientX - left) / width));
+        seek(viewStart + fraction * viewSpan());
+        syncPlayhead();
+      });
+
+    }
 
     return {
-      load(waveform, seconds) {
+      load(waveform, seconds, source) {
+        cancelSelection?.();
         duration = seconds;
         auditionRange = null;
         evidenceRange = null;
@@ -205,6 +250,7 @@
           Number.isFinite(waveform?.bin_s) && waveform.bin_s > 0 &&
           channels?.length >= 1 && channels.length <= 2 && channels.every(channel => channel.length));
         summary = available ? waveform : null;
+        inspector?.load(source, summary);
         timeline.hidden = false;
         plot.hidden = !available;
         $("duplexChannels").hidden = !available;

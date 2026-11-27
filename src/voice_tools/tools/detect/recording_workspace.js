@@ -48,11 +48,11 @@ function checkbox(title) {
   return input;
 }
 
-async function post(action, params = {}, binary = false) {
+async function post(action, params = {}, binary = false, signal) {
   const response = await fetch("/api/recordings/" + action, {
     method: "POST",
     headers: {"Content-Type": "application/json", "X-Voice-Tools-Session": token},
-    body: JSON.stringify(params),
+    body: JSON.stringify(params), signal,
   });
   if (response.ok && binary) return response.blob();
   const result = await response.json();
@@ -173,9 +173,10 @@ const timeline = window.createRecordingDuplexTimeline(player, time => {
   [...$("annotationTime").children].forEach((tick, index, all) => {
     const seconds = start + (end - start) * index / (all.length - 1);
     tick.textContent = end - start >= 60 ? minuteText(seconds) : timeText(seconds);
+    if (end - start < 1) tick.textContent += Math.floor(seconds * 1000 + 1e-6) % 10;
   });
   renderMarks();
-});
+}, (source, start, end, bins, signal) => post("waveform", {...source, start, end, bins}, false, signal));
 
 function setMedia(url, resumeAt = 0, resume = false) {
   listenEnd = null;
@@ -221,7 +222,7 @@ async function openFile(file, preserve = false) {
     $("duplexLeft").textContent = loaded.ai_channel === 0 ? "左 · AI" : loaded.ai_channel === 1 ? "左 · 用户" : "左声道";
     $("duplexRight").textContent = loaded.ai_channel === 1 ? "右 · AI" : loaded.ai_channel === 0 ? "右 · 用户" : "右声道";
     setMedia(loaded.url, previousTime, resume);
-    timeline.load(loaded.waveform, loaded.duration);
+    timeline.load(loaded.waveform, loaded.duration, {file, digest: loaded.id});
     renderEvaluations();
     renderMarks();
     renderFiles();

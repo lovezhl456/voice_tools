@@ -19,6 +19,7 @@ from voice_tools.audio.io import read_wav, write_wav
 from voice_tools.core.files import sha256
 from . import engine, recording_history, rule_drafting, store, timeline_rules
 from .definition import canonical, fingerprint, parse_document
+from .waveform_window import read_window
 
 FORMATS = {'.wav', '.flac', '.mp3', '.m4a', '.ogg'}
 API = '/api/recordings/'
@@ -28,6 +29,7 @@ MANUAL = {'schema_version': '1.0', 'id': 'workbench-manual', 'version': '1', 'na
 ASSETS = {
     '/recordings/app.js': 'recording_workspace.js',
     '/recordings/style.css': 'recording_workspace.css',
+    '/recordings/inspector.js': 'waveform-inspector.js',
     '/recordings/timeline.js': 'duplex-timeline.js',
 }
 PAGE = Path(__file__).parent
@@ -323,6 +325,19 @@ class RecordingWorkspace:
                     time_origin=time_origin, waveform=summary, url=self.media_url(path, stamp, playable),
                     findings=findings, evaluations=evaluations)
 
+    def waveform_window(self, request):
+        with store.connect(self.app.database) as db:
+            root, _ = self.config(db)
+            path, stamp, digest = self.entry(db, root, request['file'])
+            timing = db.execute('SELECT time_origin FROM recording_workbench_audio WHERE digest=?', (digest,)).fetchone()
+        if digest != request['digest'] or timing is None:
+            raise ValueError('录音已变化，请重新打开')
+        playable = self.temporary() / (digest + '.wav') if timing[0] == 'prepared_pcm' else path
+        result = read_window(playable, request['start'], request['end'], request['bins'])
+        if file_stamp(path) != stamp:
+            raise ValueError('录音已变化，请重新打开')
+        return result
+
     def rule(self, request, *, save=False):
         raw = parse_document(request['config_text']) if 'config_text' in request else request['config']
         config = timeline_rules.validate(raw)
@@ -525,7 +540,7 @@ class RecordingWorkspace:
             raise ValueError('请求必须为 JSON 对象')
         action = route.removeprefix(API)
         handlers = {'state': self.state, 'folders': browse_folders, 'associate': self.associate, 'open': self.open,
-                    'validate': self.rule, 'save': lambda data: self.rule(data, save=True),
+                    'waveform': self.waveform_window, 'validate': self.rule, 'save': lambda data: self.rule(data, save=True),
                     'review': self.review, 'manual': self.manual, 'export': self.export,
                     'ai': rule_drafting.draft, 'run': self.start}
         if action not in handlers:
