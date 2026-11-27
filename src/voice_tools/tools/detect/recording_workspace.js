@@ -586,32 +586,86 @@ function importDialog() {
   dialog("导入规则", label("选择规则 JSON", input));
 }
 
-let apiKey = "", modelName = "";
+let apiKey = "", modelName = null, effort = "", speed = "default", systemPrompt = null;
+let userPrompt = "", promptExpanded = false;
+const effortLabels = {"": "模型默认", low: "低", medium: "中", high: "高", xhigh: "很高", max: "最高"};
+const speedLabels = {default: "标准", fast: "Fast", ultrafast: "UltraFast"};
+
+function setOptions(select, values, labels, selected) {
+  select.replaceChildren(...values.map(value => new Option(labels[value], value)));
+  select.value = values.includes(selected) ? selected : values[0];
+}
+
+function modelControls() {
+  const model = node("select", null, {ariaLabel: "模型"});
+  const custom = textField("", {placeholder: "输入模型 ID", maxLength: 100});
+  const customLabel = label("自定义模型 ID", custom);
+  const reasoning = node("select", null, {ariaLabel: "推理强度"});
+  const tier = node("select", null, {ariaLabel: "速度模式"});
+  const names = Object.fromEntries(Object.entries(data.models).map(([id, spec]) => [id, spec.name]));
+  const initial = modelName ?? data.model;
+  setOptions(model, [...Object.keys(names), "custom"], {...names, custom: "自定义模型"}, names[initial] ? initial : "custom");
+  custom.value = names[initial] ? "" : initial;
+  function sync() {
+    customLabel.hidden = model.value !== "custom";
+    modelName = customLabel.hidden ? model.value : custom.value.trim();
+    const spec = data.models[modelName] || data.custom_model;
+    setOptions(reasoning, ["", ...spec.efforts], effortLabels, effort);
+    reasoning.disabled = !spec.efforts.length;
+    if (reasoning.disabled) reasoning.options[0].text = "不设置";
+    setOptions(tier, spec.speeds, speedLabels, speed);
+    effort = reasoning.value;
+    speed = tier.value;
+  }
+  model.onchange = sync;
+  custom.oninput = sync;
+  reasoning.onchange = () => { effort = reasoning.value; };
+  tier.onchange = () => { speed = tier.value; };
+  sync();
+  const row = node("div", null, {className: "ai-settings"});
+  row.append(label("模型", model), label("推理强度", reasoning), label("速度模式", tier));
+  return [row, customLabel];
+}
+
+function promptEditor() {
+  const details = node("details", null, {className: "prompt-editor", open: promptExpanded});
+  details.ontoggle = () => { if (details.isConnected) promptExpanded = details.open; };
+  const input = node("textarea", null, {value: systemPrompt ?? data.default_prompt, maxLength: 6000, rows: 7});
+  input.oninput = () => { systemPrompt = input.value; };
+  details.append(node("summary", "系统提示词"), label("给模型的规则设计指导", input),
+    button("恢复默认提示词", () => { systemPrompt = null; input.value = data.default_prompt; }));
+  return details;
+}
+
 function aiDialog() {
+  if (!data.models) { report("正在读取模型设置，请稍后重试。"); return; }
   const key = textField(apiKey, {type: "password", autocomplete: "off", placeholder: data.key_on_server ? "使用本机服务的 Key" : "当前页面会话使用"});
-  const model = textField(modelName || data.model || "");
   key.oninput = () => { apiKey = key.value; };
-  model.oninput = () => { modelName = model.value; };
-  const question = node("textarea", null, {placeholder: "例如：用户说完之后，超过两秒 AI 才开始说话，请标出等候区间。", maxLength: 6000});
+  const controls = modelControls();
+  const question = node("textarea", null, {value: userPrompt, placeholder: "例如：用户说完之后，超过两秒 AI 才开始说话，请标出等候区间。", maxLength: 6000});
+  question.oninput = () => { userPrompt = question.value; };
   const history = node("div", messages.map(m => m.role === "user" ? "你 · " + m.content : "AI · " + m.content).join("\n\n"),
     {className: "rule-preview"});
   const ask = button("生成或修改规则", attempt(async () => {
     const generation = dialogGeneration;
     const content = question.value.trim();
     if (!content) throw new Error("请描述要查什么");
+    if (!modelName) throw new Error("请选择模型或填写自定义模型 ID");
     const next = [...messages.slice(-18), {role: "user", content}];
     $("dialog-status").textContent = "正在生成规则…";
-    const result = await post("ai", {key: key.value, model: model.value, messages: next});
+    const result = await post("ai", {key: key.value, model: modelName, effort, service_tier: speed,
+      system_prompt: systemPrompt ?? data.default_prompt, messages: next});
     if (!modal.open || generation !== dialogGeneration) return;
+    if (userPrompt.trim() === content) userPrompt = "";
     draft = result.config;
     const reply = [result.explanation, result.question, draft ? JSON.stringify(draft) : ""].filter(Boolean).join("\n");
     messages = [...next, {role: "assistant", content: reply.slice(0, 6000)}];
     aiDialog();
   }, true), true);
-  dialog("与 AI 定规则", label("GPT API Key", key), label("模型 ID", model),
-    ...(messages.length ? [history] : []), label("告诉 AI 要检查什么", question), ask,
+  dialog("与 AI 定规则", label("GPT API Key", key), ...controls, promptEditor(),
+    ...(messages.length ? [history] : []), label("用户提示词", question), ask,
     ...(draft ? [button("预览并保存草稿", () => previewRule(draft))] : []),
-    ...(messages.length ? [button("开始新讨论", () => { messages = []; draft = null; aiDialog(); })] : []));
+    ...(messages.length ? [button("开始新讨论", () => { messages = []; draft = null; userPrompt = ""; aiDialog(); })] : []));
 }
 
 async function launch(files, rules) {

@@ -9,6 +9,21 @@ from .definition import parse_document
 from .metrics import catalog
 from .timeline_rules import KINDS, validate
 
+EFFORTS = ('low', 'medium', 'high', 'xhigh', 'max')
+SPEEDS = ('default', 'fast', 'ultrafast')
+MODELS = {
+    'gpt-4o-mini': {'name': 'GPT-4o mini', 'efforts': (), 'speeds': ('default', 'fast')},
+    'gpt-6.2-sol': {'name': 'GPT-6.2 Sol', 'efforts': EFFORTS, 'speeds': SPEEDS},
+    'gpt-6.2-astra': {'name': 'GPT-6.2 Astra', 'efforts': EFFORTS, 'speeds': SPEEDS},
+    'gpt-6.1-sol': {'name': 'GPT-6.1 Sol', 'efforts': EFFORTS, 'speeds': SPEEDS},
+}
+CUSTOM_MODEL = {'efforts': (), 'speeds': ('default',)}
+DEFAULT_PROMPT = """你是一名电话录音质检规则设计师。把用户想查的现象转换成可复用、可试听验证的规则。
+
+先明确要听谁、从哪个声音事件开始计时、到哪个事件结束，以及多长时间算命中。区分用户说完后等待 AI 开口、AI 自己说话中途停顿、双方持续安静和双声道重叠。保留用户指定的阈值，分清“超过”和“至少”。声道角色由工作台映射，不假定左边一定是用户。
+一通录音可能多次命中，每次给出独立区间。同一时间段允许多个规则共存。只依据引擎能观测的声音或时序证据。遇到单凭录音无法确定的原因，说明可测的现象并请用户决定是否改查该现象。
+影响标注边界的信息不足时，每轮只问一个具体问题。能起草时，用简短中文解释规则会标出哪一段，再给一个命中或不命中的例子。修改已有规则时沿用已经确认的条件。"""
+
 ENDPOINT = 'https://api.openai.com/v1/responses'
 FORMAT = {
     'type': 'json_schema', 'name': 'recording_rule_draft', 'strict': True,
@@ -47,6 +62,16 @@ def draft(data):
     model = data.get('model') or os.getenv('VOICE_TOOLS_OPENAI_MODEL', 'gpt-4o-mini')
     if not isinstance(model, str) or not re.fullmatch(r'[a-zA-Z0-9_.:-]{1,100}', model):
         raise ValueError('模型 ID 无效')
+    capabilities = MODELS.get(model, CUSTOM_MODEL)
+    effort = data.get('effort', '')
+    tier = data.get('service_tier')
+    if effort != '' and effort not in capabilities['efforts']:
+        raise ValueError('当前模型不支持所选推理强度')
+    if tier is not None and tier not in capabilities['speeds']:
+        raise ValueError('当前模型不支持所选速度模式')
+    prompt = data.get('system_prompt', DEFAULT_PROMPT)
+    if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 6000:
+        raise ValueError('系统提示词需为 1–6000 个字符')
     messages = data['messages']
     if not isinstance(messages, list) or not 1 <= len(messages) <= 20:
         raise ValueError('请提供 1–20 条规则讨论消息')
@@ -55,13 +80,17 @@ def draft(data):
                 or message['role'] not in ('user', 'assistant')
                 or not isinstance(message['content'], str) or not 1 <= len(message['content']) <= 6000):
             raise ValueError('规则讨论消息格式无效或过长')
-    payload = dict(model=model, input=messages, store=False, max_output_tokens=4000,
-                   text={'format': FORMAT}, instructions=INSTRUCTIONS + json.dumps(
+    payload = dict(model=model, input=messages, store=False, max_output_tokens=25000 if capabilities['efforts'] else 4000,
+                   text={'format': FORMAT}, instructions=prompt.strip() + '\n\n' + INSTRUCTIONS + json.dumps(
                        {'timing': KINDS, 'metrics': catalog()}, ensure_ascii=False))
+    if effort:
+        payload['reasoning'] = {'effort': effort}
+    if tier is not None:
+        payload['service_tier'] = tier
     request = Request(ENDPOINT, data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
                       headers={'Authorization': 'Bearer ' + raw_key, 'Content-Type': 'application/json'})
     try:
-        with build_opener(NoRedirect()).open(request, timeout=55) as response:
+        with build_opener(NoRedirect()).open(request, timeout=180 if capabilities['efforts'] else 55) as response:
             reply = json.loads(response.read(1024 * 1024))
     except HTTPError as error:
         raise ValueError(f'OpenAI 返回 HTTP {error.code}，请检查模型、Key 或稍后重试') from None

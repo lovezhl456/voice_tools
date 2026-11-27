@@ -49,7 +49,15 @@ voice-tools detect serve --db /path/to/data/library.sqlite3 --out /path/to/data 
 
 时序规则默认双轨、严格大于、活动阈值 -45 dBFS；`ge` 表示大于等于。声学区间由 20 毫秒能量帧生成，应答起止使用逐轮引擎的证据。需要识别 AI 的规则必须确认声道映射。逐轮引擎使用 `VOICE_TOOLS_LATENCY_DIR` 或系统默认安装目录。可用 `voice-tools latency doctor` 核验，安装见逐轮延迟手册。输出等待阈值请用实际通话试听确认。
 
-「与 AI 定规则」可在当前页面会话填写 GPT API Key 和模型 ID，也可在启动服务前设置 `OPENAI_API_KEY` 和 `VOICE_TOOLS_OPENAI_MODEL`。页面输入的 Key 只保存在页面内存中。发送给 OpenAI 的内容为规则讨论与检测能力目录，规则校验及录音分析在本机执行。旧规则版本无法覆盖，修改时使用新版本。
+「与 AI 定规则」可在当前页面会话填写 GPT API Key，选择模型、推理强度和速度，也可输入自定义模型 ID，也可在启动服务前设置 `OPENAI_API_KEY` 和 `VOICE_TOOLS_OPENAI_MODEL`。页面输入的 Key 只保存在页面内存中。发送给 OpenAI 的内容包括系统提示词、规则讨论与检测能力目录，规则校验及录音分析在本机执行。系统提示词默认折叠，展开后可编辑或恢复默认。用户提示词用于本轮需求，两者分别发送。标准、Fast、UltraFast 按所选模型提供；服务层级计费与账户权限以 OpenAI 为准。自定义模型若无已知能力配置，仅提供标准速度与模型默认推理。旧规则版本无法覆盖，修改时使用新版本。
+
+| 模型 | 推理强度 | 速度 |
+| --- | --- | --- |
+| GPT-4o mini | 不设置 | 标准、Fast |
+| GPT-6.2 Sol、GPT-6.2 Astra、GPT-6.1 Sol | 模型默认、低、中、高、很高、最高 | 标准、Fast、UltraFast |
+| 其他自定义 ID | 使用模型默认 | 标准 |
+
+模型可用性取决于 API 项目。不同速度有各自的计费和可用范围。[OpenAI Fast](https://developers.openai.com/api/docs/guides/priority-processing) · [OpenAI UltraFast](https://developers.openai.com/api/docs/guides/ultrafast-mode)
 
 - [旧版检测定义](detection-rules.md)
 - [逐轮延迟安装](latency-install.md)
