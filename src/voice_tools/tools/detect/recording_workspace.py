@@ -33,6 +33,34 @@ ASSETS = {
 PAGE = Path(__file__).parent
 
 
+def browse_folders(request):
+    selected = request.get('folder', '')
+    if not isinstance(selected, str):
+        raise ValueError('请选择有效的文件夹')
+    try:
+        directory = Path(selected).expanduser() if selected else Path.home()
+        if not directory.is_absolute():
+            raise ValueError('请输入绝对路径，或从主目录开始浏览')
+        directory = directory.resolve(strict=True)
+        children = []
+        with os.scandir(directory) as entries:
+            for entry in entries:
+                if entry.name.startswith('.') and not request.get('show_hidden'):
+                    continue
+                try:
+                    if entry.is_dir():
+                        children.append({'name': entry.name, 'path': entry.path})
+                except OSError:
+                    continue
+    except PermissionError:
+        raise ValueError('没有权限浏览这个文件夹，可以选择其他目录') from None
+    except (OSError, RuntimeError):
+        raise ValueError('无法打开这个文件夹，可以从主目录重新选择') from None
+    children.sort(key=lambda child: (child['name'].casefold(), child['name']))
+    parent = str(directory.parent) if directory.parent != directory else None
+    return dict(folder=str(directory), parent=parent, children=children)
+
+
 def file_stamp(path):
     s = path.stat()
     return [s.st_dev, s.st_ino, s.st_size, s.st_mtime_ns, s.st_ctime_ns]
@@ -496,7 +524,7 @@ class RecordingWorkspace:
         if not isinstance(request, dict):
             raise ValueError('请求必须为 JSON 对象')
         action = route.removeprefix(API)
-        handlers = {'state': self.state, 'associate': self.associate, 'open': self.open,
+        handlers = {'state': self.state, 'folders': browse_folders, 'associate': self.associate, 'open': self.open,
                     'validate': self.rule, 'save': lambda data: self.rule(data, save=True),
                     'review': self.review, 'manual': self.manual, 'export': self.export,
                     'ai': rule_drafting.draft, 'run': self.start}

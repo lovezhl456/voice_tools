@@ -692,13 +692,58 @@ $("select-all").onchange = event => {
   renderFiles();
 };
 $("rescan").onclick = attempt(() => refresh(true));
-$("folder-open").onclick = () => {
-  const folder = textField(data.folder, {placeholder: "/绝对路径/录音文件夹", required: true});
-  const channel = node("select");
-  channel.append(...[["", "未知"], ["0", "左声道"], ["1", "右声道"]].map(([value, title]) =>
-    node("option", title, {value})));
-  channel.value = data.ai_channel == null ? "" : String(data.ai_channel);
-  dialog("关联录音文件夹", label("本机文件夹绝对路径", folder), label("AI 所在声道", channel),
+function chooseFolder(initial, finish) {
+  let current = null, parent = null, sequence = 0;
+  const home = button("主目录", () => load(""));
+  const up = button("上一级", () => load(parent));
+  const hidden = checkbox("显示隐藏文件夹");
+  hidden.onchange = () => load(current ?? initial, parent);
+  const toolbar = node("div", null, {className: "folder-toolbar"});
+  toolbar.append(home, up, label("显示隐藏文件夹", hidden));
+  const location = node("div", null, {className: "folder-location", tabIndex: -1});
+  const list = node("div", null, {className: "folder-list"});
+  const actions = node("div", null, {className: "folder-actions"});
+  const select = button("选用此文件夹", () => finish(current), true);
+  actions.append(button("取消选择", () => finish(null)), select);
+  dialog("选择文件夹", toolbar, location, list, actions);
+
+  async function load(folder, back = null) {
+    const request = ++sequence;
+    const generation = dialogGeneration;
+    const active = () => request === sequence && modal.open && generation === dialogGeneration;
+    select.disabled = up.disabled = true;
+    location.textContent = folder || "主目录";
+    list.replaceChildren(node("span", "正在读取…", {className: "muted"}));
+    try {
+      const result = await post("folders", {folder, show_hidden: hidden.checked});
+      if (!active()) return;
+      current = result.folder;
+      parent = result.parent;
+      location.textContent = current;
+      select.disabled = false;
+      up.disabled = !parent;
+      list.replaceChildren(...result.children.map(child => button(child.name, () => load(child.path, result.folder))));
+      if (!list.childElementCount) list.append(node("span", "没有可显示的子文件夹", {className: "muted"}));
+      location.focus({preventScroll: true});
+    } catch (error) {
+      if (!active()) return;
+      current = folder;
+      parent = back;
+      up.disabled = !parent;
+      list.replaceChildren(node("p", error.message, {role: "alert"}));
+    }
+  }
+  load(initial);
+}
+
+function folderDialog(folder, channel) {
+  const browse = button("选择文件夹…", () => chooseFolder(folder.value.trim(), selected => {
+    if (selected !== null) folder.value = selected;
+    folderDialog(folder, channel);
+  }));
+  const field = node("div", null, {className: "folder-field"});
+  field.append(label("本机文件夹绝对路径", folder), browse);
+  dialog("关联录音文件夹", field, label("AI 所在声道", channel),
     button("关联并扫描", attempt(async () => {
       const previous = data.folder;
       data = await post("associate", {folder: folder.value.trim(), ai_channel: channel.value === "" ? null : Number(channel.value)});
@@ -722,6 +767,14 @@ $("folder-open").onclick = () => {
       modal.close();
       await refresh();
     }, true), true));
+}
+$("folder-open").onclick = () => {
+  const folder = textField(data.folder, {placeholder: "/绝对路径/录音文件夹", required: true});
+  const channel = node("select");
+  channel.append(...[["", "未知"], ["0", "左声道"], ["1", "右声道"]].map(([value, title]) =>
+    node("option", title, {value})));
+  channel.value = data.ai_channel == null ? "" : String(data.ai_channel);
+  folderDialog(folder, channel);
 };
 $("library-open").onclick = $("rules-open").onclick = rulePicker;
 $("import-open").onclick = importDialog;

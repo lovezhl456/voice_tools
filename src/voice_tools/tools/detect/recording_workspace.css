@@ -137,3 +137,13 @@ dialog::backdrop { background:rgb(10 22 35 / 54%) }
   .ai-settings { grid-template-columns:repeat(2,minmax(0,1fr)) }
   .ai-settings label:first-child { grid-column:1/-1 }
 }
+
+.folder-field { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px; align-items:end }
+.folder-field input { width:100%; min-width:0 }
+.folder-toolbar,.folder-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+.folder-actions { justify-content:flex-end }
+.folder-location { overflow-wrap:anywhere; font-weight:600 }
+.folder-list { display:grid; align-content:start; max-height:35vh; overflow:auto; gap:2px; padding:4px; border:1px solid var(--line); border-radius:6px }
+.folder-list > button { text-align:left; border-color:transparent; overflow-wrap:anywhere }
+.folder-list > button::after { content:""; float:right; width:.45em; height:.45em; margin:.5em .25em; border:solid var(--muted); border-width:1px 1px 0 0; transform:rotate(45deg) }
+.folder-list > :is(span,p) { padding:8px }
